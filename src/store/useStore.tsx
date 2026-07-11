@@ -205,7 +205,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         throw new Error('The file did not contain any valid athletes.')
       }
       if (mode === 'replace') {
-        this.replaceAll(parsed)
+        setData(parsed)
+        persist(parsed)
         return
       }
 
@@ -244,8 +245,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         const existingSessionKeys = new Set(
           current.sessions.map(
-            (session) =>
-              `${session.id}|${session.athleteId}|${session.eventId}|${session.date}`,
+            (session) => `${session.id}|${session.athleteId}|${session.eventId}|${session.date}`,
           ),
         )
         const incomingSessions = parsed.sessions
@@ -275,6 +275,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useStore(): StoreContextValue {
   const context = useContext(StoreContext)
   if (!context) throw new Error('useStore must be used within StoreProvider')
