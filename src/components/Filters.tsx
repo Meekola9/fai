@@ -8,6 +8,7 @@ export interface FilterState {
   eventId: string
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const EMPTY_FILTERS: FilterState = {
   grade: '',
   group: '',
@@ -15,6 +16,7 @@ export const EMPTY_FILTERS: FilterState = {
   eventId: '',
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function applyFilters(results: AthleteResult[], filters: FilterState): AthleteResult[] {
   return results.filter((result) => {
     const group = result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup
