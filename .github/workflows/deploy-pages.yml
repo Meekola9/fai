@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages
@@ -40,7 +41,38 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  report:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    steps:
+      - name: Report deployment result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const build = '${{ needs.build.result }}';
+            const deploy = '${{ needs.deploy.result }}';
+            const pageUrl = '${{ needs.deploy.outputs.page_url }}' || 'https://meekola9.github.io/football-athlete-index/';
+            const ok = build === 'success' && deploy === 'success';
+            const body = [
+              ok ? '✅ **Production deployment succeeded**' : '❌ **Production deployment failed**',
+              '',
+              `- Build: \`${build}\``,
+              `- Deploy: \`${deploy}\``,
+              `- Commit: \`${context.sha}\``,
+              `- Site: ${pageUrl}`,
+              `- Workflow: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 6,
+              body,
+            });
