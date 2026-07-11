@@ -92,7 +92,7 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
   await page.getByRole('link', { name: /TV Mode/ }).click()
-  await expect(page.getByText('Overall FAI', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
   await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: '✕ Exit' }).click()
 
