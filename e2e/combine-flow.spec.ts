@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-async function fillPlaceholder(page: Parameters<typeof test>[0] extends never ? never : any, placeholder: string, value: string) {
+async function fillPlaceholder(page: Page, placeholder: string, value: string) {
   await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
 }
 
