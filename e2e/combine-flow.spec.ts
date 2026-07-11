@@ -86,7 +86,7 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
   await expect(page.getByText('Official score')).toBeVisible()
   await expect(page.getByText('Team Rank #1 / 1')).toBeVisible()
-  await expect(page.getByText(/QA Summer Combine 2026/)).toBeVisible()
+  await expect(page.getByText('QA Summer Combine 2026 · 2026-07-06', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('link', { name: 'QA Athlete', exact: true })).toBeVisible()
