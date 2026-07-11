@@ -1,184 +1,215 @@
 // ---------------------------------------------------------------------------
-// FAI SCORING CONFIG  —  EDIT THIS FILE TO CHANGE HOW SCORES ARE CALCULATED
-// ---------------------------------------------------------------------------
-// The Football Athlete Index (FAI) is a 0-100 score built from five weighted
-// categories. Each category is the average of one or more normalized tests.
-// Normalization is done per testing phase: within a phase the team BEST test
-// result scores 100 and the team WORST scores 0, everyone else scales linearly.
+// FAI SCORING CONFIG — stable, position-aware performance benchmarks
 // ---------------------------------------------------------------------------
 
-import type { Category, TestSession } from '../types'
+import type { Category, PositionGroup, TestSession } from '../types'
 
-/** Category weights — must sum to 1.0 (100%). */
 export const CATEGORY_WEIGHTS: Record<Category, number> = {
-  Speed: 0.3, // 30%
-  Power: 0.25, // 25%
-  'Change of Direction': 0.2, // 20%
-  Conditioning: 0.15, // 15%
-  Strength: 0.1, // 10%
+  Speed: 0.3,
+  Power: 0.25,
+  'Change of Direction': 0.2,
+  Conditioning: 0.15,
+  Strength: 0.1,
 }
 
-/**
- * When a testing phase has no spread for a metric (everyone tied, or only one
- * athlete tested), we can't scale between best and worst. This neutral score is
- * used instead. 50 = "average / undetermined".
- */
 export const NEUTRAL_SCORE = 50
 
-/** A metric that feeds the FAI score. */
 export interface ScoredMetric {
   key: string
   label: string
   shortLabel: string
   category: Category
-  /** true = higher raw value is better (jumps, reps, weight, yards). */
   higherBetter: boolean
   unit: string
-  /** Which testing day the underlying inputs come from. */
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Optional'
-  /** Extract the (possibly derived / best-of) raw value from a session. */
-  value: (s: TestSession) => number | undefined
+  required: boolean
+  value: (session: TestSession) => number | undefined
 }
+
+export interface Benchmark {
+  /** Result that receives 100. */
+  elite: number
+  /** Result that receives 0. */
+  developmental: number
+}
+
+type BenchmarkProfile = Record<string, Benchmark>
 
 const min2 = (a?: number, b?: number): number | undefined => {
-  const xs = [a, b].filter((x): x is number => typeof x === 'number' && x > 0)
-  return xs.length ? Math.min(...xs) : undefined
-}
-const max2 = (a?: number, b?: number): number | undefined => {
-  const xs = [a, b].filter((x): x is number => typeof x === 'number' && x > 0)
-  return xs.length ? Math.max(...xs) : undefined
+  const values = [a, b].filter((value): value is number => typeof value === 'number' && value > 0)
+  return values.length ? Math.min(...values) : undefined
 }
 
-/**
- * All metrics that contribute to the FAI. Derived "best of" metrics (best 40,
- * best fly, best shuttle, best lateral shuttle) are computed here so the rest of
- * the app just reads `metric.value(session)`.
- */
+const ratio = (load?: number, bodyWeight?: number): number | undefined => {
+  if (!load || !bodyWeight || load <= 0 || bodyWeight <= 0) return undefined
+  return load / bodyWeight
+}
+
+const SPEED_SKILL: BenchmarkProfile = {
+  best40: { elite: 4.4, developmental: 5.25 },
+  bestFly: { elite: 1.4, developmental: 1.8 },
+  broadJump: { elite: 124, developmental: 90 },
+  verticalJump: { elite: 38, developmental: 20 },
+  hangCleanReps: { elite: 15, developmental: 3 },
+  best20Shuttle: { elite: 4.1, developmental: 5.1 },
+  bestLatShuttle: { elite: 2.55, developmental: 3.35 },
+  illinois: { elite: 15, developmental: 18.5 },
+  cond51015: { elite: 175, developmental: 105 },
+  benchRatio: { elite: 1.45, developmental: 0.55 },
+  squatRatio: { elite: 2.25, developmental: 1 },
+}
+
+const QUARTERBACK: BenchmarkProfile = {
+  best40: { elite: 4.55, developmental: 5.4 },
+  bestFly: { elite: 1.45, developmental: 1.85 },
+  broadJump: { elite: 120, developmental: 88 },
+  verticalJump: { elite: 35, developmental: 18 },
+  hangCleanReps: { elite: 12, developmental: 2 },
+  best20Shuttle: { elite: 4.2, developmental: 5.2 },
+  bestLatShuttle: { elite: 2.65, developmental: 3.45 },
+  illinois: { elite: 15.4, developmental: 19 },
+  cond51015: { elite: 165, developmental: 95 },
+  benchRatio: { elite: 1.35, developmental: 0.5 },
+  squatRatio: { elite: 2, developmental: 0.9 },
+}
+
+const HYBRID: BenchmarkProfile = {
+  best40: { elite: 4.6, developmental: 5.55 },
+  bestFly: { elite: 1.48, developmental: 1.9 },
+  broadJump: { elite: 118, developmental: 84 },
+  verticalJump: { elite: 34, developmental: 18 },
+  hangCleanReps: { elite: 15, developmental: 3 },
+  best20Shuttle: { elite: 4.25, developmental: 5.35 },
+  bestLatShuttle: { elite: 2.7, developmental: 3.55 },
+  illinois: { elite: 15.6, developmental: 19.5 },
+  cond51015: { elite: 165, developmental: 90 },
+  benchRatio: { elite: 1.5, developmental: 0.65 },
+  squatRatio: { elite: 2.25, developmental: 1.05 },
+}
+
+const BIG: BenchmarkProfile = {
+  best40: { elite: 4.95, developmental: 6.3 },
+  bestFly: { elite: 1.6, developmental: 2.1 },
+  broadJump: { elite: 110, developmental: 70 },
+  verticalJump: { elite: 30, developmental: 12 },
+  hangCleanReps: { elite: 14, developmental: 2 },
+  best20Shuttle: { elite: 4.5, developmental: 6 },
+  bestLatShuttle: { elite: 2.9, developmental: 4 },
+  illinois: { elite: 16.5, developmental: 22 },
+  cond51015: { elite: 145, developmental: 60 },
+  benchRatio: { elite: 1.45, developmental: 0.7 },
+  squatRatio: { elite: 2.1, developmental: 1 },
+}
+
+const SPECIALIST: BenchmarkProfile = {
+  best40: { elite: 4.7, developmental: 5.7 },
+  bestFly: { elite: 1.5, developmental: 1.95 },
+  broadJump: { elite: 115, developmental: 80 },
+  verticalJump: { elite: 32, developmental: 15 },
+  hangCleanReps: { elite: 10, developmental: 1 },
+  best20Shuttle: { elite: 4.35, developmental: 5.5 },
+  bestLatShuttle: { elite: 2.75, developmental: 3.65 },
+  illinois: { elite: 16, developmental: 20 },
+  cond51015: { elite: 155, developmental: 80 },
+  benchRatio: { elite: 1.2, developmental: 0.4 },
+  squatRatio: { elite: 1.8, developmental: 0.75 },
+}
+
+const PROFILE_BY_GROUP: Record<PositionGroup, BenchmarkProfile> = {
+  QB: QUARTERBACK,
+  RB: SPEED_SKILL,
+  WR: SPEED_SKILL,
+  TE: HYBRID,
+  OL: BIG,
+  DL: BIG,
+  LB: HYBRID,
+  DB: SPEED_SKILL,
+  'K/P': SPECIALIST,
+  ATH: SPEED_SKILL,
+}
+
 export const SCORED_METRICS: ScoredMetric[] = [
-  // --- Speed ---------------------------------------------------------------
   {
-    key: 'best40',
-    label: 'Best 40-Yard Dash',
-    shortLabel: '40 Dash',
-    category: 'Speed',
-    higherBetter: false,
-    unit: 's',
-    day: 'Monday',
-    value: (s) => min2(s.dash40_1, s.dash40_2),
+    key: 'best40', label: 'Best 40-Yard Dash', shortLabel: '40 Dash', category: 'Speed',
+    higherBetter: false, unit: 's', day: 'Monday', required: true,
+    value: (session) => min2(session.dash40_1, session.dash40_2),
   },
   {
-    key: 'bestFly',
-    label: 'Best 10-Yard Fly',
-    shortLabel: '10 Fly',
-    category: 'Speed',
-    higherBetter: false,
-    unit: 's',
-    day: 'Monday',
-    value: (s) => min2(s.fly10_1, s.fly10_2),
-  },
-  // --- Power ---------------------------------------------------------------
-  {
-    key: 'broadJump',
-    label: 'Broad Jump',
-    shortLabel: 'Broad',
-    category: 'Power',
-    higherBetter: true,
-    unit: 'in',
-    day: 'Wednesday',
-    value: (s) => s.broadJump,
+    key: 'bestFly', label: 'Best 10-Yard Fly', shortLabel: '10 Fly', category: 'Speed',
+    higherBetter: false, unit: 's', day: 'Monday', required: true,
+    value: (session) => min2(session.fly10_1, session.fly10_2),
   },
   {
-    key: 'verticalJump',
-    label: 'Vertical Jump',
-    shortLabel: 'Vertical',
-    category: 'Power',
-    higherBetter: true,
-    unit: 'in',
-    day: 'Wednesday',
-    value: (s) => s.verticalJump,
+    key: 'broadJump', label: 'Broad Jump', shortLabel: 'Broad', category: 'Power',
+    higherBetter: true, unit: 'in', day: 'Wednesday', required: true,
+    value: (session) => session.broadJump,
   },
   {
-    key: 'hangCleanReps',
-    label: 'Hang Clean Reps (BW)',
-    shortLabel: 'Hang Clean',
-    category: 'Power',
-    higherBetter: true,
-    unit: 'reps',
-    day: 'Tuesday',
-    value: (s) => s.hangCleanReps,
-  },
-  // --- Change of Direction -------------------------------------------------
-  {
-    key: 'best20Shuttle',
-    label: 'Best 20-Yard Shuttle',
-    shortLabel: '20 Shuttle',
-    category: 'Change of Direction',
-    higherBetter: false,
-    unit: 's',
-    day: 'Tuesday',
-    value: (s) => min2(s.shuttle20_1, s.shuttle20_2),
+    key: 'verticalJump', label: 'Vertical Jump', shortLabel: 'Vertical', category: 'Power',
+    higherBetter: true, unit: 'in', day: 'Wednesday', required: true,
+    value: (session) => session.verticalJump,
   },
   {
-    key: 'bestLatShuttle',
-    label: 'Best Lateral 10-Yard Shuttle',
-    shortLabel: 'Lat Shuttle',
-    category: 'Change of Direction',
-    higherBetter: false,
-    unit: 's',
-    day: 'Tuesday',
-    value: (s) => min2(s.latShuttle_1, s.latShuttle_2),
+    key: 'hangCleanReps', label: 'Hang Clean Reps (BW)', shortLabel: 'Hang Clean', category: 'Power',
+    higherBetter: true, unit: 'reps', day: 'Tuesday', required: true,
+    value: (session) => session.hangCleanReps,
   },
   {
-    key: 'illinois',
-    label: 'Illinois Agility',
-    shortLabel: 'Illinois',
-    category: 'Change of Direction',
-    higherBetter: false,
-    unit: 's',
-    day: 'Tuesday',
-    value: (s) => s.illinois,
-  },
-  // --- Conditioning --------------------------------------------------------
-  {
-    key: 'cond51015',
-    label: '5-10-15 Shuttle (30s yards)',
-    shortLabel: '5-10-15',
-    category: 'Conditioning',
-    higherBetter: true,
-    unit: 'yd',
-    day: 'Optional',
-    value: (s) => s.cond51015,
-  },
-  // --- Strength ------------------------------------------------------------
-  {
-    key: 'benchMax',
-    label: 'Bench Max',
-    shortLabel: 'Bench',
-    category: 'Strength',
-    higherBetter: true,
-    unit: 'lbs',
-    day: 'Monday',
-    value: (s) => s.benchMax,
+    key: 'best20Shuttle', label: 'Best 20-Yard Shuttle', shortLabel: '20 Shuttle', category: 'Change of Direction',
+    higherBetter: false, unit: 's', day: 'Tuesday', required: true,
+    value: (session) => min2(session.shuttle20_1, session.shuttle20_2),
   },
   {
-    key: 'squatMax',
-    label: 'Squat Max',
-    shortLabel: 'Squat',
-    category: 'Strength',
-    higherBetter: true,
-    unit: 'lbs',
-    day: 'Wednesday',
-    value: (s) => s.squatMax,
+    key: 'bestLatShuttle', label: 'Best Lateral 10-Yard Shuttle', shortLabel: 'Lat Shuttle', category: 'Change of Direction',
+    higherBetter: false, unit: 's', day: 'Tuesday', required: true,
+    value: (session) => min2(session.latShuttle_1, session.latShuttle_2),
+  },
+  {
+    key: 'illinois', label: 'Illinois Agility', shortLabel: 'Illinois', category: 'Change of Direction',
+    higherBetter: false, unit: 's', day: 'Tuesday', required: true,
+    value: (session) => session.illinois,
+  },
+  {
+    key: 'cond51015', label: '5-10-15 Shuttle (30s yards)', shortLabel: '5-10-15', category: 'Conditioning',
+    higherBetter: true, unit: 'yd', day: 'Optional', required: false,
+    value: (session) => session.cond51015,
+  },
+  {
+    key: 'benchRatio', label: 'Bench / Body Weight', shortLabel: 'Bench/BW', category: 'Strength',
+    higherBetter: true, unit: 'x', day: 'Monday', required: true,
+    value: (session) => ratio(session.benchMax, session.weightLbsSnapshot),
+  },
+  {
+    key: 'squatRatio', label: 'Squat / Body Weight', shortLabel: 'Squat/BW', category: 'Strength',
+    higherBetter: true, unit: 'x', day: 'Wednesday', required: true,
+    value: (session) => ratio(session.squatMax, session.weightLbsSnapshot),
   },
 ]
 
+export const REQUIRED_METRICS = SCORED_METRICS.filter((metric) => metric.required)
 export const METRIC_BY_KEY: Record<string, ScoredMetric> = Object.fromEntries(
-  SCORED_METRICS.map((m) => [m.key, m]),
+  SCORED_METRICS.map((metric) => [metric.key, metric]),
 )
-
-/** Metrics grouped by category, in display order. */
 export const METRICS_BY_CATEGORY = (category: Category): ScoredMetric[] =>
-  SCORED_METRICS.filter((m) => m.category === category)
+  SCORED_METRICS.filter((metric) => metric.category === category)
 
-// Re-export best-of helpers so the "auto-calculated bests" can be reused.
-export { min2 as bestTime, max2 as bestMark }
+export function benchmarkFor(metricKey: string, group: PositionGroup): Benchmark {
+  return PROFILE_BY_GROUP[group]?.[metricKey] ?? SPEED_SKILL[metricKey]
+}
+
+export function benchmarkScore(value: number, benchmark: Benchmark, higherBetter: boolean): number {
+  if (benchmark.elite === benchmark.developmental) return NEUTRAL_SCORE
+  const progress = higherBetter
+    ? (value - benchmark.developmental) / (benchmark.elite - benchmark.developmental)
+    : (benchmark.developmental - value) / (benchmark.developmental - benchmark.elite)
+  return Math.max(0, Math.min(100, progress * 100))
+}
+
+export function scoreMetric(metric: ScoredMetric, session: TestSession): number | undefined {
+  const raw = metric.value(session)
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return undefined
+  const group = session.positionGroupSnapshot ?? 'ATH'
+  return benchmarkScore(raw, benchmarkFor(metric.key, group), metric.higherBetter)
+}
+
+export { min2 as bestTime }
