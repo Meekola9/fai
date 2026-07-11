@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { AthleteResult, Category, PositionGroup, TestSession } from '../types'
-import { METRIC_BY_KEY, SCORED_METRICS } from '../data/scoring'
+import { METRIC_BY_KEY, METRICS_BY_CATEGORY, SCORED_METRICS } from '../data/scoring'
 import { CATEGORIES, POSITION_GROUPS } from '../data/constants'
 import { avg, round1 } from './compute'
 
@@ -53,6 +53,12 @@ function rankBy(
     }))
 }
 
+function hasCategoryData(result: AthleteResult, category: Category): boolean {
+  return METRICS_BY_CATEGORY(category).some(
+    (metric) => typeof result.current.normalized[metric.key] === 'number',
+  )
+}
+
 function categoryBoard(category: Category, id: string, title: string): LeaderboardDef {
   return {
     id,
@@ -60,7 +66,7 @@ function categoryBoard(category: Category, id: string, title: string): Leaderboa
     rows: (results) =>
       rankBy(
         results,
-        (result) => result.current.categories[category],
+        (result) => hasCategoryData(result, category) ? result.current.categories[category] : undefined,
         (value) => value.toFixed(1),
       ),
   }
@@ -178,17 +184,15 @@ export function teamStats(results: AthleteResult[]): TeamStats {
   const board = (id: string) =>
     ALL_LEADERBOARDS.find((item) => item.id === id)?.rows(results)[0]
 
-  const categoryAverages = CATEGORIES.map((category) => ({
-    category,
-    avg: round1(avg(eligible.map((result) => result.current.categories[category]))),
-  }))
+  const categoryAverages = CATEGORIES.map((category) => {
+    const withData = eligible.filter((result) => hasCategoryData(result, category))
+    return {
+      category,
+      avg: round1(avg(withData.map((result) => result.current.categories[category]))),
+    }
+  })
   const availableCategories = categoryAverages.filter((item) =>
-    eligible.some((result) =>
-      result.current.normalized &&
-      Object.entries(result.current.normalized).some(
-        ([key, score]) => METRIC_BY_KEY[key]?.category === item.category && typeof score === 'number',
-      ),
-    ),
+    eligible.some((result) => hasCategoryData(result, item.category)),
   )
   const ranked = [...availableCategories].sort((a, b) => a.avg - b.avg)
 
