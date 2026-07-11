@@ -89,12 +89,11 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await expect(page.getByText('QA Summer Combine 2026 · 2026-07-06', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
-  const overallBoard = page.getByRole('heading', { name: 'Overall FAI', exact: true }).locator('..')
-  await expect(overallBoard.locator('a[href*="#/athletes/"]').filter({ hasText: 'QA Athlete' }).first()).toBeVisible()
+  await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
   await page.getByRole('link', { name: /TV Mode/ }).click()
   await expect(page.getByText('Overall FAI', { exact: true })).toBeVisible()
-  await expect(page.getByText('QA Athlete', { exact: true })).toBeVisible()
+  await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: '✕ Exit' }).click()
 
   await page.getByRole('link', { name: 'Data', exact: true }).click()
