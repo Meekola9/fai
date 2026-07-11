@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppData } from '../types'
+import { normalizeAppData } from '../lib/events'
 import { exportCsv, importCsv } from './csv'
 
 const data: AppData = {
@@ -27,7 +28,7 @@ const data: AppData = {
 
 describe('CSV backup and restore', () => {
   it('preserves athletes who have no testing sessions', () => {
-    const restored = importCsv(exportCsv(data))
+    const restored = normalizeAppData(importCsv(exportCsv(data)))
     expect(restored.athletes).toHaveLength(1)
     expect(restored.athletes[0].name).toBe('Untested Athlete')
     expect(restored.events).toHaveLength(1)
