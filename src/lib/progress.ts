@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Progress tracking, rankings, and per-test / per-category improvement.
+// Progress tracking, official rankings, and event-specific result selection.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -7,7 +7,7 @@ import type {
   Category,
   ComputedSession,
 } from '../types'
-import { SCORED_METRICS } from '../data/scoring'
+import { METRICS_BY_CATEGORY, SCORED_METRICS } from '../data/scoring'
 import { CATEGORIES } from '../data/constants'
 import { athleteTimeline, round1 } from './compute'
 
@@ -21,11 +21,9 @@ export interface MetricProgress {
   higherBetter: boolean
   previousRaw?: number
   currentRaw?: number
-  /** Signed raw improvement (positive = better, respecting direction). */
   rawImprovement?: number
   previousScore?: number
   currentScore?: number
-  /** Signed normalized-score improvement (positive = better). */
   scoreImprovement?: number
   trend: Trend
 }
@@ -42,98 +40,99 @@ export interface AthleteProgress {
   metrics: MetricProgress[]
   categories: CategoryProgress[]
   biggestImprovement?: MetricProgress
-  biggestWeakness?: CategoryProgress // lowest current category score
+  biggestWeakness?: CategoryProgress
   suggestedFocus?: Category
 }
 
-const EPS = 0.05
+const EPSILON = 0.05
 
-function trendFrom(improvement: number | undefined, eps = EPS): Trend {
+function trendFrom(improvement: number | undefined, epsilon = EPSILON): Trend {
   if (improvement === undefined) return 'same'
-  if (improvement > eps) return 'improved'
-  if (improvement < -eps) return 'regressed'
+  if (improvement > epsilon) return 'improved'
+  if (improvement < -epsilon) return 'regressed'
   return 'same'
 }
 
-/**
- * Improvement between a previous and current computed session.
- *  - timed tests (higherBetter=false): improvement = previous - current
- *  - mark tests (higherBetter=true):   improvement = current - previous
- */
 export function computeProgress(
   current: ComputedSession,
   previous?: ComputedSession,
 ): AthleteProgress {
-  const metrics: MetricProgress[] = SCORED_METRICS.map((m) => {
-    const currentRaw = current.metrics[m.key]
-    const previousRaw = previous?.metrics[m.key]
-    const currentScore = current.normalized[m.key]
-    const previousScore = previous?.normalized[m.key]
+  const metrics: MetricProgress[] = SCORED_METRICS.map((metric) => {
+    const currentRaw = current.metrics[metric.key]
+    const previousRaw = previous?.metrics[metric.key]
+    const currentScore = current.normalized[metric.key]
+    const previousScore = previous?.normalized[metric.key]
 
     let rawImprovement: number | undefined
     if (typeof currentRaw === 'number' && typeof previousRaw === 'number') {
-      rawImprovement = m.higherBetter
+      rawImprovement = metric.higherBetter
         ? currentRaw - previousRaw
         : previousRaw - currentRaw
       rawImprovement = round1000(rawImprovement)
     }
-    let scoreImprovement: number | undefined
-    if (typeof currentScore === 'number' && typeof previousScore === 'number') {
-      scoreImprovement = round1(currentScore - previousScore)
-    }
+
+    const scoreImprovement =
+      typeof currentScore === 'number' && typeof previousScore === 'number'
+        ? round1(currentScore - previousScore)
+        : undefined
 
     return {
-      key: m.key,
-      label: m.label,
-      category: m.category,
-      unit: m.unit,
-      higherBetter: m.higherBetter,
+      key: metric.key,
+      label: metric.label,
+      category: metric.category,
+      unit: metric.unit,
+      higherBetter: metric.higherBetter,
       previousRaw,
       currentRaw,
       rawImprovement,
       previousScore,
       currentScore,
       scoreImprovement,
-      // Improved/regressed is defined by the RAW result (per spec), not by the
-      // team-relative normalized score — so a faster 40 always reads as improved
-      // even if the rest of the field improved more.
       trend: trendFrom(rawImprovement, 0),
     }
   })
 
   const categories: CategoryProgress[] = CATEGORIES.map((category) => {
-    const cur = current.categories[category] || undefined
-    const prev = previous?.categories[category] || undefined
+    const hasCurrent = METRICS_BY_CATEGORY(category).some(
+      (metric) => typeof current.normalized[metric.key] === 'number',
+    )
+    const hasPrevious = previous
+      ? METRICS_BY_CATEGORY(category).some(
+          (metric) => typeof previous.normalized[metric.key] === 'number',
+        )
+      : false
+    const currentValue = hasCurrent ? current.categories[category] : undefined
+    const previousValue = hasPrevious ? previous?.categories[category] : undefined
     const improvement =
-      typeof cur === 'number' && typeof prev === 'number'
-        ? round1(cur - prev)
+      typeof currentValue === 'number' && typeof previousValue === 'number'
+        ? round1(currentValue - previousValue)
         : 0
     return {
       category,
-      previous: prev,
-      current: cur,
+      previous: previousValue,
+      current: currentValue,
       improvement,
       trend: trendFrom(improvement),
     }
   })
 
-  // Biggest improvement: metric with the largest positive score gain.
-  const improvingMetrics = metrics.filter(
-    (m) => typeof m.scoreImprovement === 'number',
+  const comparable = metrics.filter(
+    (metric) => typeof metric.scoreImprovement === 'number',
   )
-  const biggestImprovement = improvingMetrics.length
-    ? improvingMetrics.reduce((best, m) =>
-        (m.scoreImprovement ?? -Infinity) > (best.scoreImprovement ?? -Infinity)
-          ? m
+  const biggestImprovement = comparable.length
+    ? comparable.reduce((best, metric) =>
+        (metric.scoreImprovement ?? -Infinity) > (best.scoreImprovement ?? -Infinity)
+          ? metric
           : best,
       )
     : undefined
 
-  // Biggest weakness / suggested focus: lowest current category score.
-  const scoredCats = categories.filter((c) => typeof c.current === 'number')
-  const biggestWeakness = scoredCats.length
-    ? scoredCats.reduce((worst, c) =>
-        (c.current ?? Infinity) < (worst.current ?? Infinity) ? c : worst,
+  const scoredCategories = categories.filter(
+    (category) => typeof category.current === 'number',
+  )
+  const biggestWeakness = scoredCategories.length
+    ? scoredCategories.reduce((worst, category) =>
+        (category.current ?? Infinity) < (worst.current ?? Infinity) ? category : worst,
       )
     : undefined
 
@@ -149,43 +148,52 @@ export function computeProgress(
   }
 }
 
-/** Strengths: categories at/above threshold, sorted high->low. */
 export function strengths(current: ComputedSession, threshold = 60): Category[] {
-  return CATEGORIES.filter((c) => (current.categories[c] || 0) >= threshold).sort(
-    (a, b) => current.categories[b] - current.categories[a],
-  )
+  return CATEGORIES.filter((category) => {
+    const hasData = METRICS_BY_CATEGORY(category).some(
+      (metric) => typeof current.normalized[metric.key] === 'number',
+    )
+    return hasData && current.categories[category] >= threshold
+  }).sort((a, b) => current.categories[b] - current.categories[a])
 }
 
-/** Weaknesses: categories below threshold, sorted low->high. */
 export function weaknesses(current: ComputedSession, threshold = 45): Category[] {
-  return CATEGORIES.filter(
-    (c) => (current.categories[c] || 0) > 0 && current.categories[c] < threshold,
-  ).sort((a, b) => current.categories[a] - current.categories[b])
+  return CATEGORIES.filter((category) => {
+    const hasData = METRICS_BY_CATEGORY(category).some(
+      (metric) => typeof current.normalized[metric.key] === 'number',
+    )
+    return hasData && current.categories[category] < threshold
+  }).sort((a, b) => current.categories[a] - current.categories[b])
 }
 
 /**
- * Build one AthleteResult per athlete (latest session + previous + rankings).
- * Rankings are computed on the latest session's FAI, team-wide and by group.
+ * Build current results or reconstruct a historical event leaderboard.
+ * Only complete scores receive official team and position-group ranks.
  */
-export function buildResults(computed: ComputedSession[]): AthleteResult[] {
-  const byAthlete = new Map<string, ComputedSession[]>()
-  for (const c of computed) {
-    const arr = byAthlete.get(c.session.athleteId) ?? []
-    arr.push(c)
-    byAthlete.set(c.session.athleteId, arr)
-  }
-
+export function buildResults(
+  computed: ComputedSession[],
+  eventId?: string,
+): AthleteResult[] {
+  const athleteIds = new Set(computed.map((result) => result.session.athleteId))
   const results: AthleteResult[] = []
-  for (const [athleteId] of byAthlete) {
+
+  for (const athleteId of athleteIds) {
     const timeline = athleteTimeline(computed, athleteId)
     if (!timeline.length) continue
-    const current = timeline[timeline.length - 1]
-    const previous = timeline.length > 1 ? timeline[timeline.length - 2] : undefined
+    const currentIndex = eventId
+      ? timeline.findIndex((result) => result.event.id === eventId)
+      : timeline.length - 1
+    if (currentIndex < 0) continue
+
+    const current = timeline[currentIndex]
+    const previous = currentIndex > 0 ? timeline[currentIndex - 1] : undefined
     const faiImprovement = previous ? round1(current.fai - previous.fai) : 0
     const faiImprovementPct =
       previous && previous.fai > 0
         ? round1((faiImprovement / previous.fai) * 100)
         : 0
+    const rankEligible = current.scoreStatus === 'complete'
+
     results.push({
       athlete: current.athlete,
       current,
@@ -196,35 +204,39 @@ export function buildResults(computed: ComputedSession[]): AthleteResult[] {
       teamCount: 0,
       groupRank: 0,
       groupCount: 0,
+      rankEligible,
     })
   }
 
-  // Team ranks (desc by FAI).
-  const sorted = [...results].sort((a, b) => b.current.fai - a.current.fai)
-  sorted.forEach((r, i) => {
-    r.teamRank = i + 1
-    r.teamCount = sorted.length
+  const eligible = results
+    .filter((result) => result.rankEligible)
+    .sort((a, b) => b.current.fai - a.current.fai)
+  eligible.forEach((result, index) => {
+    result.teamRank = index + 1
+    result.teamCount = eligible.length
   })
 
-  // Position-group ranks.
   const groups = new Map<string, AthleteResult[]>()
-  for (const r of results) {
-    const g = r.athlete.positionGroup
-    const arr = groups.get(g) ?? []
-    arr.push(r)
-    groups.set(g, arr)
+  for (const result of eligible) {
+    const group = result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup
+    const list = groups.get(group) ?? []
+    list.push(result)
+    groups.set(group, list)
   }
-  for (const [, arr] of groups) {
-    arr.sort((a, b) => b.current.fai - a.current.fai)
-    arr.forEach((r, i) => {
-      r.groupRank = i + 1
-      r.groupCount = arr.length
+  for (const list of groups.values()) {
+    list.sort((a, b) => b.current.fai - a.current.fai)
+    list.forEach((result, index) => {
+      result.groupRank = index + 1
+      result.groupCount = list.length
     })
   }
 
-  return sorted
+  return results.sort((a, b) => {
+    if (a.rankEligible !== b.rankEligible) return a.rankEligible ? -1 : 1
+    return b.current.fai - a.current.fai
+  })
 }
 
-function round1000(n: number): number {
-  return Math.round(n * 1000) / 1000
+function round1000(value: number): number {
+  return Math.round(value * 1000) / 1000
 }

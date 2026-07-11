@@ -12,6 +12,7 @@ export type PositionGroup =
   | 'LB'
   | 'DB'
   | 'K/P'
+  | 'ATH'
 
 export type TestingPhase =
   | 'Baseline'
@@ -28,60 +29,79 @@ export type Category =
   | 'Conditioning'
   | 'Strength'
 
-/** A single athlete on the roster (identity / bio info that rarely changes). */
+export type ScoreStatus = 'complete' | 'provisional' | 'insufficient'
+
+/** A single athlete on the roster (identity / current bio information). */
 export interface Athlete {
   id: string
   name: string
   grade: number // 9-12
-  position: string // specific position label, e.g. "Slot WR"
+  position: string
   positionGroup: PositionGroup
-  heightIn: number // total inches
+  heightIn: number
   weightLbs: number
   photoUrl?: string
 }
 
+/** Parent record for one multi-day combine/testing window. */
+export interface TestingEvent {
+  id: string
+  name: string
+  phase: TestingPhase
+  startDate: string // ISO yyyy-mm-dd
+  endDate?: string
+  status?: 'open' | 'closed'
+  createdAt?: string
+}
+
 /**
- * A single testing session for one athlete. Every metric is optional because a
- * coach may only run part of the battery on a given day (Mon/Tue/Wed split).
- * Sessions are NEVER overwritten — each testing date is stored separately.
+ * One data-entry record within a testing event. Multiple Monday/Tuesday/Wednesday
+ * records are merged into one computed event result per athlete.
  */
 export interface TestSession {
   id: string
   athleteId: string
-  date: string // ISO yyyy-mm-dd
+  eventId?: string // optional only for legacy-data migration
+  date: string
   phase: TestingPhase
+  createdAt?: string
+
+  // Historical profile snapshot; prevents later profile edits rewriting history.
+  gradeSnapshot?: number
+  positionSnapshot?: string
+  positionGroupSnapshot?: PositionGroup
+  weightLbsSnapshot?: number
 
   // Monday — Speed + Bench
-  benchMax?: number // lbs
-  dash40_1?: number // seconds
+  benchMax?: number
+  dash40_1?: number
   dash40_2?: number
-  fly10_1?: number // 10-yard fly, seconds
+  fly10_1?: number
   fly10_2?: number
 
   // Tuesday — Power Endurance + Change of Direction
-  hangCleanReps?: number // reps at bodyweight
-  shuttle20_1?: number // 20-yard pro-agility shuttle, seconds
+  hangCleanReps?: number
+  shuttle20_1?: number
   shuttle20_2?: number
-  latShuttle_1?: number // lateral 10-yard shuttle, seconds
+  latShuttle_1?: number
   latShuttle_2?: number
-  illinois?: number // Illinois agility test, seconds
+  illinois?: number
 
   // Wednesday — Lower Body + Jumps
-  squatMax?: number // lbs
-  broadJump?: number // inches
-  verticalJump?: number // inches
+  squatMax?: number
+  broadJump?: number
+  verticalJump?: number
 
   // Optional conditioning
-  cond51015?: number // 30-second 5-10-15 shuttle total yards
+  cond51015?: number
 }
 
-/** Everything the app persists. */
+/** Everything the app persists. `events` stays optional for legacy imports. */
 export interface AppData {
   athletes: Athlete[]
   sessions: TestSession[]
+  events?: TestingEvent[]
 }
-
-// --- Derived / computed shapes -------------------------------------------
 
 export interface CategoryScores {
   Speed: number
@@ -91,27 +111,28 @@ export interface CategoryScores {
   Strength: number
 }
 
-/** A fully computed session: raw values + normalized scores + FAI. */
+/** A fully computed event result: merged raw values + stable benchmark scores. */
 export interface ComputedSession {
   session: TestSession
   athlete: Athlete
-  /** best-of / derived raw values keyed by scored-metric key */
+  event: TestingEvent
   metrics: Record<string, number | undefined>
-  /** normalized 0-100 score per scored metric (relative to the phase field) */
   normalized: Record<string, number | undefined>
   categories: CategoryScores
   fai: number
+  completionPct: number
+  scoreStatus: ScoreStatus
 }
 
-/** An athlete's latest computed result plus progress vs. previous session. */
 export interface AthleteResult {
   athlete: Athlete
   current: ComputedSession
   previous?: ComputedSession
-  faiImprovement: number // current - previous FAI (0 if no previous)
+  faiImprovement: number
   faiImprovementPct: number
   teamRank: number
   teamCount: number
   groupRank: number
   groupCount: number
+  rankEligible: boolean
 }
