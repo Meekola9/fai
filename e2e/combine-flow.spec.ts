@@ -32,7 +32,8 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await expect(page.getByRole('heading', { name: 'QA Athlete' })).toBeVisible()
   await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
 
-  await page.getByRole('button', { name: '+ New Event' }).click()
+  // With no existing events, the app opens this form automatically.
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
   await page.getByPlaceholder('Summer Combine 2026').fill('QA Summer Combine 2026')
   await page.locator('select').first().selectOption('Baseline')
   await page.locator('input[type="date"]').first().fill('2026-07-06')
