@@ -2,15 +2,15 @@
 // Leaderboards, TV-mode slides, and coach-dashboard team aggregates.
 // ---------------------------------------------------------------------------
 
-import type { AthleteResult, Category, PositionGroup } from '../types'
-import { SCORED_METRICS, METRIC_BY_KEY } from '../data/scoring'
+import type { AthleteResult, Category, PositionGroup, TestSession } from '../types'
+import { METRIC_BY_KEY, SCORED_METRICS } from '../data/scoring'
 import { CATEGORIES, POSITION_GROUPS } from '../data/constants'
 import { avg, round1 } from './compute'
 
 export interface LeaderRow {
   result: AthleteResult
-  value: number // the value being ranked
-  display: string // formatted value
+  value: number
+  display: string
   rank: number
 }
 
@@ -21,35 +21,38 @@ export interface LeaderboardDef {
   rows: (results: AthleteResult[]) => LeaderRow[]
 }
 
-function fmt(value: number, unit: string): string {
+function formatValue(value: number, unit: string): string {
   if (unit === 's') return `${value.toFixed(2)}s`
-  if (unit === 'in') return `${value}"`
-  if (unit === 'lbs') return `${value} lbs`
-  if (unit === 'reps') return `${value} reps`
-  if (unit === 'yd') return `${value} yd`
-  return `${value}`
+  if (unit === 'in') return `${round1(value)}"`
+  if (unit === 'lbs') return `${Math.round(value)} lbs`
+  if (unit === 'reps') return `${Math.round(value)} reps`
+  if (unit === 'yd') return `${Math.round(value)} yd`
+  if (unit === 'x') return `${value.toFixed(2)}x`
+  return `${round1(value)}`
 }
 
 function rankBy(
   results: AthleteResult[],
-  value: (r: AthleteResult) => number | undefined,
-  display: (v: number) => string,
-  desc = true,
+  value: (result: AthleteResult) => number | undefined,
+  display: (value: number) => string,
+  descending = true,
+  officialOnly = true,
 ): LeaderRow[] {
-  const rows = results
-    .map((r) => ({ r, v: value(r) }))
-    .filter((x): x is { r: AthleteResult; v: number } => typeof x.v === 'number')
-    .sort((a, b) => (desc ? b.v - a.v : a.v - b.v))
-    .map((x, i) => ({
-      result: x.r,
-      value: x.v,
-      display: display(x.v),
-      rank: i + 1,
+  return results
+    .filter((result) => !officialOnly || result.rankEligible)
+    .map((result) => ({ result, value: value(result) }))
+    .filter((item): item is { result: AthleteResult; value: number } =>
+      typeof item.value === 'number' && Number.isFinite(item.value),
+    )
+    .sort((a, b) => (descending ? b.value - a.value : a.value - b.value))
+    .map((item, index) => ({
+      result: item.result,
+      value: item.value,
+      display: display(item.value),
+      rank: index + 1,
     }))
-  return rows
 }
 
-/** Category-score leaderboard factory. */
 function categoryBoard(category: Category, id: string, title: string): LeaderboardDef {
   return {
     id,
@@ -57,25 +60,48 @@ function categoryBoard(category: Category, id: string, title: string): Leaderboa
     rows: (results) =>
       rankBy(
         results,
-        (r) => r.current.categories[category] || undefined,
-        (v) => v.toFixed(1),
+        (result) => result.current.categories[category],
+        (value) => value.toFixed(1),
       ),
   }
 }
 
-/** Per-test leaderboard factory (respects test direction). */
-function testBoard(metricKey: string): LeaderboardDef {
-  const m = METRIC_BY_KEY[metricKey]
+function scoredTestBoard(metricKey: string): LeaderboardDef {
+  const metric = METRIC_BY_KEY[metricKey]
   return {
     id: `test-${metricKey}`,
-    title: m.label,
-    subtitle: m.higherBetter ? 'Higher is better' : 'Lower is better',
+    title: metric.label,
+    subtitle: metric.higherBetter ? 'Higher is better' : 'Lower is better',
     rows: (results) =>
       rankBy(
         results,
-        (r) => r.current.metrics[metricKey],
-        (v) => fmt(v, m.unit),
-        m.higherBetter,
+        (result) => result.current.metrics[metricKey],
+        (value) => formatValue(value, metric.unit),
+        metric.higherBetter,
+      ),
+  }
+}
+
+function rawTestBoard(
+  id: string,
+  title: string,
+  key: keyof TestSession,
+  unit: string,
+  higherBetter = true,
+): LeaderboardDef {
+  return {
+    id,
+    title,
+    subtitle: higherBetter ? 'Higher is better' : 'Lower is better',
+    rows: (results) =>
+      rankBy(
+        results,
+        (result) => {
+          const value = result.current.session[key]
+          return typeof value === 'number' ? value : undefined
+        },
+        (value) => formatValue(value, unit),
+        higherBetter,
       ),
   }
 }
@@ -84,19 +110,18 @@ export const CORE_LEADERBOARDS: LeaderboardDef[] = [
   {
     id: 'fai',
     title: 'Overall FAI',
-    subtitle: 'Football Athlete Index',
-    rows: (results) =>
-      rankBy(results, (r) => r.current.fai, (v) => v.toFixed(1)),
+    subtitle: 'Complete testing events only',
+    rows: (results) => rankBy(results, (result) => result.current.fai, (value) => value.toFixed(1)),
   },
   {
     id: 'improved',
     title: 'Most Improved',
-    subtitle: 'FAI gain since last test',
+    subtitle: 'FAI gain since previous event',
     rows: (results) =>
       rankBy(
         results,
-        (r) => (r.previous ? r.faiImprovement : undefined),
-        (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`,
+        (result) => (result.previous ? result.faiImprovement : undefined),
+        (value) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}`,
       ),
   },
   categoryBoard('Speed', 'speed', 'Speed Score'),
@@ -106,36 +131,37 @@ export const CORE_LEADERBOARDS: LeaderboardDef[] = [
   categoryBoard('Conditioning', 'conditioning', 'Conditioning Score'),
 ]
 
-export const TEST_LEADERBOARDS: LeaderboardDef[] = SCORED_METRICS.map((m) =>
-  testBoard(m.key),
-)
-
-export const ALL_LEADERBOARDS: LeaderboardDef[] = [
-  ...CORE_LEADERBOARDS,
-  ...TEST_LEADERBOARDS,
+export const TEST_LEADERBOARDS: LeaderboardDef[] = [
+  ...SCORED_METRICS.map((metric) => scoredTestBoard(metric.key)),
+  rawTestBoard('test-benchMax', 'Bench Max', 'benchMax', 'lbs'),
+  rawTestBoard('test-squatMax', 'Squat Max', 'squatMax', 'lbs'),
 ]
 
-/** Position-group rankings: leaders of each group by FAI. */
+export const ALL_LEADERBOARDS = [...CORE_LEADERBOARDS, ...TEST_LEADERBOARDS]
+
 export function positionGroupBoards(
   results: AthleteResult[],
 ): { group: PositionGroup; rows: LeaderRow[] }[] {
   return POSITION_GROUPS.map((group) => ({
     group,
     rows: rankBy(
-      results.filter((r) => r.athlete.positionGroup === group),
-      (r) => r.current.fai,
-      (v) => v.toFixed(1),
+      results.filter(
+        (result) =>
+          (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group,
+      ),
+      (result) => result.current.fai,
+      (value) => value.toFixed(1),
     ),
-  })).filter((b) => b.rows.length > 0)
+  })).filter((board) => board.rows.length > 0)
 }
-
-// --- Coach dashboard aggregates -----------------------------------------
 
 export interface TeamStats {
   athleteCount: number
   avgFai: number
   avgImprovement: number
   testedCount: number
+  completeCount: number
+  provisionalCount: number
   fastest?: LeaderRow
   strongest?: LeaderRow
   mostExplosive?: LeaderRow
@@ -147,32 +173,37 @@ export interface TeamStats {
 }
 
 export function teamStats(results: AthleteResult[]): TeamStats {
-  const withPrev = results.filter((r) => r.previous)
+  const eligible = results.filter((result) => result.rankEligible)
+  const withPrevious = eligible.filter((result) => result.previous)
   const board = (id: string) =>
-    ALL_LEADERBOARDS.find((b) => b.id === id)!.rows(results)[0]
+    ALL_LEADERBOARDS.find((item) => item.id === id)?.rows(results)[0]
 
   const categoryAverages = CATEGORIES.map((category) => ({
     category,
-    avg: round1(
-      avg(
-        results
-          .map((r) => r.current.categories[category])
-          .filter((v) => typeof v === 'number' && v > 0),
+    avg: round1(avg(eligible.map((result) => result.current.categories[category]))),
+  }))
+  const availableCategories = categoryAverages.filter((item) =>
+    eligible.some((result) =>
+      result.current.normalized &&
+      Object.entries(result.current.normalized).some(
+        ([key, score]) => METRIC_BY_KEY[key]?.category === item.category && typeof score === 'number',
       ),
     ),
-  }))
-  const ranked = [...categoryAverages].sort((a, b) => a.avg - b.avg)
+  )
+  const ranked = [...availableCategories].sort((a, b) => a.avg - b.avg)
 
   return {
     athleteCount: results.length,
-    avgFai: round1(avg(results.map((r) => r.current.fai))),
-    avgImprovement: round1(avg(withPrev.map((r) => r.faiImprovement))),
+    avgFai: round1(avg(eligible.map((result) => result.current.fai))),
+    avgImprovement: round1(avg(withPrevious.map((result) => result.faiImprovement))),
     testedCount: results.length,
+    completeCount: eligible.length,
+    provisionalCount: results.length - eligible.length,
     fastest: board('test-best40'),
     strongest: board('strength'),
     mostExplosive: board('power'),
     bestCod: board('cod'),
-    mostImproved: withPrev.length ? board('improved') : undefined,
+    mostImproved: withPrevious.length ? board('improved') : undefined,
     weakestCategory: ranked[0],
     bestCategory: ranked[ranked.length - 1],
     categoryAverages,
