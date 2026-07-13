@@ -38,6 +38,7 @@ import {
 } from './supabaseCloud'
 
 const ACTIVE_TEAM_KEY = 'fai:cloud:active-team:v1'
+const PRE_MIGRATION_PREFIX = 'fai:cloud:pre-migration:v1:'
 
 function uid(prefix: string): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
@@ -94,6 +95,7 @@ export interface CloudSyncApi {
 export function useCloudSync(
   localData: Required<AppData>,
   replaceLocal: (next: Required<AppData>) => void,
+  localReady = true,
 ): CloudSyncApi {
   const [user, setUser] = useState<CloudUser | null>(null)
   const [teams, setTeams] = useState<CloudTeam[]>([])
@@ -110,8 +112,10 @@ export function useCloudSync(
   const [authMessage, setAuthMessage] = useState('')
 
   const dataRef = useRef(localData)
-  const teamsRef = useRef(teams)
+  const userRef = useRef<CloudUser | null>(null)
+  const teamsRef = useRef<CloudTeam[]>([])
   const activeTeamRef = useRef(activeTeamId)
+  const conflictsRef = useRef<CloudConflict[]>([])
   const queueRef = useRef<CloudMutation[]>(readCloudQueue())
   const versionsRef = useRef(new Map<string, CloudRecordVersion>())
   const flushingRef = useRef(false)
@@ -119,8 +123,10 @@ export function useCloudSync(
   const refreshTimerRef = useRef<number | null>(null)
 
   useEffect(() => { dataRef.current = localData }, [localData])
+  useEffect(() => { userRef.current = user }, [user])
   useEffect(() => { teamsRef.current = teams }, [teams])
   useEffect(() => { activeTeamRef.current = activeTeamId }, [activeTeamId])
+  useEffect(() => { conflictsRef.current = conflicts }, [conflicts])
 
   const activeTeam = useMemo(
     () => teams.find((team) => team.id === activeTeamId) ?? null,
@@ -147,6 +153,7 @@ export function useCloudSync(
     if (!isCloudConfigured) return
     const next = await listCloudTeams()
     setTeams(next)
+    teamsRef.current = next
     const saved = preferredTeamId || activeTeamRef.current
     const selected = next.some((team) => team.id === saved) ? saved : next[0]?.id ?? ''
     setActiveTeamId(selected)
@@ -163,7 +170,9 @@ export function useCloudSync(
     )
     const item: CloudMutation = {
       ...input,
-      id: existing?.id ?? uid('cloud'),
+      // Always use a new id. If an older mutation is already in flight, its
+      // success must not remove this newer edit from the queue.
+      id: uid('cloud'),
       expectedVersion: existing?.expectedVersion ?? input.expectedVersion,
       createdAt: Date.now(),
       attempts: existing?.attempts ?? 0,
@@ -171,23 +180,27 @@ export function useCloudSync(
     queueRef.current = enqueueCloudMutation(queueRef.current, item)
     writeCloudQueue(queueRef.current)
     const pending = mutationsForTeam(queueRef.current, input.teamId).length
+    const online = typeof navigator === 'undefined' || navigator.onLine
     setStatus((current) => ({
-      state: navigator.onLine ? 'saving' : 'offline',
-      message: navigator.onLine ? `Saving ${pending} cloud change${pending === 1 ? '' : 's'}…` : `${pending} change${pending === 1 ? '' : 's'} queued offline`,
+      state: online ? 'saving' : 'offline',
+      message: online ? `Saving ${pending} cloud change${pending === 1 ? '' : 's'}…` : `${pending} change${pending === 1 ? '' : 's'} queued offline`,
       pending,
       lastSyncedAt: current.lastSyncedAt,
     }))
   }, [])
 
   const flush = useCallback(async () => {
-    if (!isCloudConfigured || !user || flushingRef.current) return
+    if (!isCloudConfigured || !userRef.current || flushingRef.current) return
     const teamId = activeTeamRef.current
     if (!teamId) return
-    if (!navigator.onLine) {
+    const online = typeof navigator === 'undefined' || navigator.onLine
+    if (!online) {
       updatePendingStatus('offline', 'Offline · changes remain queued on this device')
       return
     }
+
     flushingRef.current = true
+    let encounteredConflict = false
     try {
       while (true) {
         const next = mutationsForTeam(queueRef.current, teamId)[0]
@@ -197,21 +210,26 @@ export function useCloudSync(
         const currentForRecord = queueRef.current.find(
           (item) => item.teamId === next.teamId && item.entity === next.entity && item.recordId === next.recordId,
         )
+
         if (result.conflict) {
+          encounteredConflict = true
           queueRef.current = removeCloudMutation(queueRef.current, next.id)
           writeCloudQueue(queueRef.current)
-          setConflicts((items) => [
-            ...items.filter((item) => item.mutation.id !== next.id),
-            {
-              mutation: next,
-              remoteVersion: result.remoteVersion ?? null,
-              remoteRecord: result.remoteRecord,
-              detectedAt: Date.now(),
-            },
-          ])
+          const conflict: CloudConflict = {
+            mutation: next,
+            remoteVersion: result.remoteVersion ?? null,
+            remoteRecord: result.remoteRecord,
+            detectedAt: Date.now(),
+          }
+          conflictsRef.current = [
+            ...conflictsRef.current.filter((item) => item.mutation.id !== next.id),
+            conflict,
+          ]
+          setConflicts(conflictsRef.current)
           updatePendingStatus('conflict', `Cloud conflict on ${next.entity} ${next.recordId}`)
           continue
         }
+
         if (!result.ok) {
           queueRef.current = queueRef.current.map((item) =>
             item.id === next.id
@@ -230,8 +248,9 @@ export function useCloudSync(
           version: newVersion,
           updatedAt: result.updatedAt ?? new Date().toISOString(),
         })
-        // If the user edited the same record while this request was in flight,
-        // retain the newer mutation and advance its expected version.
+
+        // A newer edit may have replaced this mutation while the request was in
+        // flight. Advance that edit to the version just accepted by the server.
         if (currentForRecord && currentForRecord.id !== next.id) {
           queueRef.current = queueRef.current.map((item) =>
             item.id === currentForRecord.id ? { ...item, expectedVersion: newVersion } : item,
@@ -241,16 +260,23 @@ export function useCloudSync(
         }
         writeCloudQueue(queueRef.current)
       }
-      setStatus({ state: conflicts.length ? 'conflict' : 'synced', message: conflicts.length ? 'Cloud conflicts need review' : 'Cloud synced', pending: 0, lastSyncedAt: Date.now() })
+
+      const hasConflicts = encounteredConflict || conflictsRef.current.length > 0
+      setStatus({
+        state: hasConflicts ? 'conflict' : 'synced',
+        message: hasConflicts ? 'Cloud conflicts need review' : 'Cloud synced',
+        pending: mutationsForTeam(queueRef.current, teamId).length,
+        lastSyncedAt: Date.now(),
+      })
     } finally {
       flushingRef.current = false
     }
-  }, [conflicts.length, updatePendingStatus, user])
+  }, [updatePendingStatus])
 
   const queueUpsert = useCallback((entity: CloudEntity, record: Athlete | TestingEvent | TestSession) => {
     const teamId = activeTeamRef.current
     const team = teamsRef.current.find((item) => item.id === teamId)
-    if (!user || !teamId || !roleCanEdit(team?.role)) return
+    if (!userRef.current || !teamId || !roleCanEdit(team?.role)) return
     queueMutation({
       teamId,
       entity,
@@ -260,12 +286,12 @@ export function useCloudSync(
       expectedVersion: versionsRef.current.get(versionKey(entity, record.id))?.version ?? null,
     })
     window.setTimeout(() => void flush(), 0)
-  }, [flush, queueMutation, user])
+  }, [flush, queueMutation])
 
   const queueDelete = useCallback((entity: CloudEntity, recordId: string) => {
     const teamId = activeTeamRef.current
     const team = teamsRef.current.find((item) => item.id === teamId)
-    if (!user || !teamId || !roleCanEdit(team?.role)) return
+    if (!userRef.current || !teamId || !roleCanEdit(team?.role)) return
     queueMutation({
       teamId,
       entity,
@@ -274,13 +300,14 @@ export function useCloudSync(
       expectedVersion: versionsRef.current.get(versionKey(entity, recordId))?.version ?? null,
     })
     window.setTimeout(() => void flush(), 0)
-  }, [flush, queueMutation, user])
+  }, [flush, queueMutation])
 
   const queueDataset = useCallback((next: Required<AppData>, replace = false) => {
     const teamId = activeTeamRef.current
     const team = teamsRef.current.find((item) => item.id === teamId)
-    if (!user || !teamId || !roleCanEdit(team?.role)) return
+    if (!userRef.current || !teamId || !roleCanEdit(team?.role)) return
     const clean = consolidateAthleteAliases(next)
+
     if (replace) {
       const desired = {
         athlete: new Set(clean.athletes.map((item) => item.id)),
@@ -288,17 +315,22 @@ export function useCloudSync(
         session: new Set(clean.sessions.map((item) => item.id)),
       }
       for (const [key, version] of versionsRef.current) {
-        const [entity, id] = key.split(':', 2) as [CloudEntity, string]
+        const separator = key.indexOf(':')
+        const entity = key.slice(0, separator) as CloudEntity
+        const id = key.slice(separator + 1)
         if (!desired[entity].has(id)) {
           queueMutation({ teamId, entity, operation: 'delete', recordId: id, expectedVersion: version.version })
         }
       }
     }
+
     let timestamp = Date.now()
     for (const { entity, record } of allRecords(clean)) {
-      const existing = queueRef.current.find((item) => item.teamId === teamId && item.entity === entity && item.recordId === record.id)
+      const existing = queueRef.current.find(
+        (item) => item.teamId === teamId && item.entity === entity && item.recordId === record.id,
+      )
       queueRef.current = enqueueCloudMutation(queueRef.current, {
-        id: existing?.id ?? uid('cloud'),
+        id: uid('cloud'),
         teamId,
         entity,
         operation: 'upsert',
@@ -310,13 +342,14 @@ export function useCloudSync(
       })
     }
     writeCloudQueue(queueRef.current)
-    updatePendingStatus(navigator.onLine ? 'saving' : 'offline', 'Preparing team data for cloud sync…')
+    const online = typeof navigator === 'undefined' || navigator.onLine
+    updatePendingStatus(online ? 'saving' : 'offline', 'Preparing team data for cloud sync…')
     window.setTimeout(() => void flush(), 0)
-  }, [flush, queueMutation, updatePendingStatus, user])
+  }, [flush, queueMutation, updatePendingStatus])
 
   const refresh = useCallback(async () => {
     const teamId = activeTeamRef.current
-    if (!user || !teamId) return
+    if (!userRef.current || !teamId || !localReady) return
     setStatus((current) => ({ ...current, state: 'connecting', message: 'Refreshing team data…' }))
     const snapshot = await loadCloudSnapshot(teamId)
     updateVersions(snapshot.versions)
@@ -325,31 +358,48 @@ export function useCloudSync(
     const withQueued = overlayCloudQueue(cloudWithBaseline, queueRef.current, teamId)
     replaceLocal(consolidateAthleteAliases(withQueued))
     const pending = mutationsForTeam(queueRef.current, teamId).length
+    const online = typeof navigator === 'undefined' || navigator.onLine
     setStatus({
-      state: pending ? (navigator.onLine ? 'saving' : 'offline') : 'synced',
-      message: pending ? `${pending} local change${pending === 1 ? '' : 's'} pending` : 'Cloud synced',
+      state: pending ? (online ? 'saving' : 'offline') : (conflictsRef.current.length ? 'conflict' : 'synced'),
+      message: pending ? `${pending} local change${pending === 1 ? '' : 's'} pending` : (conflictsRef.current.length ? 'Cloud conflicts need review' : 'Cloud synced'),
       pending,
       lastSyncedAt: Date.now(),
     })
-  }, [replaceLocal, updateVersions, user])
+  }, [localReady, replaceLocal, updateVersions])
 
   const connectTeam = useCallback(async (teamId: string) => {
-    if (!user || !teamId) return
-    setStatus({ state: 'connecting', message: 'Connecting to team cloud…', pending: mutationsForTeam(queueRef.current, teamId).length, lastSyncedAt: null })
+    if (!userRef.current || !teamId || !localReady) return
+    setStatus({
+      state: 'connecting',
+      message: 'Connecting to team cloud…',
+      pending: mutationsForTeam(queueRef.current, teamId).length,
+      lastSyncedAt: null,
+    })
+
     const snapshot = await loadCloudSnapshot(teamId)
     updateVersions(snapshot.versions)
+
     if (dataIsEmpty(snapshot.data)) {
-      // First device initializes the team with the complete local historical
-      // baseline plus any coach-entered records. Stable ids prevent duplication.
       const local = consolidateAthleteAliases(dataRef.current)
+      // Preserve a recoverable copy before the first cloud migration.
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(`${PRE_MIGRATION_PREFIX}${teamId}`, JSON.stringify(local))
+      }
       replaceLocal(local)
       const team = teamsRef.current.find((item) => item.id === teamId)
       if (roleCanEdit(team?.role)) {
         let timestamp = Date.now()
         for (const { entity, record } of allRecords(local)) {
           queueRef.current = enqueueCloudMutation(queueRef.current, {
-            id: uid('cloud'), teamId, entity, operation: 'upsert', recordId: record.id,
-            payload: record, expectedVersion: null, createdAt: timestamp++, attempts: 0,
+            id: uid('cloud'),
+            teamId,
+            entity,
+            operation: 'upsert',
+            recordId: record.id,
+            payload: record,
+            expectedVersion: null,
+            createdAt: timestamp++,
+            attempts: 0,
           })
         }
         writeCloudQueue(queueRef.current)
@@ -361,7 +411,7 @@ export function useCloudSync(
       const cloudWithBaseline = mergeHistoricalData(baseline, snapshot.data)
       replaceLocal(consolidateAthleteAliases(overlayCloudQueue(cloudWithBaseline, queueRef.current, teamId)))
       await flush()
-      if (mutationsForTeam(queueRef.current, teamId).length === 0) {
+      if (mutationsForTeam(queueRef.current, teamId).length === 0 && conflictsRef.current.length === 0) {
         setStatus({ state: 'synced', message: 'Cloud synced', pending: 0, lastSyncedAt: Date.now() })
       }
     }
@@ -373,7 +423,7 @@ export function useCloudSync(
         if (mutationsForTeam(queueRef.current, teamId).length === 0) void refresh()
       }, 350)
     })
-  }, [flush, refresh, replaceLocal, updatePendingStatus, updateVersions, user])
+  }, [flush, localReady, refresh, replaceLocal, updatePendingStatus, updateVersions])
 
   useEffect(() => {
     if (!isCloudConfigured) return
@@ -381,44 +431,65 @@ export function useCloudSync(
     currentCloudUser()
       .then(async (nextUser) => {
         if (!alive) return
+        userRef.current = nextUser
         setUser(nextUser)
         if (nextUser) await refreshTeams()
       })
       .catch((error: unknown) => {
         if (!alive) return
-        setStatus({ state: 'error', message: error instanceof Error ? error.message : 'Cloud authentication failed', pending: 0, lastSyncedAt: null })
+        setStatus({
+          state: 'error',
+          message: error instanceof Error ? error.message : 'Cloud authentication failed',
+          pending: 0,
+          lastSyncedAt: null,
+        })
       })
+
     const unsubscribe = onCloudAuthChange((_event, nextUser) => {
+      userRef.current = nextUser
       setUser(nextUser)
       setAuthMessage('')
       if (nextUser) void refreshTeams()
       else {
         setTeams([])
+        teamsRef.current = []
         setActiveTeamId('')
         activeTeamRef.current = ''
         setStatus({ state: 'signed_out', message: 'Sign in to enable cloud sync', pending: 0, lastSyncedAt: null })
       }
     })
-    return () => { alive = false; unsubscribe() }
+
+    return () => {
+      alive = false
+      unsubscribe()
+    }
   }, [refreshTeams])
 
   useEffect(() => {
-    if (!user || !activeTeamId) return
+    if (!localReady || !user || !activeTeamId) return
     void connectTeam(activeTeamId).catch((error: unknown) => {
-      setStatus({ state: 'error', message: error instanceof Error ? error.message : 'Could not connect to team cloud', pending: mutationsForTeam(queueRef.current, activeTeamId).length, lastSyncedAt: null })
+      setStatus({
+        state: 'error',
+        message: error instanceof Error ? error.message : 'Could not connect to team cloud',
+        pending: mutationsForTeam(queueRef.current, activeTeamId).length,
+        lastSyncedAt: null,
+      })
     })
     return () => {
       if (channelRef.current) void channelRef.current.unsubscribe()
       channelRef.current = null
     }
-  }, [activeTeamId, connectTeam, user])
+  }, [activeTeamId, connectTeam, localReady, user])
 
   useEffect(() => {
     if (!user || !activeTeamId) return
     const retry = () => void flush()
     window.addEventListener('online', retry)
     const timer = window.setInterval(retry, 30_000)
-    return () => { window.removeEventListener('online', retry); window.clearInterval(timer) }
+    return () => {
+      window.removeEventListener('online', retry)
+      window.clearInterval(timer)
+    }
   }, [activeTeamId, flush, user])
 
   const sendLink = useCallback(async (email: string) => {
@@ -455,19 +526,27 @@ export function useCloudSync(
   }, [])
 
   const keepMine = useCallback((conflictId: string) => {
-    const conflict = conflicts.find((item) => item.mutation.id === conflictId)
+    const conflict = conflictsRef.current.find((item) => item.mutation.id === conflictId)
     if (!conflict) return
     queueRef.current = coalesceMutations([
       ...queueRef.current,
-      { ...conflict.mutation, id: uid('cloud'), expectedVersion: conflict.remoteVersion, attempts: 0, createdAt: Date.now() },
+      {
+        ...conflict.mutation,
+        id: uid('cloud'),
+        expectedVersion: conflict.remoteVersion,
+        attempts: 0,
+        createdAt: Date.now(),
+      },
     ])
     writeCloudQueue(queueRef.current)
-    setConflicts((items) => items.filter((item) => item.mutation.id !== conflictId))
+    conflictsRef.current = conflictsRef.current.filter((item) => item.mutation.id !== conflictId)
+    setConflicts(conflictsRef.current)
     window.setTimeout(() => void flush(), 0)
-  }, [conflicts, flush])
+  }, [flush])
 
   const useCloud = useCallback(async (conflictId: string) => {
-    setConflicts((items) => items.filter((item) => item.mutation.id !== conflictId))
+    conflictsRef.current = conflictsRef.current.filter((item) => item.mutation.id !== conflictId)
+    setConflicts(conflictsRef.current)
     await refresh()
   }, [refresh])
 
