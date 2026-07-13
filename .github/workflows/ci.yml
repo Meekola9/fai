@@ -17,7 +17,11 @@ jobs:
         run: npm install
       - name: Lint
         run: npm run lint
-      - name: Test
+      - name: Athlete identity regression
+        run: npx vitest run src/lib/athleteIdentity.test.ts
+      - name: Historical seed regression
+        run: npx vitest run src/data/historicalSeed.test.ts
+      - name: Full test suite
         run: npm test
       - name: Build
         run: npm run build
