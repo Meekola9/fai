@@ -19,6 +19,7 @@ import { importCsv } from '../data/csv'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { normalizeAppData } from '../lib/events'
+import { consolidateAthleteAliases, normalizeAthleteName } from '../lib/athleteIdentity'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -88,7 +89,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   function mutate(recipe: (current: Required<AppData>) => AppData) {
     setData((current) => {
-      const next = normalizeAppData(recipe(current))
+      const next = consolidateAthleteAliases(normalizeAppData(recipe(current)))
       persist(next)
       return next
     })
@@ -195,12 +196,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
     },
     replaceAll(next) {
-      const normalized = normalizeAppData(next)
+      const normalized = consolidateAthleteAliases(next)
       setData(normalized)
       persist(normalized)
     },
     importCsvText(text, mode) {
-      const parsed = normalizeAppData(importCsv(text))
+      const parsed = consolidateAthleteAliases(importCsv(text))
       if (parsed.athletes.length === 0) {
         throw new Error('The file did not contain any valid athletes.')
       }
@@ -214,11 +215,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const athleteIdMap = new Map<string, string>()
         const existingAthletes = [...current.athletes]
         for (const athlete of parsed.athletes) {
+          const incomingName = normalizeAthleteName(athlete.name)
           const existing = existingAthletes.find(
             (item) =>
-              item.id === athlete.id ||
-              (item.name.trim().toLowerCase() === athlete.name.trim().toLowerCase() &&
-                item.grade === athlete.grade),
+              item.id === athlete.id || normalizeAthleteName(item.name) === incomingName,
           )
           if (existing) athleteIdMap.set(athlete.id, existing.id)
           else {
@@ -263,11 +263,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               ),
           )
 
-        return {
+        return consolidateAthleteAliases({
           athletes: existingAthletes,
           events: existingEvents,
           sessions: [...current.sessions, ...incomingSessions],
-        }
+        })
       })
     },
   }
