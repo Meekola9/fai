@@ -19,8 +19,12 @@ jobs:
         run: npm run lint
       - name: Athlete identity regression
         run: npx vitest run src/lib/athleteIdentity.test.ts
-      - name: Historical seed regression
-        run: npx vitest run src/data/historicalSeed.test.ts
+      - name: Historical seed coverage
+        run: npx vitest run src/data/historicalSeed.test.ts -t "loads the complete cleaned"
+      - name: Historical seed aliases
+        run: npx vitest run src/data/historicalSeed.test.ts -t "contains canonical full-name"
+      - name: Historical seed local overlay
+        run: npx vitest run src/data/historicalSeed.test.ts -t "overlays coach-entered"
       - name: Full test suite
         run: npm test
       - name: Build
