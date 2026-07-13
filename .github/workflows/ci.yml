@@ -19,10 +19,16 @@ jobs:
         run: npm run lint
       - name: Athlete identity regression
         run: npx vitest run src/lib/athleteIdentity.test.ts
-      - name: Historical seed coverage
-        run: npx vitest run src/data/historicalSeed.test.ts -t "loads the complete cleaned"
+      - name: Historical seed years
+        run: npx vitest run src/data/historicalSeed.test.ts -t "every historical year"
+      - name: Historical seed event count
+        run: npx vitest run src/data/historicalSeed.test.ts -t "all 18 historical"
+      - name: Historical seed athlete count
+        run: npx vitest run src/data/historicalSeed.test.ts -t "126 consolidated"
+      - name: Historical seed session count
+        run: npx vitest run src/data/historicalSeed.test.ts -t "all 562 historical"
       - name: Historical seed aliases
-        run: npx vitest run src/data/historicalSeed.test.ts -t "contains canonical full-name"
+        run: npx vitest run src/data/historicalSeed.test.ts -t "canonical full-name"
       - name: Historical seed local overlay
         run: npx vitest run src/data/historicalSeed.test.ts -t "overlays coach-entered"
       - name: Full test suite
