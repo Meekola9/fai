@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Card, Pill } from '../components/ui'
-import { RAW_FIELDS_BY_DAY, TESTING_DAYS, DAY_TITLE } from '../data/fields'
+import { RAW_FIELDS } from '../data/fields'
 import { TESTING_PHASES } from '../data/constants'
 import { validateSession } from '../lib/events'
 import type { TestSession, TestingPhase } from '../types'
@@ -94,11 +94,9 @@ export default function SessionEntry() {
     setEventId(session.eventId ?? '')
     setDate(session.date)
     const nextDraft: Draft = {}
-    for (const day of TESTING_DAYS) {
-      for (const field of RAW_FIELDS_BY_DAY(day)) {
-        const value = session[field.key]
-        if (typeof value === 'number') nextDraft[field.key] = String(value)
-      }
+    for (const field of RAW_FIELDS) {
+      const value = session[field.key]
+      if (typeof value === 'number') nextDraft[field.key] = String(value)
     }
     setDraft(nextDraft)
     setErrors([])
@@ -124,14 +122,12 @@ export default function SessionEntry() {
       weightLbsSnapshot: athlete.weightLbs,
     }
 
-    for (const day of TESTING_DAYS) {
-      for (const field of RAW_FIELDS_BY_DAY(day)) {
-        const raw = draft[field.key]
-        if (raw !== undefined && raw.trim() !== '') {
-          const numeric = Number(raw)
-          if (Number.isFinite(numeric)) {
-            ;(payload as unknown as Record<string, unknown>)[field.key] = numeric
-          }
+    for (const field of RAW_FIELDS) {
+      const raw = draft[field.key]
+      if (raw !== undefined && raw.trim() !== '') {
+        const numeric = Number(raw)
+        if (Number.isFinite(numeric)) {
+          ;(payload as unknown as Record<string, unknown>)[field.key] = numeric
         }
       }
     }
@@ -184,7 +180,7 @@ export default function SessionEntry() {
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className="text-sm font-black uppercase tracking-wide text-chalk">Testing Event</div>
-                <div className="text-xs text-muted">Use one event for Monday, Tuesday, and Wednesday.</div>
+                <div className="text-xs text-muted">Use one event for the complete testing period.</div>
               </div>
               <button
                 type="button"
@@ -273,29 +269,28 @@ export default function SessionEntry() {
             )}
           </Card>
 
-          {TESTING_DAYS.map((day) => (
-            <Card key={day} className="p-5">
-              <div className="mb-3 text-sm font-black uppercase tracking-wide text-chalk">{DAY_TITLE[day]}</div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {RAW_FIELDS_BY_DAY(day).map((field) => (
-                  <div key={field.key}>
-                    <label className={labelClass}>
-                      {field.label} <span className="text-muted/60">({field.unit})</span>
-                    </label>
-                    <input
-                      className={inputClass}
-                      type="number"
-                      inputMode="decimal"
-                      step={field.step}
-                      placeholder={field.placeholder}
-                      value={draft[field.key] ?? ''}
-                      onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
-                    />
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))}
+          <Card className="p-5">
+            <div className="mb-1 text-sm font-black uppercase tracking-wide text-chalk">Testing Exercises</div>
+            <div className="mb-4 text-xs text-muted">Enter any available results. Exercises are no longer tied to a weekday.</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {RAW_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label className={labelClass}>
+                    {field.label} <span className="text-muted/60">({field.unit})</span>
+                  </label>
+                  <input
+                    className={inputClass}
+                    type="number"
+                    inputMode="decimal"
+                    step={field.step}
+                    placeholder={field.placeholder}
+                    value={draft[field.key] ?? ''}
+                    onChange={(event) => setDraft({ ...draft, [field.key]: event.target.value })}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
 
           <div className="sticky bottom-4 flex gap-2">
             <button
