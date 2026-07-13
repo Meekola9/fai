@@ -1,14 +1,15 @@
 // ---------------------------------------------------------------------------
-// Safe local persistence.
+// Safe local persistence with bundled historical seed data.
 //
 // The previous anonymous Supabase adapter allowed unrestricted cross-team access
-// and last-write-wins roster replacement. Cloud sync is intentionally disabled
-// until authenticated, relational storage is implemented.
+// and last-write-wins roster replacement. Cloud sync stays disabled until an
+// authenticated, team-scoped store is implemented. Meanwhile the complete
+// cleaned history is bundled with the app and merged underneath local edits.
 // ---------------------------------------------------------------------------
 
 import type { AppData } from '../types'
-import { sampleData } from '../data/sampleData'
-import { normalizeAppData } from '../lib/events'
+import { historicalSeedData, mergeHistoricalData } from '../data/historicalSeed'
+import { consolidateAthleteAliases } from '../lib/athleteIdentity'
 
 export interface DataStore {
   load(): Promise<Required<AppData>>
@@ -39,30 +40,44 @@ function readLocal(key: string): AppData | null {
   }
 }
 
+/** The original demo ids are deterministic; do not merge fake athletes into history. */
+function isBundledDemo(data: AppData): boolean {
+  return Boolean(
+    data.athletes.length > 0 &&
+      data.athletes.every((athlete) => athlete.id.startsWith('a-')) &&
+      data.sessions.every((session) => session.id.startsWith('s-')),
+  )
+}
+
 export class LocalStorageStore implements DataStore {
   async load(): Promise<Required<AppData>> {
+    const seed = await historicalSeedData()
     const current = readLocal(STORAGE_KEY)
-    if (current) return normalizeAppData(current)
+    if (current) {
+      const merged = isBundledDemo(current) ? seed : mergeHistoricalData(seed, current)
+      await this.save(merged)
+      return merged
+    }
 
     const legacy = readLocal(LEGACY_STORAGE_KEY)
     if (legacy) {
-      const migrated = normalizeAppData(legacy)
+      const migrated = isBundledDemo(legacy) ? seed : mergeHistoricalData(seed, legacy)
       await this.save(migrated)
       return migrated
     }
 
-    const seed = normalizeAppData(sampleData())
     await this.save(seed)
     return seed
   }
 
   async save(data: AppData): Promise<void> {
-    const normalized = normalizeAppData(data)
+    const normalized = consolidateAthleteAliases(data)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   }
 
+  /** Reset restores the real cleaned historical baseline, never fake sample data. */
   async reset(): Promise<Required<AppData>> {
-    const seed = normalizeAppData(sampleData())
+    const seed = await historicalSeedData()
     await this.save(seed)
     return seed
   }
