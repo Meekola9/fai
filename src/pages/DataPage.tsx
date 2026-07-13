@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
+import CloudPanel from '../components/CloudPanel'
 import { exportCsv, importCsv, downloadCsv } from '../data/csv'
 import type { AppData } from '../types'
 
@@ -62,10 +63,10 @@ export default function DataPage() {
   }
 
   function handleReset() {
-    if (!confirm('Reset to sample data? A backup will download first.')) return
+    if (!confirm('Reset to the bundled historical baseline? A backup will download first.')) return
     exportBackup('fai-pre-reset-backup')
     resetSample()
-    notify('Sample data restored')
+    notify('Historical baseline restored')
   }
 
   return (
@@ -74,9 +75,9 @@ export default function DataPage() {
         <h1 className="text-2xl font-black tracking-tight">Data</h1>
         <div className="flex items-center gap-2">
           {flash && <Pill tone="up">✓ {flash}</Pill>}
-          {saveStatus === 'saving' && <Pill>Saving…</Pill>}
-          {saveStatus === 'saved' && <Pill tone="up">Saved locally</Pill>}
-          {saveStatus === 'error' && <Pill tone="down">Save failed</Pill>}
+          {saveStatus === 'saving' && <Pill>Saving on device…</Pill>}
+          {saveStatus === 'saved' && <Pill tone="up">Device copy saved</Pill>}
+          {saveStatus === 'error' && <Pill tone="down">Device save failed</Pill>}
         </div>
       </div>
 
@@ -86,19 +87,7 @@ export default function DataPage() {
         </Card>
       )}
 
-      <Card className="border-fai/30 p-4">
-        <div className="flex items-start gap-3">
-          <div className="text-2xl">🔒</div>
-          <div>
-            <div className="text-sm font-bold text-fai">Safe local mode</div>
-            <div className="mt-0.5 text-xs text-muted">
-              Anonymous cloud sync has been disabled because it could expose or overwrite team data.
-              This browser is the source of truth until authenticated team storage is released. Export
-              a CSV after each testing day and store it in a secure team drive.
-            </div>
-          </div>
-        </div>
-      </Card>
+      <CloudPanel />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Athletes" value={data.athletes.length} accent="fai" />
@@ -110,7 +99,7 @@ export default function DataPage() {
       <Card className="p-5">
         <SectionTitle>Export Complete Backup</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          The export contains roster-only athletes, testing events, historical profile snapshots, and every entry.
+          The export contains roster-only athletes, testing events, historical profile snapshots, and every entry. Keep periodic exports even when cloud sync is active.
         </p>
         <button type="button" onClick={() => exportBackup()} className="rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink hover:bg-fai/90">
           Export All Data (CSV)
@@ -120,7 +109,7 @@ export default function DataPage() {
       <Card className="p-5">
         <SectionTitle>Import With Preview</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          Files are validated before any data changes. Replace mode automatically downloads a backup first.
+          Files are validated before any data changes. Replace mode automatically downloads a backup first and synchronizes the replacement when connected to an editable cloud team.
         </p>
         <div className="mb-3 flex gap-2">
           {(['merge', 'replace'] as const).map((mode) => (
@@ -162,10 +151,10 @@ export default function DataPage() {
       <Card className="border-flame/20 p-5">
         <SectionTitle>Reset</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          Restore the built-in demonstration roster. A complete backup downloads before the reset.
+          Restore the bundled 2020–2025 historical baseline. A complete backup downloads before the reset.
         </p>
         <button type="button" onClick={handleReset} className="rounded-lg border border-flame/40 px-5 py-2 text-sm font-bold text-flame hover:bg-flame/10">
-          Reset Sample Data
+          Reset Historical Baseline
         </button>
       </Card>
     </div>
