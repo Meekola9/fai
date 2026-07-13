@@ -23,21 +23,34 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Capture fresh-browser seed state
-        run: npx playwright test e2e/seed-diagnostic.spec.ts
-      - name: Report unexpected seed state on PR
-        if: github.event_name == 'pull_request'
+        id: seed-diagnostic
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test e2e/seed-diagnostic.spec.ts 2>&1 | tee browser-diagnostic-run.log
+      - name: Report browser diagnostic on PR
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const path = 'browser-seed-diagnostic.json';
-            if (!fs.existsSync(path)) return;
-            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
-            const state = report.state || {};
-            const unexpected = state.athletes !== 126 || state.events !== 18 || state.sessions !== 562 || (report.errors || []).length > 0;
+            const reportPath = 'browser-seed-diagnostic.json';
+            const logPath = 'browser-diagnostic-run.log';
+            const report = fs.existsSync(reportPath)
+              ? JSON.parse(fs.readFileSync(reportPath, 'utf8'))
+              : null;
+            const log = fs.existsSync(logPath)
+              ? fs.readFileSync(logPath, 'utf8').slice(-9000)
+              : 'No Playwright output was captured.';
+            const state = report?.state || {};
+            const unexpected = '${{ steps.seed-diagnostic.outcome }}' !== 'success'
+              || state.athletes !== 126
+              || state.events !== 18
+              || state.sessions !== 562
+              || (report?.errors || []).length > 0;
             if (!unexpected) return;
             const marker = '<!-- fai-browser-seed-diagnostic -->';
-            const body = `${marker}\n### Browser seed diagnostic\n\n\`\`\`json\n${JSON.stringify(report, null, 2)}\n\`\`\``;
+            const body = `${marker}\n### Browser seed diagnostic\n\n**Step outcome:** \`${{ steps.seed-diagnostic.outcome }}\`\n\n\`\`\`json\n${JSON.stringify(report, null, 2)}\n\`\`\`\n\n<details><summary>Playwright output</summary>\n\n\`\`\`text\n${log}\n\`\`\`\n</details>`;
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -81,6 +94,7 @@ jobs:
           name: playwright-failure-evidence
           path: |
             browser-seed-diagnostic.json
+            browser-diagnostic-run.log
             playwright-report/
             test-results/
           if-no-files-found: ignore
