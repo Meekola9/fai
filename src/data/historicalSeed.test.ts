@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { historicalSeedData, mergeHistoricalData } from './historicalSeed'
 
 describe('historicalSeedData', () => {
+  it('decodes the bundled historical seed', async () => {
+    const data = await historicalSeedData()
+    expect(data).toBeDefined()
+    expect(Array.isArray(data.events)).toBe(true)
+    expect(Array.isArray(data.athletes)).toBe(true)
+    expect(Array.isArray(data.sessions)).toBe(true)
+  })
+
   it('contains testing events from every historical year', async () => {
     const data = await historicalSeedData()
     const years = [
