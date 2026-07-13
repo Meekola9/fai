@@ -19,6 +19,17 @@ jobs:
         run: npm run lint
       - name: Athlete identity regression
         run: npx vitest run src/lib/athleteIdentity.test.ts
+      - name: Capture historical seed decoder diagnostic
+        continue-on-error: true
+        run: npx vitest run src/data/historicalSeedDiagnostic.test.ts
+      - name: Upload historical seed diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-seed-diagnostic
+          path: seed-diagnostic.txt
+          if-no-files-found: warn
+          retention-days: 1
       - name: Historical seed decode
         run: npx vitest run src/data/historicalSeed.test.ts -t "decodes the bundled"
       - name: Historical seed years
