@@ -35,6 +35,7 @@ jobs:
         with:
           name: playwright-failure-evidence
           path: |
+            browser-startup-diagnostic.json
             playwright-report/
             test-results/
           if-no-files-found: ignore
