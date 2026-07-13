@@ -13,6 +13,8 @@ jobs:
   combine-flow:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      FAI_E2E_PREBUILT: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,6 +22,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Build production app for browser QA
+        run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Capture fresh-browser seed state
