@@ -1,6 +1,14 @@
+import { writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
+const browserErrors: string[] = []
+
 test.beforeEach(async ({ page }) => {
+  browserErrors.length = 0
+  page.on('console', (message) => {
+    if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`)
+  })
+  page.on('pageerror', (error) => browserErrors.push(`pageerror: ${error.message}`))
   await page.addInitScript(() => {
     localStorage.removeItem('fai:data:v1')
     localStorage.removeItem('fai:data:v2')
@@ -9,13 +17,29 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+async function writeStartupDiagnostic(page: Page) {
+  const details = await page.evaluate(() => ({
+    href: location.href,
+    body: document.body.innerText.slice(0, 4000),
+    data: localStorage.getItem('fai:data:v2'),
+    queue: localStorage.getItem('fai:cloud:queue:v1'),
+    activeTeam: localStorage.getItem('fai:cloud:active-team:v1'),
+  })).catch((error: unknown) => ({ evaluationError: error instanceof Error ? error.message : String(error) }))
+  writeFileSync('browser-startup-diagnostic.json', JSON.stringify({ details, browserErrors }, null, 2))
+}
+
 async function waitForHistoricalSeed(page: Page) {
-  await page.waitForFunction(() => {
-    const raw = localStorage.getItem('fai:data:v2')
-    if (!raw) return false
-    const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
-  })
+  try {
+    await page.waitForFunction(() => {
+      const raw = localStorage.getItem('fai:data:v2')
+      if (!raw) return false
+      const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
+      return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
+    })
+  } catch (error) {
+    await writeStartupDiagnostic(page)
+    throw error
+  }
 }
 
 async function loadSeededBrowser(page: Page) {
