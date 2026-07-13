@@ -2,13 +2,24 @@ import { describe, expect, it } from 'vitest'
 import { historicalSeedData, mergeHistoricalData } from './historicalSeed'
 
 describe('historicalSeedData', () => {
-  it('loads the complete cleaned 2020-2025 history automatically', async () => {
+  it('contains testing events from every historical year', async () => {
     const data = await historicalSeedData()
     const years = [...new Set(data.events.map((event) => Number(event.startDate.slice(0, 4))))].sort()
-
     expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+  })
+
+  it('contains all 18 historical testing events', async () => {
+    const data = await historicalSeedData()
     expect(data.events).toHaveLength(18)
+  })
+
+  it('contains 126 consolidated athlete identities', async () => {
+    const data = await historicalSeedData()
     expect(data.athletes).toHaveLength(126)
+  })
+
+  it('contains all 562 historical testing sessions', async () => {
+    const data = await historicalSeedData()
     expect(data.sessions).toHaveLength(562)
   })
 
