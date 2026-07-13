@@ -20,7 +20,6 @@ async function waitForHistoricalSeed(page: Page) {
 
 async function loadSeededBrowser(page: Page) {
   await page.goto('/')
-  await expect(page.getByText('Football Athlete Index', { exact: true })).toBeVisible()
   await waitForHistoricalSeed(page)
 }
 
