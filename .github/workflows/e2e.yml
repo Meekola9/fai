@@ -7,12 +7,13 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   combine-flow:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
+    env:
+      FAI_E2E_PREBUILT: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,101 +22,17 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build production app for browser QA
-        id: browser-build
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run build 2>&1 | tee browser-build.log
+        run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Capture fresh-browser seed state
-        id: seed-diagnostic
-        env:
-          FAI_E2E_PREBUILT: '1'
-        shell: bash
-        run: |
-          set -o pipefail
-          npx playwright test e2e/seed-diagnostic.spec.ts 2>&1 | tee browser-diagnostic-run.log
-      - name: Report browser diagnostic on PR
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const reportPath = 'browser-seed-diagnostic.json';
-            const testLogPath = 'browser-diagnostic-run.log';
-            const buildLogPath = 'browser-build.log';
-            const report = fs.existsSync(reportPath)
-              ? JSON.parse(fs.readFileSync(reportPath, 'utf8'))
-              : null;
-            const testLog = fs.existsSync(testLogPath)
-              ? fs.readFileSync(testLogPath, 'utf8').slice(-7000)
-              : 'No Playwright output was captured.';
-            const buildLog = fs.existsSync(buildLogPath)
-              ? fs.readFileSync(buildLogPath, 'utf8').slice(-5000)
-              : 'No browser-build output was captured.';
-            const state = report?.state || {};
-            const unexpected = '${{ steps.browser-build.outcome }}' !== 'success'
-              || '${{ steps.seed-diagnostic.outcome }}' !== 'success'
-              || state.athletes !== 126
-              || state.events !== 18
-              || state.sessions !== 562
-              || (report?.errors || []).length > 0;
-            if (!unexpected) return;
-            const marker = '<!-- fai-browser-seed-diagnostic -->';
-            const body = `${marker}\n### Browser seed diagnostic\n\n**Build:** \`${{ steps.browser-build.outcome }}\` · **Browser:** \`${{ steps.seed-diagnostic.outcome }}\`\n\n\`\`\`json\n${JSON.stringify(report, null, 2)}\n\`\`\`\n\n<details><summary>Build output</summary>\n\n\`\`\`text\n${buildLog}\n\`\`\`\n</details>\n\n<details><summary>Playwright output</summary>\n\n\`\`\`text\n${testLog}\n\`\`\`\n</details>`;
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const prior = comments.find(comment => comment.body && comment.body.includes(marker));
-            if (prior) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: prior.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-      - name: Verify 126 historical athletes
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser has 126 historical athletes"
-      - name: Verify 18 historical events
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser has 18 historical events"
-      - name: Verify 562 historical sessions
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser has 562 historical sessions"
-      - name: Verify 2020 through 2025 coverage
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser covers historical years"
-      - name: Verify athlete alias consolidation
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser seed consolidates known aliases"
-      - name: Verify weekday-free exercise screen
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "fresh browser shows one weekday-free exercise list"
-      - name: Verify coach entry, persistence, profiles, leaderboards, and export
-        env: { FAI_E2E_PREBUILT: '1' }
-        run: npx playwright test -g "coach adds a complete testing event"
+      - name: Run browser acceptance suite
+        run: npm run test:e2e
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-failure-evidence
           path: |
-            browser-build.log
-            browser-seed-diagnostic.json
-            browser-diagnostic-run.log
             playwright-report/
             test-results/
           if-no-files-found: ignore
