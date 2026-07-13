@@ -1,5 +1,5 @@
 -- FAI authenticated cloud persistence
--- Run in a fresh Supabase project. No anonymous data policies are created.
+-- Run in a fresh Supabase project. No anonymous data access is granted.
 
 begin;
 
@@ -39,8 +39,8 @@ create table if not exists public.fai_athletes (
   grade integer not null check (grade between 7 and 12),
   position text not null default 'ATH',
   position_group text not null default 'ATH' check (position_group in ('QB','RB','WR','TE','OL','DL','LB','DB','K/P','ATH')),
-  height_in numeric not null default 0 check (height_in >= 0 and height_in <= 100),
-  weight_lbs numeric not null default 0 check (weight_lbs >= 0 and weight_lbs <= 700),
+  height_in numeric not null default 0 check (height_in between 0 and 100),
+  weight_lbs numeric not null default 0 check (weight_lbs between 0 and 700),
   photo_url text,
   version integer not null default 1 check (version >= 1),
   created_by uuid not null references auth.users(id),
@@ -127,22 +127,14 @@ create index if not exists fai_sessions_active_idx on public.fai_test_sessions(t
 create index if not exists fai_audit_team_idx on public.fai_audit_log(team_id, changed_at desc);
 
 create or replace function public.fai_role(p_team_id uuid)
-returns text
-language sql
-stable
-security definer
-set search_path = public
+returns text language sql stable security definer set search_path = public
 as $$
   select role from public.fai_team_members
   where team_id = p_team_id and user_id = auth.uid();
 $$;
 
 create or replace function public.fai_is_member(p_team_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
+returns boolean language sql stable security definer set search_path = public
 as $$
   select exists (
     select 1 from public.fai_team_members
@@ -151,21 +143,13 @@ as $$
 $$;
 
 create or replace function public.fai_can_edit(p_team_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
+returns boolean language sql stable security definer set search_path = public
 as $$
   select coalesce(public.fai_role(p_team_id) in ('owner','admin','coach'), false);
 $$;
 
 create or replace function public.fai_is_admin(p_team_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
+returns boolean language sql stable security definer set search_path = public
 as $$
   select coalesce(public.fai_role(p_team_id) in ('owner','admin'), false);
 $$;
@@ -178,14 +162,11 @@ alter table public.fai_testing_events enable row level security;
 alter table public.fai_test_sessions enable row level security;
 alter table public.fai_audit_log enable row level security;
 
--- Team and membership visibility.
+-- Authenticated members can read their team. All writes are performed only by
+-- the SECURITY DEFINER functions below, which enforce role + version checks.
 drop policy if exists fai_teams_select on public.fai_teams;
 create policy fai_teams_select on public.fai_teams for select to authenticated
 using (public.fai_is_member(id));
-
-drop policy if exists fai_teams_update on public.fai_teams;
-create policy fai_teams_update on public.fai_teams for update to authenticated
-using (public.fai_is_admin(id)) with check (public.fai_is_admin(id));
 
 drop policy if exists fai_members_select on public.fai_team_members;
 create policy fai_members_select on public.fai_team_members for select to authenticated
@@ -195,37 +176,35 @@ drop policy if exists fai_invites_select on public.fai_team_invites;
 create policy fai_invites_select on public.fai_team_invites for select to authenticated
 using (public.fai_is_admin(team_id));
 
--- Team data: members may read; non-viewer staff may write.
 drop policy if exists fai_athletes_select on public.fai_athletes;
 create policy fai_athletes_select on public.fai_athletes for select to authenticated
 using (public.fai_is_member(team_id));
-drop policy if exists fai_athletes_write on public.fai_athletes;
-create policy fai_athletes_write on public.fai_athletes for all to authenticated
-using (public.fai_can_edit(team_id)) with check (public.fai_can_edit(team_id));
 
 drop policy if exists fai_events_select on public.fai_testing_events;
 create policy fai_events_select on public.fai_testing_events for select to authenticated
 using (public.fai_is_member(team_id));
-drop policy if exists fai_events_write on public.fai_testing_events;
-create policy fai_events_write on public.fai_testing_events for all to authenticated
-using (public.fai_can_edit(team_id)) with check (public.fai_can_edit(team_id));
 
 drop policy if exists fai_sessions_select on public.fai_test_sessions;
 create policy fai_sessions_select on public.fai_test_sessions for select to authenticated
 using (public.fai_is_member(team_id));
-drop policy if exists fai_sessions_write on public.fai_test_sessions;
-create policy fai_sessions_write on public.fai_test_sessions for all to authenticated
-using (public.fai_can_edit(team_id)) with check (public.fai_can_edit(team_id));
 
 drop policy if exists fai_audit_select on public.fai_audit_log;
 create policy fai_audit_select on public.fai_audit_log for select to authenticated
 using (public.fai_is_admin(team_id));
 
+revoke all on public.fai_teams, public.fai_team_members, public.fai_team_invites,
+  public.fai_athletes, public.fai_testing_events, public.fai_test_sessions,
+  public.fai_audit_log from anon;
+revoke insert, update, delete, truncate, references, trigger on public.fai_teams,
+  public.fai_team_members, public.fai_team_invites, public.fai_athletes,
+  public.fai_testing_events, public.fai_test_sessions, public.fai_audit_log
+  from authenticated;
+grant select on public.fai_teams, public.fai_team_members, public.fai_team_invites,
+  public.fai_athletes, public.fai_testing_events, public.fai_test_sessions,
+  public.fai_audit_log to authenticated;
+
 create or replace function public.create_fai_team(p_name text)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
+returns uuid language plpgsql security definer set search_path = public
 as $$
 declare
   v_user uuid := auth.uid();
@@ -253,10 +232,7 @@ create or replace function public.create_fai_invite(
   p_expires_hours integer default 168,
   p_max_uses integer default 1
 )
-returns uuid
-language plpgsql
-security definer
-set search_path = public
+returns uuid language plpgsql security definer set search_path = public
 as $$
 declare
   v_token uuid;
@@ -264,25 +240,26 @@ begin
   if not public.fai_is_admin(p_team_id) then raise exception 'Admin access required'; end if;
   if p_role not in ('admin','coach','viewer') then raise exception 'Invalid role'; end if;
   insert into public.fai_team_invites(team_id, role, expires_at, max_uses, created_by)
-  values (p_team_id, p_role, now() + make_interval(hours => greatest(1, least(p_expires_hours, 720))), greatest(1, least(p_max_uses, 100)), auth.uid())
-  returning token into v_token;
+  values (
+    p_team_id,
+    p_role,
+    now() + make_interval(hours => greatest(1, least(p_expires_hours, 720))),
+    greatest(1, least(p_max_uses, 100)),
+    auth.uid()
+  ) returning token into v_token;
   return v_token;
 end;
 $$;
 
 create or replace function public.join_fai_team(p_token uuid)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
+returns uuid language plpgsql security definer set search_path = public
 as $$
 declare
   v_user uuid := auth.uid();
   v_invite public.fai_team_invites%rowtype;
 begin
   if v_user is null then raise exception 'Authentication required'; end if;
-  select * into v_invite from public.fai_team_invites
-  where token = p_token for update;
+  select * into v_invite from public.fai_team_invites where token = p_token for update;
   if not found then raise exception 'Invite not found'; end if;
   if v_invite.expires_at <= now() then raise exception 'Invite expired'; end if;
   if v_invite.uses >= v_invite.max_uses then raise exception 'Invite has no remaining uses'; end if;
@@ -294,7 +271,8 @@ begin
 end;
 $$;
 
--- One mutation endpoint keeps optimistic concurrency rules identical for every client.
+-- One mutation endpoint keeps optimistic concurrency and audit behavior identical
+-- on every client. Missing expected_version is accepted only for a new record.
 create or replace function public.apply_fai_mutation(
   p_team_id uuid,
   p_entity text,
@@ -303,97 +281,193 @@ create or replace function public.apply_fai_mutation(
   p_payload jsonb default '{}'::jsonb,
   p_expected_version integer default null
 )
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
+returns jsonb language plpgsql security definer set search_path = public
 as $$
 declare
   v_user uuid := auth.uid();
   v_current integer;
   v_new integer;
-  v_row jsonb;
   v_audit_operation text;
 begin
-  if v_user is null then return jsonb_build_object('ok', false, 'error', 'Authentication required'); end if;
-  if not public.fai_can_edit(p_team_id) then return jsonb_build_object('ok', false, 'error', 'Write access required'); end if;
-  if p_operation not in ('upsert','delete') then return jsonb_build_object('ok', false, 'error', 'Invalid operation'); end if;
+  if v_user is null then
+    return jsonb_build_object('ok', false, 'error', 'Authentication required');
+  end if;
+  if not public.fai_can_edit(p_team_id) then
+    return jsonb_build_object('ok', false, 'error', 'Write access required');
+  end if;
+  if p_operation not in ('upsert','delete') then
+    return jsonb_build_object('ok', false, 'error', 'Invalid operation');
+  end if;
 
   if p_entity = 'athlete' then
-    select version into v_current from public.fai_athletes where team_id = p_team_id and id = p_record_id;
-    if found and p_expected_version is distinct from v_current then
-      select to_jsonb(a) into v_row from public.fai_athletes a where team_id = p_team_id and id = p_record_id;
-      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current, 'remoteRecord', v_row);
+    select version into v_current from public.fai_athletes
+    where team_id = p_team_id and id = p_record_id;
+    if v_current is not null and p_expected_version is distinct from v_current then
+      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current);
     end if;
     if p_operation = 'delete' then
-      if not found then return jsonb_build_object('ok', true, 'version', 0); end if;
-      update public.fai_athletes set deleted_at = now(), updated_at = now(), updated_by = v_user, version = version + 1
-      where team_id = p_team_id and id = p_record_id returning version, to_jsonb(fai_athletes.*) into v_new, v_row;
+      if v_current is null then return jsonb_build_object('ok', true, 'version', 0); end if;
+      v_new := v_current + 1;
+      update public.fai_athletes set deleted_at=now(), updated_at=now(), updated_by=v_user, version=v_new
+      where team_id=p_team_id and id=p_record_id;
       v_audit_operation := 'delete';
+    elsif v_current is null then
+      v_new := 1;
+      insert into public.fai_athletes(
+        team_id,id,name,grade,position,position_group,height_in,weight_lbs,photo_url,
+        version,created_by,updated_by
+      ) values (
+        p_team_id,p_record_id,p_payload->>'name',(p_payload->>'grade')::integer,
+        coalesce(p_payload->>'position','ATH'),coalesce(p_payload->>'positionGroup','ATH'),
+        coalesce(nullif(p_payload->>'heightIn','')::numeric,0),
+        coalesce(nullif(p_payload->>'weightLbs','')::numeric,0),
+        nullif(p_payload->>'photoUrl',''),v_new,v_user,v_user
+      );
+      v_audit_operation := 'insert';
     else
-      insert into public.fai_athletes(team_id,id,name,grade,position,position_group,height_in,weight_lbs,photo_url,created_by,updated_by)
-      values (p_team_id,p_record_id,p_payload->>'name',(p_payload->>'grade')::integer,coalesce(p_payload->>'position','ATH'),coalesce(p_payload->>'positionGroup','ATH'),coalesce((p_payload->>'heightIn')::numeric,0),coalesce((p_payload->>'weightLbs')::numeric,0),nullif(p_payload->>'photoUrl',''),v_user,v_user)
-      on conflict (team_id,id) do update set name=excluded.name,grade=excluded.grade,position=excluded.position,position_group=excluded.position_group,height_in=excluded.height_in,weight_lbs=excluded.weight_lbs,photo_url=excluded.photo_url,deleted_at=null,updated_at=now(),updated_by=v_user,version=public.fai_athletes.version+1
-      returning version, to_jsonb(fai_athletes.*) into v_new, v_row;
-      v_audit_operation := case when v_current is null then 'insert' else 'update' end;
+      v_new := v_current + 1;
+      update public.fai_athletes set
+        name=p_payload->>'name',
+        grade=(p_payload->>'grade')::integer,
+        position=coalesce(p_payload->>'position','ATH'),
+        position_group=coalesce(p_payload->>'positionGroup','ATH'),
+        height_in=coalesce(nullif(p_payload->>'heightIn','')::numeric,0),
+        weight_lbs=coalesce(nullif(p_payload->>'weightLbs','')::numeric,0),
+        photo_url=nullif(p_payload->>'photoUrl',''),
+        deleted_at=null, updated_at=now(), updated_by=v_user, version=v_new
+      where team_id=p_team_id and id=p_record_id;
+      v_audit_operation := 'update';
     end if;
 
   elsif p_entity = 'event' then
-    select version into v_current from public.fai_testing_events where team_id = p_team_id and id = p_record_id;
-    if found and p_expected_version is distinct from v_current then
-      select to_jsonb(e) into v_row from public.fai_testing_events e where team_id = p_team_id and id = p_record_id;
-      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current, 'remoteRecord', v_row);
+    select version into v_current from public.fai_testing_events
+    where team_id=p_team_id and id=p_record_id;
+    if v_current is not null and p_expected_version is distinct from v_current then
+      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current);
     end if;
     if p_operation = 'delete' then
-      if not found then return jsonb_build_object('ok', true, 'version', 0); end if;
-      update public.fai_testing_events set deleted_at=now(),updated_at=now(),updated_by=v_user,version=version+1
-      where team_id=p_team_id and id=p_record_id returning version,to_jsonb(fai_testing_events.*) into v_new,v_row;
+      if v_current is null then return jsonb_build_object('ok', true, 'version', 0); end if;
+      v_new := v_current + 1;
+      update public.fai_testing_events set deleted_at=now(),updated_at=now(),updated_by=v_user,version=v_new
+      where team_id=p_team_id and id=p_record_id;
       v_audit_operation := 'delete';
+    elsif v_current is null then
+      v_new := 1;
+      insert into public.fai_testing_events(
+        team_id,id,name,phase,start_date,end_date,status,source_created_at,
+        version,created_by,updated_by
+      ) values (
+        p_team_id,p_record_id,p_payload->>'name',p_payload->>'phase',
+        (p_payload->>'startDate')::date,nullif(p_payload->>'endDate','')::date,
+        nullif(p_payload->>'status',''),nullif(p_payload->>'createdAt','')::timestamptz,
+        v_new,v_user,v_user
+      );
+      v_audit_operation := 'insert';
     else
-      insert into public.fai_testing_events(team_id,id,name,phase,start_date,end_date,status,source_created_at,created_by,updated_by)
-      values (p_team_id,p_record_id,p_payload->>'name',p_payload->>'phase',(p_payload->>'startDate')::date,nullif(p_payload->>'endDate','')::date,nullif(p_payload->>'status',''),nullif(p_payload->>'createdAt','')::timestamptz,v_user,v_user)
-      on conflict (team_id,id) do update set name=excluded.name,phase=excluded.phase,start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status,source_created_at=excluded.source_created_at,deleted_at=null,updated_at=now(),updated_by=v_user,version=public.fai_testing_events.version+1
-      returning version,to_jsonb(fai_testing_events.*) into v_new,v_row;
-      v_audit_operation := case when v_current is null then 'insert' else 'update' end;
+      v_new := v_current + 1;
+      update public.fai_testing_events set
+        name=p_payload->>'name',phase=p_payload->>'phase',
+        start_date=(p_payload->>'startDate')::date,
+        end_date=nullif(p_payload->>'endDate','')::date,
+        status=nullif(p_payload->>'status',''),
+        source_created_at=nullif(p_payload->>'createdAt','')::timestamptz,
+        deleted_at=null,updated_at=now(),updated_by=v_user,version=v_new
+      where team_id=p_team_id and id=p_record_id;
+      v_audit_operation := 'update';
     end if;
 
   elsif p_entity = 'session' then
-    select version into v_current from public.fai_test_sessions where team_id = p_team_id and id = p_record_id;
-    if found and p_expected_version is distinct from v_current then
-      select to_jsonb(s) into v_row from public.fai_test_sessions s where team_id = p_team_id and id = p_record_id;
-      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current, 'remoteRecord', v_row);
+    select version into v_current from public.fai_test_sessions
+    where team_id=p_team_id and id=p_record_id;
+    if v_current is not null and p_expected_version is distinct from v_current then
+      return jsonb_build_object('ok', false, 'conflict', true, 'remoteVersion', v_current);
     end if;
     if p_operation = 'delete' then
-      if not found then return jsonb_build_object('ok', true, 'version', 0); end if;
-      update public.fai_test_sessions set deleted_at=now(),updated_at=now(),updated_by=v_user,version=version+1
-      where team_id=p_team_id and id=p_record_id returning version,to_jsonb(fai_test_sessions.*) into v_new,v_row;
+      if v_current is null then return jsonb_build_object('ok', true, 'version', 0); end if;
+      v_new := v_current + 1;
+      update public.fai_test_sessions set deleted_at=now(),updated_at=now(),updated_by=v_user,version=v_new
+      where team_id=p_team_id and id=p_record_id;
       v_audit_operation := 'delete';
-    else
+    elsif v_current is null then
+      v_new := 1;
       insert into public.fai_test_sessions(
-        team_id,id,athlete_id,event_id,test_date,phase,source_created_at,grade_snapshot,position_snapshot,position_group_snapshot,weight_lbs_snapshot,
-        bench_max,dash40_1,dash40_2,fly10_1,fly10_2,hang_clean_reps,shuttle20_1,shuttle20_2,lat_shuttle_1,lat_shuttle_2,illinois,squat_max,broad_jump,vertical_jump,cond51015,created_by,updated_by
+        team_id,id,athlete_id,event_id,test_date,phase,source_created_at,
+        grade_snapshot,position_snapshot,position_group_snapshot,weight_lbs_snapshot,
+        bench_max,dash40_1,dash40_2,fly10_1,fly10_2,hang_clean_reps,
+        shuttle20_1,shuttle20_2,lat_shuttle_1,lat_shuttle_2,illinois,
+        squat_max,broad_jump,vertical_jump,cond51015,version,created_by,updated_by
       ) values (
-        p_team_id,p_record_id,p_payload->>'athleteId',p_payload->>'eventId',(p_payload->>'date')::date,p_payload->>'phase',nullif(p_payload->>'createdAt','')::timestamptz,
-        nullif(p_payload->>'gradeSnapshot','')::integer,nullif(p_payload->>'positionSnapshot',''),nullif(p_payload->>'positionGroupSnapshot',''),nullif(p_payload->>'weightLbsSnapshot','')::numeric,
-        nullif(p_payload->>'benchMax','')::numeric,nullif(p_payload->>'dash40_1','')::numeric,nullif(p_payload->>'dash40_2','')::numeric,nullif(p_payload->>'fly10_1','')::numeric,nullif(p_payload->>'fly10_2','')::numeric,
-        nullif(p_payload->>'hangCleanReps','')::numeric,nullif(p_payload->>'shuttle20_1','')::numeric,nullif(p_payload->>'shuttle20_2','')::numeric,nullif(p_payload->>'latShuttle_1','')::numeric,nullif(p_payload->>'latShuttle_2','')::numeric,
-        nullif(p_payload->>'illinois','')::numeric,nullif(p_payload->>'squatMax','')::numeric,nullif(p_payload->>'broadJump','')::numeric,nullif(p_payload->>'verticalJump','')::numeric,nullif(p_payload->>'cond51015','')::numeric,v_user,v_user
-      )
-      on conflict (team_id,id) do update set athlete_id=excluded.athlete_id,event_id=excluded.event_id,test_date=excluded.test_date,phase=excluded.phase,source_created_at=excluded.source_created_at,grade_snapshot=excluded.grade_snapshot,position_snapshot=excluded.position_snapshot,position_group_snapshot=excluded.position_group_snapshot,weight_lbs_snapshot=excluded.weight_lbs_snapshot,bench_max=excluded.bench_max,dash40_1=excluded.dash40_1,dash40_2=excluded.dash40_2,fly10_1=excluded.fly10_1,fly10_2=excluded.fly10_2,hang_clean_reps=excluded.hang_clean_reps,shuttle20_1=excluded.shuttle20_1,shuttle20_2=excluded.shuttle20_2,lat_shuttle_1=excluded.lat_shuttle_1,lat_shuttle_2=excluded.lat_shuttle_2,illinois=excluded.illinois,squat_max=excluded.squat_max,broad_jump=excluded.broad_jump,vertical_jump=excluded.vertical_jump,cond51015=excluded.cond51015,deleted_at=null,updated_at=now(),updated_by=v_user,version=public.fai_test_sessions.version+1
-      returning version,to_jsonb(fai_test_sessions.*) into v_new,v_row;
-      v_audit_operation := case when v_current is null then 'insert' else 'update' end;
+        p_team_id,p_record_id,p_payload->>'athleteId',p_payload->>'eventId',
+        (p_payload->>'date')::date,p_payload->>'phase',nullif(p_payload->>'createdAt','')::timestamptz,
+        nullif(p_payload->>'gradeSnapshot','')::integer,nullif(p_payload->>'positionSnapshot',''),
+        nullif(p_payload->>'positionGroupSnapshot',''),nullif(p_payload->>'weightLbsSnapshot','')::numeric,
+        nullif(p_payload->>'benchMax','')::numeric,nullif(p_payload->>'dash40_1','')::numeric,
+        nullif(p_payload->>'dash40_2','')::numeric,nullif(p_payload->>'fly10_1','')::numeric,
+        nullif(p_payload->>'fly10_2','')::numeric,nullif(p_payload->>'hangCleanReps','')::numeric,
+        nullif(p_payload->>'shuttle20_1','')::numeric,nullif(p_payload->>'shuttle20_2','')::numeric,
+        nullif(p_payload->>'latShuttle_1','')::numeric,nullif(p_payload->>'latShuttle_2','')::numeric,
+        nullif(p_payload->>'illinois','')::numeric,nullif(p_payload->>'squatMax','')::numeric,
+        nullif(p_payload->>'broadJump','')::numeric,nullif(p_payload->>'verticalJump','')::numeric,
+        nullif(p_payload->>'cond51015','')::numeric,v_new,v_user,v_user
+      );
+      v_audit_operation := 'insert';
+    else
+      v_new := v_current + 1;
+      update public.fai_test_sessions set
+        athlete_id=p_payload->>'athleteId',event_id=p_payload->>'eventId',
+        test_date=(p_payload->>'date')::date,phase=p_payload->>'phase',
+        source_created_at=nullif(p_payload->>'createdAt','')::timestamptz,
+        grade_snapshot=nullif(p_payload->>'gradeSnapshot','')::integer,
+        position_snapshot=nullif(p_payload->>'positionSnapshot',''),
+        position_group_snapshot=nullif(p_payload->>'positionGroupSnapshot',''),
+        weight_lbs_snapshot=nullif(p_payload->>'weightLbsSnapshot','')::numeric,
+        bench_max=nullif(p_payload->>'benchMax','')::numeric,
+        dash40_1=nullif(p_payload->>'dash40_1','')::numeric,
+        dash40_2=nullif(p_payload->>'dash40_2','')::numeric,
+        fly10_1=nullif(p_payload->>'fly10_1','')::numeric,
+        fly10_2=nullif(p_payload->>'fly10_2','')::numeric,
+        hang_clean_reps=nullif(p_payload->>'hangCleanReps','')::numeric,
+        shuttle20_1=nullif(p_payload->>'shuttle20_1','')::numeric,
+        shuttle20_2=nullif(p_payload->>'shuttle20_2','')::numeric,
+        lat_shuttle_1=nullif(p_payload->>'latShuttle_1','')::numeric,
+        lat_shuttle_2=nullif(p_payload->>'latShuttle_2','')::numeric,
+        illinois=nullif(p_payload->>'illinois','')::numeric,
+        squat_max=nullif(p_payload->>'squatMax','')::numeric,
+        broad_jump=nullif(p_payload->>'broadJump','')::numeric,
+        vertical_jump=nullif(p_payload->>'verticalJump','')::numeric,
+        cond51015=nullif(p_payload->>'cond51015','')::numeric,
+        deleted_at=null,updated_at=now(),updated_by=v_user,version=v_new
+      where team_id=p_team_id and id=p_record_id;
+      v_audit_operation := 'update';
     end if;
   else
     return jsonb_build_object('ok', false, 'error', 'Invalid entity');
   end if;
 
-  insert into public.fai_audit_log(team_id,actor_id,entity,record_id,operation,old_version,new_version)
-  values (p_team_id,v_user,p_entity,p_record_id,v_audit_operation,v_current,v_new);
-  return jsonb_build_object('ok', true, 'version', v_new, 'updatedAt', now(), 'record', v_row);
+  insert into public.fai_audit_log(
+    team_id,actor_id,entity,record_id,operation,old_version,new_version
+  ) values (
+    p_team_id,v_user,p_entity,p_record_id,v_audit_operation,v_current,v_new
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'version', v_new,
+    'updatedAt', now()
+  );
 exception when others then
   return jsonb_build_object('ok', false, 'error', sqlerrm);
 end;
 $$;
+
+revoke all on function public.fai_role(uuid) from public, anon;
+revoke all on function public.fai_is_member(uuid) from public, anon;
+revoke all on function public.fai_can_edit(uuid) from public, anon;
+revoke all on function public.fai_is_admin(uuid) from public, anon;
+revoke all on function public.create_fai_team(text) from public, anon;
+revoke all on function public.create_fai_invite(uuid,text,integer,integer) from public, anon;
+revoke all on function public.join_fai_team(uuid) from public, anon;
+revoke all on function public.apply_fai_mutation(uuid,text,text,text,jsonb,integer) from public, anon;
 
 grant execute on function public.fai_role(uuid) to authenticated;
 grant execute on function public.fai_is_member(uuid) to authenticated;
