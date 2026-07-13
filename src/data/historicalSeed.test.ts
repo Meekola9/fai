@@ -4,7 +4,13 @@ import { historicalSeedData, mergeHistoricalData } from './historicalSeed'
 describe('historicalSeedData', () => {
   it('contains testing events from every historical year', async () => {
     const data = await historicalSeedData()
-    const years = [...new Set(data.events.map((event) => Number(event.startDate.slice(0, 4))))].sort()
+    const years = [
+      ...new Set(
+        data.events
+          .map((event) => Number(event.startDate.slice(0, 4)))
+          .filter(Number.isFinite),
+      ),
+    ].sort((a, b) => a - b)
     expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
   })
 
