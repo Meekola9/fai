@@ -23,6 +23,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Verify historical counts and years
         run: npx playwright test -g "fresh browser seed has exact historical counts"
+      - name: Upload historical seed summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-seed-summary
+          path: browser-seed-summary.json
+          if-no-files-found: ignore
+          retention-days: 2
       - name: Verify athlete alias consolidation
         run: npx playwright test -g "fresh browser seed consolidates known aliases"
       - name: Verify weekday-free exercise screen
