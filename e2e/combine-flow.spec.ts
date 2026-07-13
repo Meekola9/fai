@@ -3,20 +3,70 @@ import { expect, test, type Page } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.removeItem('fai:data:v1')
-    localStorage.setItem(
-      'fai:data:v2',
-      JSON.stringify({ athletes: [], events: [], sessions: [] }),
-    )
+    localStorage.removeItem('fai:data:v2')
   })
 })
+
+async function waitForHistoricalSeed(page: Page) {
+  await page.waitForFunction(() => {
+    const raw = localStorage.getItem('fai:data:v2')
+    if (!raw) return false
+    const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
+    return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
+  })
+}
 
 async function fillPlaceholder(page: Page, placeholder: string, value: string) {
   await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
 }
 
-test('coach completes a three-day combine and publishes an official FAI result', async ({ page }) => {
+test('fresh browser automatically loads 2020–2025 history and shows one exercise list', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Football Athlete Index', { exact: true })).toBeVisible()
+  await waitForHistoricalSeed(page)
+
+  const seeded = await page.evaluate(() => {
+    const raw = localStorage.getItem('fai:data:v2')
+    if (!raw) throw new Error('Historical FAI data was not persisted')
+    return JSON.parse(raw) as {
+      athletes: { name: string }[]
+      events: { startDate: string }[]
+      sessions: unknown[]
+    }
+  })
+
+  expect(seeded.athletes).toHaveLength(126)
+  expect(seeded.events).toHaveLength(18)
+  expect(seeded.sessions).toHaveLength(562)
+  expect(
+    [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
+      (a, b) => a - b,
+    ),
+  ).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+
+  const names = new Set(seeded.athletes.map((athlete) => athlete.name))
+  expect(names.has('Jude Nelson')).toBe(true)
+  expect(names.has('Dillion Evans')).toBe(true)
+  expect(names.has('Logan Cross')).toBe(true)
+  expect(names.has('J. Nelson')).toBe(false)
+  expect(names.has('D.Evans')).toBe(false)
+  expect(names.has('Lu. Cross')).toBe(false)
+  expect(names.has('Lo. Cross')).toBe(false)
+
+  await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
+  await expect(page.getByText('Testing Exercises', { exact: true })).toBeVisible()
+  await expect(page.getByText('Exercises are no longer tied to a weekday.')).toBeVisible()
+  await expect(page.getByText('Monday', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Tuesday', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Wednesday', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Thursday', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Friday', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Optional', { exact: true })).toHaveCount(0)
+})
+
+test('coach adds a complete testing event without losing historical data', async ({ page }) => {
+  await page.goto('/')
+  await waitForHistoricalSeed(page)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: '+ Add Athlete', exact: true }).click()
@@ -32,14 +82,13 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await expect(page.getByRole('heading', { name: 'QA Athlete' })).toBeVisible()
   await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
 
-  // With no existing events, the app opens this form automatically.
-  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
+  await page.getByRole('button', { name: '+ New Event' }).click()
   await page.getByPlaceholder('Summer Combine 2026').fill('QA Summer Combine 2026')
   await page.locator('select').first().selectOption('Baseline')
   await page.locator('input[type="date"]').first().fill('2026-07-06')
   await page.getByRole('button', { name: 'Create Event' }).click()
 
-  // Monday — speed and bench.
+  // First partial entry: speed and bench.
   await page.locator('input[type="date"]').fill('2026-07-06')
   await fillPlaceholder(page, '225', '225')
   await fillPlaceholder(page, '4.98', '4.70')
@@ -49,7 +98,7 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Tuesday — clean endurance and change of direction.
+  // Second partial entry: clean endurance and change of direction.
   await page.locator('input[type="date"]').fill('2026-07-07')
   await fillPlaceholder(page, '8', '10')
   await fillPlaceholder(page, '4.35', '4.35')
@@ -60,7 +109,7 @@ test('coach completes a three-day combine and publishes an official FAI result',
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Wednesday — lower-body strength, jumps, and optional conditioning.
+  // Third partial entry: lower-body strength, jumps, and conditioning.
   await page.locator('input[type="date"]').fill('2026-07-08')
   await fillPlaceholder(page, '405', '365')
   await fillPlaceholder(page, '108', '118')
@@ -78,14 +127,13 @@ test('coach completes a three-day combine and publishes an official FAI result',
       sessions: unknown[]
     }
   })
-  expect(persisted.athletes).toHaveLength(1)
-  expect(persisted.events).toHaveLength(1)
-  expect(persisted.sessions).toHaveLength(3)
+  expect(persisted.athletes).toHaveLength(127)
+  expect(persisted.events).toHaveLength(19)
+  expect(persisted.sessions).toHaveLength(565)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
   await expect(page.getByText('Official score')).toBeVisible()
-  await expect(page.getByText('Team Rank #1 / 1')).toBeVisible()
   await expect(page.getByText('QA Summer Combine 2026 · 2026-07-06', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
