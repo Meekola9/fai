@@ -79,7 +79,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     persist(normalized)
   }, [persist])
 
-  const cloud = useCloudSync(data, replaceLocalFromCloud)
+  const cloud = useCloudSync(data, replaceLocalFromCloud, !loading)
 
   useEffect(() => {
     let alive = true
