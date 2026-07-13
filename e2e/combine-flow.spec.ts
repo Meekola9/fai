@@ -80,7 +80,7 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Create Athlete' }).click()
 
   await expect(page.getByRole('heading', { name: 'QA Athlete' })).toBeVisible()
-  await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
+  await page.getByRole('link', { name: '+ Testing', exact: true }).click()
 
   await page.getByRole('button', { name: '+ New Event' }).click()
   await page.getByPlaceholder('Summer Combine 2026').fill('QA Summer Combine 2026')
