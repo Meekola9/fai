@@ -43,7 +43,7 @@ export interface Athlete {
   photoUrl?: string
 }
 
-/** Parent record for one multi-day combine/testing window. */
+/** Parent record for one combine or testing window. */
 export interface TestingEvent {
   id: string
   name: string
@@ -55,8 +55,9 @@ export interface TestingEvent {
 }
 
 /**
- * One data-entry record within a testing event. Multiple Monday/Tuesday/Wednesday
- * records are merged into one computed event result per athlete.
+ * One data-entry record within a testing event. Partial records from the same
+ * event are merged into one computed event result per athlete; exercises are
+ * not tied to a specific weekday.
  */
 export interface TestSession {
   id: string
@@ -72,27 +73,20 @@ export interface TestSession {
   positionGroupSnapshot?: PositionGroup
   weightLbsSnapshot?: number
 
-  // Monday — Speed + Bench
   benchMax?: number
   dash40_1?: number
   dash40_2?: number
   fly10_1?: number
   fly10_2?: number
-
-  // Tuesday — Power Endurance + Change of Direction
   hangCleanReps?: number
   shuttle20_1?: number
   shuttle20_2?: number
   latShuttle_1?: number
   latShuttle_2?: number
   illinois?: number
-
-  // Wednesday — Lower Body + Jumps
   squatMax?: number
   broadJump?: number
   verticalJump?: number
-
-  // Optional conditioning
   cond51015?: number
 }
 
