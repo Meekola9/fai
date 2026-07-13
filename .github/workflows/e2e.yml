@@ -21,8 +21,10 @@ jobs:
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run three-day combine QA
-        run: npm run test:e2e
+      - name: Verify automatic historical loading and unified exercise screen
+        run: npx playwright test -g "fresh browser automatically loads"
+      - name: Verify coach entry, persistence, profiles, leaderboards, and export
+        run: npx playwright test -g "coach adds a complete testing event"
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
@@ -32,3 +34,4 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+          retention-days: 14
