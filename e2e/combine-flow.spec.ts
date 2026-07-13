@@ -1,14 +1,6 @@
-import { writeFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
-const browserErrors: string[] = []
-
 test.beforeEach(async ({ page }) => {
-  browserErrors.length = 0
-  page.on('console', (message) => {
-    if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`)
-  })
-  page.on('pageerror', (error) => browserErrors.push(`pageerror: ${error.message}`))
   await page.addInitScript(() => {
     localStorage.removeItem('fai:data:v1')
     localStorage.removeItem('fai:data:v2')
@@ -17,34 +9,9 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-async function writeStartupDiagnostic(page: Page) {
-  const details = await page.evaluate(() => ({
-    href: location.href,
-    body: document.body.innerText.slice(0, 4000),
-    data: localStorage.getItem('fai:data:v2'),
-    queue: localStorage.getItem('fai:cloud:queue:v1'),
-    activeTeam: localStorage.getItem('fai:cloud:active-team:v1'),
-  })).catch((error: unknown) => ({ evaluationError: error instanceof Error ? error.message : String(error) }))
-  writeFileSync('browser-startup-diagnostic.json', JSON.stringify({ details, browserErrors }, null, 2))
-}
-
-async function waitForHistoricalSeed(page: Page) {
-  try {
-    await page.waitForFunction(() => {
-      const raw = localStorage.getItem('fai:data:v2')
-      if (!raw) return false
-      const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-      return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
-    })
-  } catch (error) {
-    await writeStartupDiagnostic(page)
-    throw error
-  }
-}
-
 async function loadSeededBrowser(page: Page) {
   await page.goto('/')
-  await waitForHistoricalSeed(page)
+  await page.waitForFunction(() => Boolean(localStorage.getItem('fai:data:v2')))
 }
 
 async function readSeed(page: Page) {
@@ -63,23 +30,27 @@ async function fillPlaceholder(page: Page, placeholder: string, value: string) {
   await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
 }
 
-test('fresh browser seed has exact historical counts and years', async ({ page }) => {
+test('fresh browser has 126 historical athletes', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).athletes).toHaveLength(126)
+})
+
+test('fresh browser has 18 historical events', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).events).toHaveLength(18)
+})
+
+test('fresh browser has 562 historical sessions', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).sessions).toHaveLength(562)
+})
+
+test('fresh browser covers historical years 2020 through 2025', async ({ page }) => {
   await loadSeededBrowser(page)
   const seeded = await readSeed(page)
   const years = [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
     (a, b) => a - b,
   )
-  writeFileSync('browser-seed-summary.json', JSON.stringify({
-    athletes: seeded.athletes.length,
-    events: seeded.events.length,
-    sessions: seeded.sessions.length,
-    years,
-    eventDates: seeded.events.map((event) => ({ name: event.name, startDate: event.startDate })),
-    browserErrors,
-  }, null, 2))
-  expect(seeded.athletes).toHaveLength(126)
-  expect(seeded.events).toHaveLength(18)
-  expect(seeded.sessions).toHaveLength(562)
   expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
 })
 
