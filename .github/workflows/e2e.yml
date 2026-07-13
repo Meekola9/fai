@@ -11,7 +11,7 @@ permissions:
 jobs:
   combine-flow:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,8 +21,12 @@ jobs:
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Verify automatic historical loading and unified exercise screen
-        run: npx playwright test -g "fresh browser automatically loads"
+      - name: Verify historical counts and years
+        run: npx playwright test -g "fresh browser seed has exact historical counts"
+      - name: Verify athlete alias consolidation
+        run: npx playwright test -g "fresh browser seed consolidates known aliases"
+      - name: Verify weekday-free exercise screen
+        run: npx playwright test -g "fresh browser shows one weekday-free exercise list"
       - name: Verify coach entry, persistence, profiles, leaderboards, and export
         run: npx playwright test -g "coach adds a complete testing event"
       - name: Upload failure evidence
