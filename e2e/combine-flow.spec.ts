@@ -53,7 +53,7 @@ async function readSeed(page: Page) {
     if (!raw) throw new Error('Historical FAI data was not persisted')
     return JSON.parse(raw) as {
       athletes: { name: string }[]
-      events: { startDate: string }[]
+      events: { name: string; startDate: string }[]
       sessions: unknown[]
     }
   })
@@ -66,14 +66,21 @@ async function fillPlaceholder(page: Page, placeholder: string, value: string) {
 test('fresh browser seed has exact historical counts and years', async ({ page }) => {
   await loadSeededBrowser(page)
   const seeded = await readSeed(page)
+  const years = [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
+    (a, b) => a - b,
+  )
+  writeFileSync('browser-seed-summary.json', JSON.stringify({
+    athletes: seeded.athletes.length,
+    events: seeded.events.length,
+    sessions: seeded.sessions.length,
+    years,
+    eventDates: seeded.events.map((event) => ({ name: event.name, startDate: event.startDate })),
+    browserErrors,
+  }, null, 2))
   expect(seeded.athletes).toHaveLength(126)
   expect(seeded.events).toHaveLength(18)
   expect(seeded.sessions).toHaveLength(562)
-  expect(
-    [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
-      (a, b) => a - b,
-    ),
-  ).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+  expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
 })
 
 test('fresh browser seed consolidates known aliases', async ({ page }) => {
