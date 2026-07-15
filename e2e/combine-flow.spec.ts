@@ -4,15 +4,25 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.removeItem('fai:data:v1')
     localStorage.removeItem('fai:data:v2')
+    localStorage.removeItem('fai:cloud:queue:v1')
+    localStorage.removeItem('fai:cloud:active-team:v1')
   })
 })
 
-async function waitForHistoricalSeed(page: Page) {
-  await page.waitForFunction(() => {
+async function loadSeededBrowser(page: Page) {
+  await page.goto('/')
+  await page.waitForFunction(() => Boolean(localStorage.getItem('fai:data:v2')))
+}
+
+async function readSeed(page: Page) {
+  return page.evaluate(() => {
     const raw = localStorage.getItem('fai:data:v2')
-    if (!raw) return false
-    const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
+    if (!raw) throw new Error('Historical FAI data was not persisted')
+    return JSON.parse(raw) as {
+      athletes: { name: string }[]
+      events: { name: string; startDate: string }[]
+      sessions: unknown[]
+    }
   })
 }
 
@@ -20,30 +30,33 @@ async function fillPlaceholder(page: Page, placeholder: string, value: string) {
   await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
 }
 
-test('fresh browser automatically loads 2020–2025 history and shows one exercise list', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByText('Football Athlete Index', { exact: true })).toBeVisible()
-  await waitForHistoricalSeed(page)
+test('fresh browser has 126 historical athletes', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).athletes).toHaveLength(126)
+})
 
-  const seeded = await page.evaluate(() => {
-    const raw = localStorage.getItem('fai:data:v2')
-    if (!raw) throw new Error('Historical FAI data was not persisted')
-    return JSON.parse(raw) as {
-      athletes: { name: string }[]
-      events: { startDate: string }[]
-      sessions: unknown[]
-    }
-  })
+test('fresh browser has 18 historical events', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).events).toHaveLength(18)
+})
 
-  expect(seeded.athletes).toHaveLength(126)
-  expect(seeded.events).toHaveLength(18)
-  expect(seeded.sessions).toHaveLength(562)
-  expect(
-    [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
-      (a, b) => a - b,
-    ),
-  ).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+test('fresh browser has 562 historical sessions', async ({ page }) => {
+  await loadSeededBrowser(page)
+  expect((await readSeed(page)).sessions).toHaveLength(562)
+})
 
+test('fresh browser covers historical years 2020 through 2025', async ({ page }) => {
+  await loadSeededBrowser(page)
+  const seeded = await readSeed(page)
+  const years = [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
+    (a, b) => a - b,
+  )
+  expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+})
+
+test('fresh browser seed consolidates known aliases', async ({ page }) => {
+  await loadSeededBrowser(page)
+  const seeded = await readSeed(page)
   const names = new Set(seeded.athletes.map((athlete) => athlete.name))
   expect(names.has('Jude Nelson')).toBe(true)
   expect(names.has('Dillion Evans')).toBe(true)
@@ -52,7 +65,10 @@ test('fresh browser automatically loads 2020–2025 history and shows one exerci
   expect(names.has('D.Evans')).toBe(false)
   expect(names.has('Lu. Cross')).toBe(false)
   expect(names.has('Lo. Cross')).toBe(false)
+})
 
+test('fresh browser shows one weekday-free exercise list', async ({ page }) => {
+  await loadSeededBrowser(page)
   await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
   await expect(page.getByText('Testing Exercises', { exact: true })).toBeVisible()
   await expect(page.getByText('Exercises are no longer tied to a weekday.')).toBeVisible()
@@ -65,8 +81,7 @@ test('fresh browser automatically loads 2020–2025 history and shows one exerci
 })
 
 test('coach adds a complete testing event without losing historical data', async ({ page }) => {
-  await page.goto('/')
-  await waitForHistoricalSeed(page)
+  await loadSeededBrowser(page)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: '+ Add Athlete', exact: true }).click()
@@ -88,7 +103,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.locator('input[type="date"]').first().fill('2026-07-06')
   await page.getByRole('button', { name: 'Create Event' }).click()
 
-  // First partial entry: speed and bench.
   await page.locator('input[type="date"]').fill('2026-07-06')
   await fillPlaceholder(page, '225', '225')
   await fillPlaceholder(page, '4.98', '4.70')
@@ -98,7 +112,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Second partial entry: clean endurance and change of direction.
   await page.locator('input[type="date"]').fill('2026-07-07')
   await fillPlaceholder(page, '8', '10')
   await fillPlaceholder(page, '4.35', '4.35')
@@ -109,7 +122,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Third partial entry: lower-body strength, jumps, and conditioning.
   await page.locator('input[type="date"]').fill('2026-07-08')
   await fillPlaceholder(page, '405', '365')
   await fillPlaceholder(page, '108', '118')

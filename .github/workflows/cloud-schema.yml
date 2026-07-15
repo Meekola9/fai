@@ -1,0 +1,46 @@
+name: FAI Cloud Schema
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/cloud-schema.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/cloud-schema.yml'
+
+jobs:
+  validate-cloud-schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fai_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap Supabase roles and schemas
+        run: psql -h 127.0.0.1 -U postgres -d fai_test -v ON_ERROR_STOP=1 -f supabase/test/bootstrap.sql
+      - name: Apply FAI cloud migrations in order
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql -h 127.0.0.1 -U postgres -d fai_test -v ON_ERROR_STOP=1 -f "${migration}"
+          done
+      - name: Verify RLS and privilege boundaries
+        run: psql -h 127.0.0.1 -U postgres -d fai_test -v ON_ERROR_STOP=1 -f supabase/test/assertions.sql
