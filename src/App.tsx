@@ -36,6 +36,14 @@ function Brand() {
 }
 
 function Header() {
+  const { cloud } = useStore()
+  const cloudClass =
+    cloud.status.state === 'synced'
+      ? 'border-up/40 bg-up/10 text-up'
+      : cloud.status.state === 'error' || cloud.status.state === 'conflict'
+        ? 'border-down/40 bg-down/10 text-down'
+        : 'border-line bg-panel-2 text-muted'
+
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -60,6 +68,13 @@ function Header() {
             </NavLink>
           ))}
           <NavLink
+            to="/data"
+            title={cloud.status.message}
+            className={`ml-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${cloudClass}`}
+          >
+            {cloud.status.state === 'synced' ? '☁ Synced' : cloud.status.pending ? `☁ ${cloud.status.pending} queued` : cloud.configured ? '☁ Cloud' : 'Device only'}
+          </NavLink>
+          <NavLink
             to="/tv"
             className="ml-1 rounded-lg border border-flame/40 bg-flame/10 px-3 py-1.5 text-sm font-bold text-flame transition hover:bg-flame/20"
           >
@@ -82,13 +97,12 @@ function Loading() {
 }
 
 export default function App() {
-  const { loading } = useStore()
+  const { loading, cloud } = useStore()
   const location = useLocation()
   const isTv = location.pathname.startsWith('/tv')
 
   if (loading) return <Loading />
 
-  // TV mode renders full-bleed with no chrome.
   if (isTv) {
     return (
       <Routes>
@@ -96,6 +110,12 @@ export default function App() {
       </Routes>
     )
   }
+
+  const persistenceLabel = cloud.activeTeam
+    ? `Team cloud: ${cloud.activeTeam.name} · ${cloud.status.message}`
+    : cloud.configured
+      ? 'Device copy active · sign in on the Data page for cross-device sync'
+      : 'Data stored on this device · cloud environment not configured'
 
   return (
     <div className="min-h-screen">
@@ -113,7 +133,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted">
-        FAI — Football Athlete Index · Data stored locally in your browser
+        FAI — Football Athlete Index · {persistenceLabel}
       </footer>
     </div>
   )
