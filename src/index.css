@@ -28,14 +28,57 @@ body,
   height: 100%;
 }
 
+html {
+  color-scheme: dark;
+  background: var(--color-ink);
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
+  min-width: 320px;
   background:
     radial-gradient(1200px 600px at 50% -10%, #0d1930 0%, transparent 60%),
     var(--color-ink);
   color: var(--color-chalk);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+a {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+select,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Keep iOS from zooming the page when a testing field receives focus. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
 }
 
 /* Tabular numbers everywhere numbers are shown big. */
