@@ -104,6 +104,8 @@ test('installs a touch-first offline shell and recovers from the IndexedDB safet
   await context.setOffline(true)
   await page.reload()
   await expect(page.getByText('Football Athlete Index', { exact: true })).toBeVisible()
-  await expect(page.getByRole('banner').getByText('Offline', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('banner').getByText('Offline', { exact: true }).filter({ visible: true }),
+  ).toBeVisible()
   await context.setOffline(false)
 })
