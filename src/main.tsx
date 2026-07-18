@@ -4,6 +4,9 @@ import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
 import { StoreProvider } from './store/useStore'
+import { registerFaiPwa } from './pwa'
+
+registerFaiPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
