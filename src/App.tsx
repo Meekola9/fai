@@ -8,6 +8,7 @@ import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
 import DataPage from './pages/DataPage'
 import TVMode from './pages/TVMode'
+import PwaControls, { ConnectivityBadge } from './components/PwaControls'
 
 const NAV = [
   { to: '/', label: 'Coach Dashboard', end: true },
@@ -17,17 +18,25 @@ const NAV = [
   { to: '/data', label: 'Data' },
 ]
 
+const MOBILE_NAV = [
+  { to: '/', label: 'Dashboard', icon: '⌂', end: true },
+  { to: '/athletes', label: 'Athletes', icon: '◉' },
+  { to: '/entry', label: 'Test', icon: '+' },
+  { to: '/leaderboards', label: 'Rankings', icon: '★' },
+  { to: '/data', label: 'More', icon: '•••' },
+]
+
 function Brand() {
   return (
     <div className="flex items-center gap-2">
       <div className="grid h-9 w-9 place-items-center rounded-lg border border-fai/40 bg-fai/10 text-sm font-black tracking-tight text-fai">
         FAI
       </div>
-      <div className="leading-tight">
+      <div className="hidden leading-tight min-[390px]:block">
         <div className="text-sm font-black tracking-tight text-chalk">
           Football Athlete Index
         </div>
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+        <div className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-muted sm:block">
           Combine Testing System
         </div>
       </div>
@@ -37,12 +46,13 @@ function Brand() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <NavLink to="/">
+    <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4">
+        <NavLink to="/" aria-label="FAI dashboard">
           <Brand />
         </NavLink>
-        <nav className="flex flex-1 flex-wrap items-center gap-1 md:flex-none md:justify-end">
+
+        <nav className="hidden items-center gap-1 md:flex">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
@@ -59,6 +69,7 @@ function Header() {
               {n.label}
             </NavLink>
           ))}
+          <ConnectivityBadge />
           <NavLink
             to="/tv"
             className="ml-1 rounded-lg border border-flame/40 bg-flame/10 px-3 py-1.5 text-sm font-bold text-flame transition hover:bg-flame/20"
@@ -66,8 +77,48 @@ function Header() {
             📺 TV Mode
           </NavLink>
         </nav>
+
+        <div className="flex items-center gap-2 md:hidden">
+          <ConnectivityBadge />
+          <NavLink
+            to="/tv"
+            className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame"
+            aria-label="Open TV Mode"
+          >
+            TV
+          </NavLink>
+        </div>
       </div>
     </header>
+  )
+}
+
+function MobileNavigation() {
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      aria-label="Mobile navigation"
+    >
+      <div className="mx-auto grid max-w-lg grid-cols-5">
+        {MOBILE_NAV.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-bold transition ${
+                isActive ? 'text-fai' : 'text-muted active:bg-panel-2'
+              }`
+            }
+          >
+            <span className="grid h-6 place-items-center text-lg font-black leading-none" aria-hidden="true">
+              {item.icon}
+            </span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </div>
+    </nav>
   )
 }
 
@@ -88,7 +139,7 @@ export default function App() {
 
   if (loading) return <Loading />
 
-  // TV mode renders full-bleed with no chrome.
+  // TV mode renders full-bleed with no app chrome.
   if (isTv) {
     return (
       <Routes>
@@ -98,9 +149,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
@@ -112,9 +163,11 @@ export default function App() {
           <Route path="/data" element={<DataPage />} />
         </Routes>
       </main>
-      <footer className="mx-auto max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted">
-        FAI — Football Athlete Index · Data stored locally in your browser
+      <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">
+        FAI — Football Athlete Index · Local-first with on-device backup
       </footer>
+      <PwaControls />
+      <MobileNavigation />
     </div>
   )
 }
