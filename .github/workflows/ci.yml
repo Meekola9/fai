@@ -8,16 +8,31 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
       - name: Lint
         run: npm run lint
       - name: Test
         run: npm test
       - name: Build
         run: npm run build
+      - name: Install mobile browser
+        run: npx playwright install --with-deps chromium
+      - name: Phone app acceptance
+        run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
+      - name: Upload mobile diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fai-mobile-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
