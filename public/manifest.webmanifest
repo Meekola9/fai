@@ -1,0 +1,42 @@
+{
+  "name": "FAI — Football Athlete Index",
+  "short_name": "FAI",
+  "description": "Football combine testing, athlete development, rankings, and TV Mode for coaching staffs.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#05070b",
+  "theme_color": "#0a0e14",
+  "orientation": "any",
+  "categories": ["sports", "productivity", "education"],
+  "icons": [
+    {
+      "src": "./fai-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Enter Testing",
+      "short_name": "Test",
+      "url": "./#/entry",
+      "icons": [{ "src": "./fai-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Athletes",
+      "short_name": "Athletes",
+      "url": "./#/athletes",
+      "icons": [{ "src": "./fai-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Leaderboards",
+      "short_name": "Rankings",
+      "url": "./#/leaderboards",
+      "icons": [{ "src": "./fai-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
