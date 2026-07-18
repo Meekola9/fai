@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
 // Safe local persistence with bundled historical seed data.
 //
-// The previous anonymous Supabase adapter allowed unrestricted cross-team access
-// and last-write-wins roster replacement. Cloud sync stays disabled until an
-// authenticated, team-scoped store is implemented. Meanwhile the complete
-// cleaned history is bundled with the app and merged underneath local edits.
+// The stable release remains local-first. The primary record is kept in
+// localStorage for compatibility, while an IndexedDB safety mirror provides a
+// second on-device recovery path for installed/mobile use. Cloud sync stays
+// optional and separate from this store.
 // ---------------------------------------------------------------------------
 
 import type { AppData } from '../types'
@@ -19,6 +19,10 @@ export interface DataStore {
 
 const STORAGE_KEY = 'fai:data:v2'
 const LEGACY_STORAGE_KEY = 'fai:data:v1'
+const BACKUP_DB_NAME = 'fai-mobile-backup'
+const BACKUP_DB_VERSION = 1
+const BACKUP_STORE_NAME = 'snapshots'
+const BACKUP_KEY = 'latest'
 
 function isValid(data: unknown): data is AppData {
   return Boolean(
@@ -40,6 +44,76 @@ function readLocal(key: string): AppData | null {
   }
 }
 
+function openBackupDb(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null)
+
+  return new Promise((resolve) => {
+    try {
+      const request = indexedDB.open(BACKUP_DB_NAME, BACKUP_DB_VERSION)
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(BACKUP_STORE_NAME)) {
+          db.createObjectStore(BACKUP_STORE_NAME)
+        }
+      }
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => resolve(null)
+      request.onblocked = () => resolve(null)
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+async function readIndexedDbBackup(): Promise<AppData | null> {
+  const db = await openBackupDb()
+  if (!db) return null
+
+  return new Promise((resolve) => {
+    try {
+      const transaction = db.transaction(BACKUP_STORE_NAME, 'readonly')
+      const request = transaction.objectStore(BACKUP_STORE_NAME).get(BACKUP_KEY)
+      request.onsuccess = () => resolve(isValid(request.result) ? request.result : null)
+      request.onerror = () => resolve(null)
+      transaction.oncomplete = () => db.close()
+      transaction.onabort = () => {
+        db.close()
+        resolve(null)
+      }
+    } catch {
+      db.close()
+      resolve(null)
+    }
+  })
+}
+
+async function writeIndexedDbBackup(data: AppData): Promise<boolean> {
+  const db = await openBackupDb()
+  if (!db) return false
+
+  return new Promise((resolve) => {
+    try {
+      const transaction = db.transaction(BACKUP_STORE_NAME, 'readwrite')
+      transaction.objectStore(BACKUP_STORE_NAME).put(data, BACKUP_KEY)
+      transaction.oncomplete = () => {
+        db.close()
+        resolve(true)
+      }
+      transaction.onerror = () => {
+        db.close()
+        resolve(false)
+      }
+      transaction.onabort = () => {
+        db.close()
+        resolve(false)
+      }
+    } catch {
+      db.close()
+      resolve(false)
+    }
+  })
+}
+
 /** The original demo ids are deterministic; do not merge fake athletes into history. */
 function isBundledDemo(data: AppData): boolean {
   return Boolean(
@@ -53,17 +127,14 @@ export class LocalStorageStore implements DataStore {
   async load(): Promise<Required<AppData>> {
     const seed = await historicalSeedData()
     const current = readLocal(STORAGE_KEY)
-    if (current) {
-      const merged = isBundledDemo(current) ? seed : mergeHistoricalData(seed, current)
+    const legacy = current ? null : readLocal(LEGACY_STORAGE_KEY)
+    const indexedDbBackup = current || legacy ? null : await readIndexedDbBackup()
+    const stored = current ?? legacy ?? indexedDbBackup
+
+    if (stored) {
+      const merged = isBundledDemo(stored) ? seed : mergeHistoricalData(seed, stored)
       await this.save(merged)
       return merged
-    }
-
-    const legacy = readLocal(LEGACY_STORAGE_KEY)
-    if (legacy) {
-      const migrated = isBundledDemo(legacy) ? seed : mergeHistoricalData(seed, legacy)
-      await this.save(migrated)
-      return migrated
     }
 
     await this.save(seed)
@@ -72,7 +143,19 @@ export class LocalStorageStore implements DataStore {
 
   async save(data: AppData): Promise<void> {
     const normalized = consolidateAthleteAliases(data)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+    let localSaved = false
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+      localSaved = true
+    } catch {
+      // Continue: an installed app may still preserve the snapshot in IndexedDB.
+    }
+
+    const backupSaved = await writeIndexedDbBackup(normalized)
+    if (!localSaved && !backupSaved) {
+      throw new Error('FAI could not save data on this device. Export a backup and check browser storage settings.')
+    }
   }
 
   /** Reset restores the real cleaned historical baseline, never fake sample data. */

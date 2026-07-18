@@ -2,7 +2,46 @@
 
 FAI is a football combine dashboard for entering testing results, producing a 0–100 Football Athlete Index, ranking complete athletes, and tracking development across testing events.
 
+FAI Mobile is an installable Progressive Web App for iPhone, Android, tablets, laptops, and weight-room displays. It remains local-first and works offline after the first successful load.
+
 Built with React, TypeScript, Tailwind CSS, Vite, Vitest, and Playwright.
+
+## Install on a phone
+
+### iPhone or iPad
+
+1. Open the deployed FAI site in Safari.
+2. Tap the **Share** button.
+3. Choose **Add to Home Screen**.
+4. Confirm **Add**.
+
+FAI will launch from the home screen in a standalone app window.
+
+### Android
+
+1. Open the deployed FAI site in Chrome.
+2. Tap the in-app **Install FAI** prompt, or open Chrome’s menu.
+3. Choose **Install app** or **Add to Home screen**.
+
+The installed app includes a five-tab phone navigation bar:
+
+- Dashboard
+- Athletes
+- Test
+- Rankings
+- More
+
+TV Mode remains available from the top-right button.
+
+## Offline and update behavior
+
+- The app shell and previously loaded assets are cached by a service worker.
+- After one successful online load, the installed app can reopen without a connection.
+- Testing entries remain local and can be entered while offline.
+- When a new release is available, FAI shows an **Update FAI** prompt rather than silently replacing the running version.
+- The header displays **Offline** whenever the device loses its connection.
+
+Offline mode does not upload or synchronize data by itself.
 
 ## Quick start
 
@@ -12,6 +51,7 @@ npm run dev
 npm run lint
 npm test
 npm run build
+npm run test:e2e -- e2e/mobile-pwa.spec.ts
 ```
 
 ## Historical data included
@@ -80,11 +120,18 @@ Historical aliases are consolidated before computation and future imports run th
 
 ## Data safety
 
-FAI currently runs in **safe local mode**. Data is stored in this browser using localStorage, while the full historical baseline is bundled into the application so a fresh browser is never empty.
+FAI runs in **safe local mode**. The primary working record is stored in this browser, and every successful save is also mirrored into an IndexedDB safety snapshot on the same device.
 
-The previous anonymous Supabase implementation was removed because it allowed unrestricted cross-team access and last-write-wins data loss. Authenticated relational cloud storage must be implemented and reviewed before shared staff sync returns.
+On startup, FAI uses this recovery order:
 
-Use **Data → Export All Data** after new testing entries until authenticated cloud sync ships. CSV exports include:
+1. current local record;
+2. legacy local record;
+3. IndexedDB safety snapshot;
+4. bundled historical baseline.
+
+The IndexedDB mirror protects against a missing or corrupted primary browser record, but it is not a substitute for an external backup. Removing the app, clearing all site data, losing the device, or resetting the browser may remove both on-device copies.
+
+Use **Data → Export All Data** after new testing entries. CSV exports include:
 
 - roster-only athletes;
 - testing events;
@@ -93,8 +140,14 @@ Use **Data → Export All Data** after new testing entries until authenticated c
 
 Replace imports show a preview and automatically download a backup before changing data.
 
+The previous anonymous Supabase implementation was removed because it allowed unrestricted cross-team access and last-write-wins data loss. Authenticated relational cloud storage must be hosted-tested before shared staff sync is treated as production-ready.
+
 ## Main features
 
+- Installable iPhone and Android app shell
+- Offline reopening after first successful load
+- Touch-first bottom navigation
+- IndexedDB safety mirror and recovery
 - Coach dashboard with official and provisional counts
 - Athlete profiles and progress history
 - Event-specific leaderboards
@@ -105,22 +158,26 @@ Replace imports show a preview and automatically download a backup before changi
 - Initial/full-name identity consolidation
 - CSV import/export with preview and backups
 - Automatic legacy-data migration
-- Automated scoring, seed, identity, and CSV regression tests
+- Automated scoring, seed, identity, CSV, mobile, offline, and recovery tests
 
 ## Project structure
 
 ```text
+public/
+  manifest.webmanifest  install metadata and shortcuts
+  fai-icon.svg          app/home-screen icon
+  sw.js                 offline app shell and update lifecycle
 src/
-  data/        scoring, test fields, historical seed, constants, CSV
-  lib/         identity cleaning, event merging, validation, scoring, progress
-  store/       local persistence and React data context
-  components/  shared UI, filters, charts
-  pages/       dashboard, athletes, profiles, entry, data, TV mode
+  data/                  scoring, test fields, historical seed, constants, CSV
+  lib/                   identity cleaning, event merging, validation, scoring, progress
+  store/                 local persistence, IndexedDB mirror, React data context
+  components/            shared UI, PWA controls, filters, charts
+  pages/                 dashboard, athletes, profiles, entry, data, TV mode
 ```
 
 ## Known next architecture step
 
-Reintroduce cloud collaboration only with:
+Reintroduce optional cloud collaboration only with:
 
 - authenticated users;
 - organizations/teams;
