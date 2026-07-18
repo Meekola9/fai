@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FAI app icon">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="18%" r="90%">
+      <stop offset="0" stop-color="#17345b"/>
+      <stop offset="0.55" stop-color="#0c111b"/>
+      <stop offset="1" stop-color="#05070b"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="62" y="62" width="388" height="388" rx="88" fill="none" stroke="#22d3ee" stroke-opacity=".28" stroke-width="12"/>
+  <path d="M124 160h160v54H184v58h88v52h-88v112h-60V160Z" fill="url(#mark)"/>
+  <path d="M296 160h60l72 276h-63l-13-59h-62l-13 59h-61l80-276Zm5 167h40l-19-91-21 91Z" fill="#e8eef7"/>
+  <circle cx="396" cy="134" r="24" fill="#f97316"/>
+</svg>
