@@ -18,8 +18,15 @@ function trendOf(value: number) {
 
 function BoardRows({ definition, results }: { definition: LeaderboardDef; results: AthleteResult[] }) {
   const rows = definition.rows(results)
+  const isAvailableFai = definition.id === 'available-fai'
   if (!rows.length) {
-    return <div className="p-4 text-sm text-muted">No complete scores are available for this board.</div>
+    return (
+      <div className="p-4 text-sm text-muted">
+        {isAvailableFai
+          ? 'No tested athletes are available for this ranking.'
+          : 'No qualifying scores are available for this board.'}
+      </div>
+    )
   }
   return (
     <div className="space-y-1.5">
@@ -38,6 +45,9 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
               <div className="text-xs text-muted">
                 {row.result.current.session.positionGroupSnapshot ?? athlete.positionGroup} · Gr{' '}
                 {row.result.current.session.gradeSnapshot ?? athlete.grade}
+                {isAvailableFai && (
+                  <> · {Math.round(row.result.current.completionPct)}% complete · {row.result.current.scoreStatus}</>
+                )}
               </div>
             </div>
             {definition.id !== 'improved' && row.result.previous && (
@@ -54,7 +64,7 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
 export default function Leaderboards() {
   const { data, results, resultsForEvent } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [boardId, setBoardId] = useState('fai')
+  const [boardId, setBoardId] = useState('available-fai')
 
   const selectedResults = useMemo(
     () => (filters.eventId ? resultsForEvent(filters.eventId) : results),
@@ -65,7 +75,11 @@ export default function Leaderboards() {
     [selectedResults, filters],
   )
   const board = ALL_LEADERBOARDS.find((item) => item.id === boardId) ?? ALL_LEADERBOARDS[0]
-  const groupBoards = useMemo(() => positionGroupBoards(filtered), [filtered])
+  const isAvailableFai = board.id === 'available-fai'
+  const groupBoards = useMemo(
+    () => positionGroupBoards(filtered, !isAvailableFai),
+    [filtered, isAvailableFai],
+  )
   const provisional = filtered.filter((result) => !result.rankEligible).length
   const selectedEvent = data.events.find((event) => event.id === filters.eventId)
 
@@ -85,7 +99,7 @@ export default function Leaderboards() {
 
       {provisional > 0 && (
         <div className="rounded-lg border border-flame/30 bg-flame/5 px-4 py-3 text-sm text-muted">
-          {provisional} provisional or insufficient score{provisional === 1 ? '' : 's'} are excluded from official rankings.
+          Partial scores are included in Available FAI, category, and individual-test rankings. They remain excluded from Official FAI and Most Improved.
         </div>
       )}
 
@@ -112,9 +126,13 @@ export default function Leaderboards() {
         </Card>
 
         <Card className="p-5">
-          <SectionTitle>Position Group Rankings</SectionTitle>
+          <SectionTitle>{isAvailableFai ? 'Available Position Group Rankings' : 'Official Position Group Rankings'}</SectionTitle>
           <div className="space-y-4">
-            {groupBoards.length === 0 && <div className="text-sm text-muted">No complete group rankings.</div>}
+            {groupBoards.length === 0 && (
+              <div className="text-sm text-muted">
+                {isAvailableFai ? 'No available group rankings.' : 'No complete group rankings.'}
+              </div>
+            )}
             {groupBoards.map((groupBoard) => (
               <div key={groupBoard.group}>
                 <div className="mb-1.5 flex items-center gap-2">
