@@ -45,9 +45,15 @@ test('dashboard is populated from verified historical and partial testing record
   }).locator('..')
   await expect(leaderSection.getByText('No verified measurement yet')).toHaveCount(0)
 
-  await expect(page.getByRole('heading', { name: 'Top 5 · Official FAI' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Top 5 · Available FAI Ranking' })).toBeVisible()
   await expect(
-    page.getByText(/Official FAI ranks still require a complete testing battery/),
+    page.getByText(/Available FAI rankings include verified partial scores/),
   ).toBeVisible()
   await expect(page.getByRole('heading', { name: /Category Profile/ })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Available FAI' })).toBeVisible()
+  await expect(page.getByText(/partial scores included/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Available Position Group Rankings' })).toBeVisible()
+  await expect(page.getByText('% complete').first()).toBeVisible()
 })
