@@ -62,10 +62,8 @@ export default function Dashboard() {
   const stats = useMemo(() => teamStats(results), [results])
   const available = useMemo(() => availableDashboardStats(results), [results])
   const officialTopFive = results.filter((result) => result.rankEligible).slice(0, 5)
-  const availableTopFive = useMemo(
-    () => AVAILABLE_FAI_LEADERBOARD.rows(results).slice(0, 5),
-    [results],
-  )
+  const availableRankings = AVAILABLE_FAI_LEADERBOARD.rows(results)
+  const availableTopFive = availableRankings.slice(0, 5)
   const showingAvailableTopFive = officialTopFive.length === 0
   const topFive: LeaderRow[] = showingAvailableTopFive
     ? availableTopFive
@@ -139,7 +137,7 @@ export default function Dashboard() {
           </div>
         </Card>
         <StatTile label="Complete Scores" value={stats.completeCount} sub={`${stats.testedCount} athletes with entries`} accent="fai" />
-        <StatTile label="Available Rankings" value={availableTopFive.length ? results.length : 0} sub="Complete and partial FAI scores" accent="flame" />
+        <StatTile label="Available Rankings" value={availableRankings.length} sub="Complete and partial FAI scores" accent="flame" />
         <StatTile
           label={stats.completeCount > 0 ? 'Weakest Official Category' : 'Lowest Available Category'}
           value={weakestProfile ? CATEGORY_SHORT[weakestProfile.category] : '—'}
