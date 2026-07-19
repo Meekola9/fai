@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import {
   ALL_LEADERBOARDS,
-  CORE_LEADERBOARDS,
+  CATEGORY_LEADERBOARDS,
+  OFFICIAL_LEADERBOARDS,
   TEST_LEADERBOARDS,
   positionGroupBoards,
   type LeaderboardDef,
@@ -19,7 +20,13 @@ function trendOf(value: number) {
 function BoardRows({ definition, results }: { definition: LeaderboardDef; results: AthleteResult[] }) {
   const rows = definition.rows(results)
   if (!rows.length) {
-    return <div className="p-4 text-sm text-muted">No complete scores are available for this board.</div>
+    return (
+      <div className="p-4 text-sm text-muted">
+        {definition.scope === 'official'
+          ? 'No complete testing batteries are available for this official board.'
+          : 'No verified measurements are available for this board.'}
+      </div>
+    )
   }
   return (
     <div className="space-y-1.5">
@@ -38,9 +45,12 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
               <div className="text-xs text-muted">
                 {row.result.current.session.positionGroupSnapshot ?? athlete.positionGroup} · Gr{' '}
                 {row.result.current.session.gradeSnapshot ?? athlete.grade}
+                {definition.scope === 'available' && (
+                  <> · {row.result.rankEligible ? 'complete battery' : 'partial battery'}</>
+                )}
               </div>
             </div>
-            {definition.id !== 'improved' && row.result.previous && (
+            {definition.scope === 'official' && definition.id !== 'improved' && row.result.previous && (
               <DeltaBadge value={row.result.faiImprovement} trend={trendOf(row.result.faiImprovement)} />
             )}
             <div className="w-20 text-right text-xl font-black nums text-fai">{row.display}</div>
@@ -51,10 +61,26 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
   )
 }
 
+function firstPopulatedBoard(results: AthleteResult[]): string {
+  const preferred = [
+    'fai',
+    'test-best40',
+    'test-benchMax',
+    'test-squatMax',
+    'speed',
+    'power',
+    'cod',
+    'strength',
+  ]
+  return preferred.find((id) => ALL_LEADERBOARDS.find((board) => board.id === id)?.rows(results).length)
+    ?? ALL_LEADERBOARDS.find((board) => board.rows(results).length)?.id
+    ?? 'fai'
+}
+
 export default function Leaderboards() {
   const { data, results, resultsForEvent } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [boardId, setBoardId] = useState('fai')
+  const [boardId, setBoardId] = useState(() => firstPopulatedBoard(results))
 
   const selectedResults = useMemo(
     () => (filters.eventId ? resultsForEvent(filters.eventId) : results),
@@ -65,6 +91,7 @@ export default function Leaderboards() {
     [selectedResults, filters],
   )
   const board = ALL_LEADERBOARDS.find((item) => item.id === boardId) ?? ALL_LEADERBOARDS[0]
+  const boardRows = useMemo(() => board.rows(filtered), [board, filtered])
   const groupBoards = useMemo(() => positionGroupBoards(filtered), [filtered])
   const provisional = filtered.filter((result) => !result.rankEligible).length
   const selectedEvent = data.events.find((event) => event.id === filters.eventId)
@@ -73,7 +100,10 @@ export default function Leaderboards() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Leaderboards</h1>
+          <h1 className="text-2xl font-black tracking-tight">Rankings</h1>
+          <div className="mt-1 text-xs text-muted">
+            Official FAI ranks require a complete battery. Available-data boards use every verified measurement.
+          </div>
           {selectedEvent && (
             <div className="mt-1 text-xs text-muted">
               Historical event: {selectedEvent.name} · {selectedEvent.startDate}
@@ -85,34 +115,54 @@ export default function Leaderboards() {
 
       {provisional > 0 && (
         <div className="rounded-lg border border-flame/30 bg-flame/5 px-4 py-3 text-sm text-muted">
-          {provisional} provisional or insufficient score{provisional === 1 ? '' : 's'} are excluded from official rankings.
+          {provisional} provisional or insufficient score{provisional === 1 ? '' : 's'} are excluded from
+          official FAI and position-group ranks, but appear on available-data boards when a verified measurement exists.
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
-        {CORE_LEADERBOARDS.map((item) => (
+      <BoardGroup label="Official FAI Rankings">
+        {OFFICIAL_LEADERBOARDS.map((item) => (
           <BoardChip key={item.id} active={boardId === item.id} onClick={() => setBoardId(item.id)}>
             {item.title}
           </BoardChip>
         ))}
-        <span className="mx-1 self-center text-muted">·</span>
+      </BoardGroup>
+
+      <BoardGroup label="Available Category Rankings">
+        {CATEGORY_LEADERBOARDS.map((item) => (
+          <BoardChip key={item.id} active={boardId === item.id} onClick={() => setBoardId(item.id)}>
+            {item.title}
+          </BoardChip>
+        ))}
+      </BoardGroup>
+
+      <BoardGroup label="Available Test Rankings">
         {TEST_LEADERBOARDS.map((item) => (
           <BoardChip key={item.id} active={boardId === item.id} onClick={() => setBoardId(item.id)}>
             {item.title}
           </BoardChip>
         ))}
-      </div>
+      </BoardGroup>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
-          <SectionTitle right={board.subtitle ? <Pill>{board.subtitle}</Pill> : undefined}>
+          <SectionTitle
+            right={(
+              <div className="flex items-center gap-2">
+                <Pill>{board.scope === 'official' ? 'Official' : 'Available data'}</Pill>
+                <Pill>{boardRows.length} ranked</Pill>
+              </div>
+            )}
+          >
             {board.title}
           </SectionTitle>
+          {board.subtitle && <div className="mb-3 text-xs text-muted">{board.subtitle}</div>}
           <BoardRows definition={board} results={filtered} />
         </Card>
 
         <Card className="p-5">
-          <SectionTitle>Position Group Rankings</SectionTitle>
+          <SectionTitle>Official Position Group Rankings</SectionTitle>
+          <div className="mb-3 text-xs text-muted">Complete testing batteries only.</div>
           <div className="space-y-4">
             {groupBoards.length === 0 && <div className="text-sm text-muted">No complete group rankings.</div>}
             {groupBoards.map((groupBoard) => (
@@ -139,6 +189,15 @@ export default function Leaderboards() {
           </div>
         </Card>
       </div>
+    </div>
+  )
+}
+
+function BoardGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{label}</div>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
     </div>
   )
 }
