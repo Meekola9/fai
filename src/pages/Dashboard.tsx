@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { teamStats, type LeaderRow } from '../lib/leaderboards'
+import { AVAILABLE_FAI_LEADERBOARD, teamStats, type LeaderRow } from '../lib/leaderboards'
 import { availableDashboardStats } from '../lib/dashboardAvailable'
 import { CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
@@ -14,7 +14,7 @@ import {
   StatTile,
 } from '../components/ui'
 import { RadarChart } from '../components/charts'
-import type { AthleteResult, Category } from '../types'
+import type { Category } from '../types'
 
 function LeaderMini({ label, row, sub }: { label: string; row?: LeaderRow; sub: string }) {
   if (!row) {
@@ -61,7 +61,20 @@ export default function Dashboard() {
   const { data, results } = useStore()
   const stats = useMemo(() => teamStats(results), [results])
   const available = useMemo(() => availableDashboardStats(results), [results])
-  const topFive = results.filter((result) => result.rankEligible).slice(0, 5)
+  const officialTopFive = results.filter((result) => result.rankEligible).slice(0, 5)
+  const availableTopFive = useMemo(
+    () => AVAILABLE_FAI_LEADERBOARD.rows(results).slice(0, 5),
+    [results],
+  )
+  const showingAvailableTopFive = officialTopFive.length === 0
+  const topFive: LeaderRow[] = showingAvailableTopFive
+    ? availableTopFive
+    : officialTopFive.map((result) => ({
+        result,
+        value: result.current.fai,
+        display: result.current.fai.toFixed(1),
+        rank: result.teamRank,
+      }))
 
   const latestEvent = useMemo(
     () => [...data.events].sort((a, b) => b.startDate.localeCompare(a.startDate))[0],
@@ -126,7 +139,7 @@ export default function Dashboard() {
           </div>
         </Card>
         <StatTile label="Complete Scores" value={stats.completeCount} sub={`${stats.testedCount} athletes with entries`} accent="fai" />
-        <StatTile label="Provisional" value={stats.provisionalCount} sub="Visible, excluded from official ranks" accent="flame" />
+        <StatTile label="Available Rankings" value={availableTopFive.length ? results.length : 0} sub="Complete and partial FAI scores" accent="flame" />
         <StatTile
           label={stats.completeCount > 0 ? 'Weakest Official Category' : 'Lowest Available Category'}
           value={weakestProfile ? CATEGORY_SHORT[weakestProfile.category] : '—'}
@@ -151,7 +164,7 @@ export default function Dashboard() {
 
       {stats.provisionalCount > 0 && (
         <Card className="border-flame/30 bg-flame/5 p-4 text-sm text-muted">
-          Official FAI ranks still require a complete testing battery. Available-data leaders below use verified measurements from partial records and are labeled separately.
+          Available FAI rankings include verified partial scores and show testing completion. Official FAI rankings still require a complete testing battery.
         </Card>
       )}
 
@@ -169,13 +182,21 @@ export default function Dashboard() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <SectionTitle right={<Link to="/leaderboards" className="text-xs font-bold text-fai">View all →</Link>}>
-            Top 5 · Official FAI
+            {showingAvailableTopFive ? 'Top 5 · Available FAI Ranking' : 'Top 5 · Official FAI'}
           </SectionTitle>
           {topFive.length ? (
-            <div className="space-y-2">{topFive.map((result) => <TopRow key={result.athlete.id} result={result} />)}</div>
+            <div className="space-y-2">
+              {topFive.map((row) => (
+                <TopRow
+                  key={row.result.athlete.id}
+                  row={row}
+                  available={showingAvailableTopFive}
+                />
+              ))}
+            </div>
           ) : (
             <div className="py-10 text-center text-sm text-muted">
-              No athlete has completed the required testing battery yet. Verified partial-record leaders remain visible above.
+              No scored testing records are available yet.
             </div>
           )}
         </Card>
@@ -197,25 +218,27 @@ export default function Dashboard() {
   )
 }
 
-function TopRow({ result }: { result: AthleteResult }) {
+function TopRow({ row, available }: { row: LeaderRow; available: boolean }) {
+  const result = row.result
   const athlete = result.athlete
   return (
     <Link
       to={`/athletes/${athlete.id}`}
       className="flex items-center gap-3 rounded-xl border border-transparent bg-panel-2/50 px-3 py-2 transition hover:border-line hover:bg-panel-2"
     >
-      <RankBadge rank={result.teamRank} />
+      <RankBadge rank={row.rank} />
       <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={40} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-chalk">{athlete.name}</div>
         <div className="text-xs text-muted">
           {athlete.position} · {athlete.positionGroup} · Gr {athlete.grade} · {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
+          {available && <> · {Math.round(result.current.completionPct)}% complete</>}
         </div>
       </div>
       {result.previous && (
         <DeltaBadge value={result.faiImprovement} trend={result.faiImprovement > 0.05 ? 'improved' : result.faiImprovement < -0.05 ? 'regressed' : 'same'} />
       )}
-      <div className="w-14 text-right text-2xl font-black nums text-fai">{result.current.fai.toFixed(1)}</div>
+      <div className="w-14 text-right text-2xl font-black nums text-fai">{row.display}</div>
     </Link>
   )
 }
