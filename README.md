@@ -89,10 +89,19 @@ Enter whichever results are available for that athlete and event. Partial entrie
 ## Score status
 
 - **Complete:** all required metrics are present; athlete receives official team and position-group ranks.
-- **Provisional:** at least 60% of required metrics are present; score is visible but excluded from rankings.
-- **Insufficient:** less than 60% complete; result is not eligible for ranking.
+- **Provisional:** at least 60% of required metrics are present; score is visible but excluded from official FAI and position-group rankings.
+- **Insufficient:** less than 60% complete; result is excluded from official FAI and position-group rankings.
 
 Conditioning is optional and does not block a complete score.
+
+## Ranking layers
+
+FAI separates two different ranking questions:
+
+1. **Official FAI rankings** — Overall FAI, Most Improved, and position-group placement. These require a complete testing battery.
+2. **Available-data rankings** — individual tests and category scores. These include provisional or insufficient athletes whenever the relevant measurement is verified.
+
+This keeps historical and in-progress data visible without presenting partial batteries as official FAI placement. Dashboard and TV Mode use the same distinction.
 
 ## Scoring model
 
@@ -148,17 +157,19 @@ The previous anonymous Supabase implementation was removed because it allowed un
 - Offline reopening after first successful load
 - Touch-first bottom navigation
 - IndexedDB safety mirror and recovery
-- Coach dashboard with official and provisional counts
+- Populated historical dashboard with athlete, event, entry, and latest-event coverage
+- Official complete-battery FAI rankings
+- Available-data test and category rankings for verified partial records
 - Athlete profiles and progress history
 - Event-specific leaderboards
-- Position-group rankings
-- TV Mode
+- Official position-group rankings
+- TV Mode with official/available-data labeling
 - Unified exercise entry without weekday sections
 - Automatically bundled 2020–2025 history
 - Initial/full-name identity consolidation
 - CSV import/export with preview and backups
 - Automatic legacy-data migration
-- Automated scoring, seed, identity, CSV, mobile, offline, and recovery tests
+- Automated scoring, seed, identity, CSV, mobile, offline, recovery, dashboard, and ranking tests
 
 ## Project structure
 
@@ -172,7 +183,7 @@ src/
   lib/                   identity cleaning, event merging, validation, scoring, progress
   store/                 local persistence, IndexedDB mirror, React data context
   components/            shared UI, PWA controls, filters, charts
-  pages/                 dashboard, athletes, profiles, entry, data, TV mode
+  pages/                 dashboard, athletes, profiles, entry, data, rankings, TV mode
 ```
 
 ## Known next architecture step

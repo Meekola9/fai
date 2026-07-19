@@ -14,10 +14,13 @@ export interface LeaderRow {
   rank: number
 }
 
+export type LeaderboardScope = 'official' | 'available'
+
 export interface LeaderboardDef {
   id: string
   title: string
   subtitle?: string
+  scope: LeaderboardScope
   rows: (results: AthleteResult[]) => LeaderRow[]
 }
 
@@ -63,11 +66,15 @@ function categoryBoard(category: Category, id: string, title: string): Leaderboa
   return {
     id,
     title,
+    subtitle: 'Available category measurements · incomplete batteries included',
+    scope: 'available',
     rows: (results) =>
       rankBy(
         results,
         (result) => hasCategoryData(result, category) ? result.current.categories[category] : undefined,
         (value) => value.toFixed(1),
+        true,
+        false,
       ),
   }
 }
@@ -77,13 +84,15 @@ function scoredTestBoard(metricKey: string): LeaderboardDef {
   return {
     id: `test-${metricKey}`,
     title: metric.label,
-    subtitle: metric.higherBetter ? 'Higher is better' : 'Lower is better',
+    subtitle: `${metric.higherBetter ? 'Higher' : 'Lower'} is better · available measurements`,
+    scope: 'available',
     rows: (results) =>
       rankBy(
         results,
         (result) => result.current.metrics[metricKey],
         (value) => formatValue(value, metric.unit),
         metric.higherBetter,
+        false,
       ),
   }
 }
@@ -98,7 +107,8 @@ function rawTestBoard(
   return {
     id,
     title,
-    subtitle: higherBetter ? 'Higher is better' : 'Lower is better',
+    subtitle: `${higherBetter ? 'Higher' : 'Lower'} is better · available measurements`,
+    scope: 'available',
     rows: (results) =>
       rankBy(
         results,
@@ -108,21 +118,24 @@ function rawTestBoard(
         },
         (value) => formatValue(value, unit),
         higherBetter,
+        false,
       ),
   }
 }
 
-export const CORE_LEADERBOARDS: LeaderboardDef[] = [
+export const OFFICIAL_LEADERBOARDS: LeaderboardDef[] = [
   {
     id: 'fai',
     title: 'Overall FAI',
-    subtitle: 'Complete testing events only',
+    subtitle: 'Official ranking · complete testing batteries only',
+    scope: 'official',
     rows: (results) => rankBy(results, (result) => result.current.fai, (value) => value.toFixed(1)),
   },
   {
     id: 'improved',
     title: 'Most Improved',
-    subtitle: 'FAI gain since previous event',
+    subtitle: 'Official FAI gain · complete testing batteries only',
+    scope: 'official',
     rows: (results) =>
       rankBy(
         results,
@@ -130,12 +143,18 @@ export const CORE_LEADERBOARDS: LeaderboardDef[] = [
         (value) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}`,
       ),
   },
+]
+
+export const CATEGORY_LEADERBOARDS: LeaderboardDef[] = [
   categoryBoard('Speed', 'speed', 'Speed Score'),
   categoryBoard('Power', 'power', 'Power Score'),
   categoryBoard('Strength', 'strength', 'Strength Score'),
   categoryBoard('Change of Direction', 'cod', 'COD Score'),
   categoryBoard('Conditioning', 'conditioning', 'Conditioning Score'),
 ]
+
+/** Compatibility export used by existing screens. */
+export const CORE_LEADERBOARDS = [...OFFICIAL_LEADERBOARDS, ...CATEGORY_LEADERBOARDS]
 
 export const TEST_LEADERBOARDS: LeaderboardDef[] = [
   ...SCORED_METRICS.map((metric) => scoredTestBoard(metric.key)),
