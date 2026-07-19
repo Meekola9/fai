@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { teamStats, type LeaderRow } from '../lib/leaderboards'
+import { availableDashboardStats } from '../lib/dashboardAvailable'
 import { CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
   Avatar,
@@ -20,7 +21,7 @@ function LeaderMini({ label, row, sub }: { label: string; row?: LeaderRow; sub: 
     return (
       <Card className="p-4">
         <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</div>
-        <div className="mt-2 text-sm text-muted">No complete data yet</div>
+        <div className="mt-2 text-sm text-muted">No verified measurement yet</div>
       </Card>
     )
   }
@@ -46,20 +47,52 @@ function LeaderMini({ label, row, sub }: { label: string; row?: LeaderRow; sub: 
   )
 }
 
+function CoverageCard({ label, value, sub }: { label: string; value: string | number; sub: string }) {
+  return (
+    <Card className="p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</div>
+      <div className="mt-1 text-2xl font-black nums text-chalk">{value}</div>
+      <div className="mt-1 text-xs text-muted">{sub}</div>
+    </Card>
+  )
+}
+
 export default function Dashboard() {
   const { data, results } = useStore()
   const stats = useMemo(() => teamStats(results), [results])
+  const available = useMemo(() => availableDashboardStats(results), [results])
   const topFive = results.filter((result) => result.rankEligible).slice(0, 5)
+
+  const latestEvent = useMemo(
+    () => [...data.events].sort((a, b) => b.startDate.localeCompare(a.startDate))[0],
+    [data.events],
+  )
+  const latestEventEntries = useMemo(
+    () =>
+      latestEvent
+        ? data.sessions.filter((session) => session.eventId === latestEvent.id).length
+        : 0,
+    [data.sessions, latestEvent],
+  )
+
+  const profileAverages = stats.completeCount > 0
+    ? stats.categoryAverages
+    : available.categoryAverages
+  const profileLabel = stats.completeCount > 0 ? 'Official Team Average' : 'Available-Data Average'
+  const rankedProfile = profileAverages
+    .filter((item) => item.avg > 0)
+    .sort((a, b) => a.avg - b.avg)
+  const weakestProfile = stats.weakestCategory ?? rankedProfile[0]
 
   const radar = useMemo(
     () => ({
-      label: 'Team Average',
+      label: profileLabel,
       color: '#22d3ee',
       values: Object.fromEntries(
-        stats.categoryAverages.map((item) => [item.category, item.avg]),
+        profileAverages.map((item) => [item.category, item.avg]),
       ) as Record<Category, number>,
     }),
-    [stats.categoryAverages],
+    [profileAverages, profileLabel],
   )
 
   if (!data.athletes.length) {
@@ -93,29 +126,43 @@ export default function Dashboard() {
           </div>
         </Card>
         <StatTile label="Complete Scores" value={stats.completeCount} sub={`${stats.testedCount} athletes with entries`} accent="fai" />
-        <StatTile label="Provisional" value={stats.provisionalCount} sub="Excluded from rankings" accent="flame" />
+        <StatTile label="Provisional" value={stats.provisionalCount} sub="Visible, excluded from official ranks" accent="flame" />
         <StatTile
-          label="Weakest Team Category"
-          value={stats.weakestCategory ? CATEGORY_SHORT[stats.weakestCategory.category] : '—'}
-          sub={stats.weakestCategory ? `${stats.weakestCategory.avg} avg score` : 'Need complete scores'}
+          label={stats.completeCount > 0 ? 'Weakest Official Category' : 'Lowest Available Category'}
+          value={weakestProfile ? CATEGORY_SHORT[weakestProfile.category] : '—'}
+          sub={weakestProfile ? `${weakestProfile.avg} avg score` : 'Need category measurements'}
           accent="flame"
         />
       </div>
 
+      <section>
+        <SectionTitle>Historical Data Coverage</SectionTitle>
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <CoverageCard label="Athletes" value={data.athletes.length} sub="Consolidated identities" />
+          <CoverageCard label="Testing Events" value={data.events.length} sub="Verified event records" />
+          <CoverageCard label="Testing Entries" value={data.sessions.length} sub="Saved historical sessions" />
+          <CoverageCard
+            label="Latest Event"
+            value={latestEvent?.name ?? '—'}
+            sub={latestEvent ? `${latestEvent.startDate} · ${latestEventEntries} entries` : 'No events yet'}
+          />
+        </div>
+      </section>
+
       {stats.provisionalCount > 0 && (
         <Card className="border-flame/30 bg-flame/5 p-4 text-sm text-muted">
-          Provisional athletes need the remaining required tests before they receive official team or position-group ranks.
+          Official FAI ranks still require a complete testing battery. Available-data leaders below use verified measurements from partial records and are labeled separately.
         </Card>
       )}
 
       <section>
-        <SectionTitle>Team Leaders · Complete Scores Only</SectionTitle>
+        <SectionTitle>Available-Data Leaders · Verified Measurements</SectionTitle>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <LeaderMini label="Fastest (40)" row={stats.fastest} sub="best 40" />
-          <LeaderMini label="Strongest" row={stats.strongest} sub="relative STR" />
-          <LeaderMini label="Most Explosive" row={stats.mostExplosive} sub="PWR score" />
-          <LeaderMini label="Best Change of Dir." row={stats.bestCod} sub="COD score" />
-          <LeaderMini label="Most Improved" row={stats.mostImproved} sub="FAI gain" />
+          <LeaderMini label="Fastest Recorded (40)" row={stats.fastest ?? available.fastest} sub="best available 40" />
+          <LeaderMini label="Strongest Available" row={stats.strongest ?? available.strongest} sub="relative STR" />
+          <LeaderMini label="Most Explosive Available" row={stats.mostExplosive ?? available.mostExplosive} sub="PWR score" />
+          <LeaderMini label="Best COD Available" row={stats.bestCod ?? available.bestCod} sub="COD score" />
+          <LeaderMini label="Most Improved Official" row={stats.mostImproved} sub="complete FAI gain" />
         </div>
       </section>
 
@@ -127,15 +174,17 @@ export default function Dashboard() {
           {topFive.length ? (
             <div className="space-y-2">{topFive.map((result) => <TopRow key={result.athlete.id} result={result} />)}</div>
           ) : (
-            <div className="py-10 text-center text-sm text-muted">No athlete has completed the required testing battery yet.</div>
+            <div className="py-10 text-center text-sm text-muted">
+              No athlete has completed the required testing battery yet. Verified partial-record leaders remain visible above.
+            </div>
           )}
         </Card>
 
         <Card className="p-5">
-          <SectionTitle>Team Category Profile</SectionTitle>
+          <SectionTitle>{stats.completeCount > 0 ? 'Official Team Category Profile' : 'Available-Data Category Profile'}</SectionTitle>
           <RadarChart series={[radar]} />
           <div className="mt-2 grid grid-cols-5 gap-1 text-center">
-            {stats.categoryAverages.map((item) => (
+            {profileAverages.map((item) => (
               <div key={item.category}>
                 <div className="text-lg font-black nums text-chalk">{item.avg}</div>
                 <div className="text-[10px] font-semibold uppercase text-muted">{CATEGORY_SHORT[item.category]}</div>
