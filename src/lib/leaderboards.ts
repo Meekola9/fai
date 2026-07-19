@@ -59,15 +59,24 @@ function hasCategoryData(result: AthleteResult, category: Category): boolean {
   )
 }
 
+function hasAnyScoredData(result: AthleteResult): boolean {
+  return SCORED_METRICS.some(
+    (metric) => typeof result.current.normalized[metric.key] === 'number',
+  )
+}
+
 function categoryBoard(category: Category, id: string, title: string): LeaderboardDef {
   return {
     id,
     title,
+    subtitle: 'Available category measurements',
     rows: (results) =>
       rankBy(
         results,
         (result) => hasCategoryData(result, category) ? result.current.categories[category] : undefined,
         (value) => value.toFixed(1),
+        true,
+        false,
       ),
   }
 }
@@ -77,13 +86,14 @@ function scoredTestBoard(metricKey: string): LeaderboardDef {
   return {
     id: `test-${metricKey}`,
     title: metric.label,
-    subtitle: metric.higherBetter ? 'Higher is better' : 'Lower is better',
+    subtitle: `${metric.higherBetter ? 'Higher' : 'Lower'} is better · available results`,
     rows: (results) =>
       rankBy(
         results,
         (result) => result.current.metrics[metricKey],
         (value) => formatValue(value, metric.unit),
         metric.higherBetter,
+        false,
       ),
   }
 }
@@ -98,7 +108,7 @@ function rawTestBoard(
   return {
     id,
     title,
-    subtitle: higherBetter ? 'Higher is better' : 'Lower is better',
+    subtitle: `${higherBetter ? 'Higher' : 'Lower'} is better · available results`,
     rows: (results) =>
       rankBy(
         results,
@@ -108,21 +118,37 @@ function rawTestBoard(
         },
         (value) => formatValue(value, unit),
         higherBetter,
+        false,
       ),
   }
 }
 
+export const AVAILABLE_FAI_LEADERBOARD: LeaderboardDef = {
+  id: 'available-fai',
+  title: 'Available FAI',
+  subtitle: 'All tested athletes · partial scores included',
+  rows: (results) =>
+    rankBy(
+      results,
+      (result) => hasAnyScoredData(result) ? result.current.fai : undefined,
+      (value) => value.toFixed(1),
+      true,
+      false,
+    ),
+}
+
 export const CORE_LEADERBOARDS: LeaderboardDef[] = [
+  AVAILABLE_FAI_LEADERBOARD,
   {
     id: 'fai',
-    title: 'Overall FAI',
+    title: 'Official FAI',
     subtitle: 'Complete testing events only',
     rows: (results) => rankBy(results, (result) => result.current.fai, (value) => value.toFixed(1)),
   },
   {
     id: 'improved',
     title: 'Most Improved',
-    subtitle: 'FAI gain since previous event',
+    subtitle: 'Official FAI gain since previous event',
     rows: (results) =>
       rankBy(
         results,
@@ -147,6 +173,7 @@ export const ALL_LEADERBOARDS = [...CORE_LEADERBOARDS, ...TEST_LEADERBOARDS]
 
 export function positionGroupBoards(
   results: AthleteResult[],
+  officialOnly = true,
 ): { group: PositionGroup; rows: LeaderRow[] }[] {
   return POSITION_GROUPS.map((group) => ({
     group,
@@ -155,8 +182,10 @@ export function positionGroupBoards(
         (result) =>
           (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group,
       ),
-      (result) => result.current.fai,
+      (result) => hasAnyScoredData(result) ? result.current.fai : undefined,
       (value) => value.toFixed(1),
+      true,
+      officialOnly,
     ),
   })).filter((board) => board.rows.length > 0)
 }
