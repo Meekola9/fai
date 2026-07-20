@@ -16,7 +16,7 @@ interface Row {
 }
 
 export default function Athletes() {
-  const { data, results, resultsForEvent } = useStore()
+  const { data, results, resultsForEvent, gradeLabelFor } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [sort, setSort] = useState<'fai' | 'name' | 'improve'>('fai')
 
@@ -94,7 +94,7 @@ export default function Athletes() {
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                     <Pill tone="fai">{athlete.positionGroup}</Pill>
                     <span>{athlete.position}</span>
-                    <span>· Gr {athlete.grade}</span>
+                    <span>· {gradeLabelFor(athlete)}</span>
                   </div>
                   <div className="mt-1 text-xs text-muted">
                     {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
