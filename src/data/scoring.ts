@@ -23,6 +23,8 @@ export interface ScoredMetric {
   unit: string
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Optional'
   required: boolean
+  /** When set, the raw result is stored for everyone but graded only for these groups. */
+  gradedGroups?: readonly PositionGroup[]
   value: (session: TestSession) => number | undefined
 }
 
@@ -89,6 +91,7 @@ const HYBRID: BenchmarkProfile = {
 
 const BIG: BenchmarkProfile = {
   best40: { elite: 4.95, developmental: 6.3 },
+  best10: { elite: 1.7, developmental: 2.25 },
   bestFly: { elite: 1.6, developmental: 2.1 },
   broadJump: { elite: 110, developmental: 70 },
   verticalJump: { elite: 30, developmental: 12 },
@@ -133,6 +136,11 @@ export const SCORED_METRICS: ScoredMetric[] = [
     key: 'best40', label: 'Best 40-Yard Dash', shortLabel: '40 Dash', category: 'Speed',
     higherBetter: false, unit: 's', day: 'Monday', required: true,
     value: (session) => min2(session.dash40_1, session.dash40_2),
+  },
+  {
+    key: 'best10', label: 'Best 10-Yard Dash', shortLabel: '10 Dash', category: 'Speed',
+    higherBetter: false, unit: 's', day: 'Monday', required: false, gradedGroups: ['OL', 'DL'],
+    value: (session) => min2(session.dash10_1, session.dash10_2),
   },
   {
     key: 'bestFly', label: 'Best 10-Yard Fly', shortLabel: '10 Fly', category: 'Speed',
@@ -205,7 +213,14 @@ export function benchmarkScore(value: number, benchmark: Benchmark, higherBetter
   return Math.max(0, Math.min(100, progress * 100))
 }
 
+export function metricAppliesTo(metric: ScoredMetric, session: TestSession): boolean {
+  if (!metric.gradedGroups?.length) return true
+  const group = session.positionGroupSnapshot ?? 'ATH'
+  return metric.gradedGroups.includes(group)
+}
+
 export function scoreMetric(metric: ScoredMetric, session: TestSession): number | undefined {
+  if (!metricAppliesTo(metric, session)) return undefined
   const raw = metric.value(session)
   if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return undefined
   const group = session.positionGroupSnapshot ?? 'ATH'
