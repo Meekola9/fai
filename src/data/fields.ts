@@ -15,6 +15,8 @@ export const RAW_FIELDS: RawField[] = [
   { key: 'benchMax', label: 'Bench Max', unit: 'lbs', day: 'Monday', step: 5, placeholder: '225' },
   { key: 'dash40_1', label: '40 Dash — Attempt 1', unit: 's', day: 'Monday', step: 0.01, placeholder: '4.98' },
   { key: 'dash40_2', label: '40 Dash — Attempt 2', unit: 's', day: 'Monday', step: 0.01, placeholder: '5.02' },
+  { key: 'dash10_1', label: '10 Dash — Attempt 1 (OL/DL graded)', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.82' },
+  { key: 'dash10_2', label: '10 Dash — Attempt 2 (OL/DL graded)', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.86' },
   { key: 'fly10_1', label: '10 Fly — Attempt 1', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.55' },
   { key: 'fly10_2', label: '10 Fly — Attempt 2', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.58' },
   // Tuesday — Power Endurance + COD
