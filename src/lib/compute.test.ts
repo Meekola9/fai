@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AppData, Athlete, TestSession, TestingEvent } from '../types'
+import type { AppData, Athlete, PositionGroup, TestSession, TestingEvent } from '../types'
 import { benchmarkScore } from '../data/scoring'
 import { computeAll } from './compute'
 import { buildResults } from './progress'
@@ -67,6 +67,31 @@ const completeData: AppData = {
   ],
 }
 
+function dataForGroup(group: PositionGroup, dash10: number): AppData {
+  const lineAthlete: Athlete = {
+    ...athlete,
+    id: `athlete-${group.toLowerCase()}`,
+    name: `${group} Athlete`,
+    position: group === 'OL' ? 'OT' : 'DT',
+    positionGroup: group,
+    weightLbs: 270,
+  }
+  return {
+    athletes: [lineAthlete],
+    events: [event],
+    sessions: completeData.sessions.map((item, index) => ({
+      ...item,
+      id: `${group.toLowerCase()}-${index}`,
+      athleteId: lineAthlete.id,
+      positionSnapshot: lineAthlete.position,
+      positionGroupSnapshot: group,
+      weightLbsSnapshot: lineAthlete.weightLbs,
+      dash10_1: index === 0 ? dash10 : undefined,
+      dash10_2: index === 0 ? dash10 + 0.03 : undefined,
+    })),
+  }
+}
+
 describe('FAI computation', () => {
   it('merges three testing days into one complete event result', () => {
     const computed = computeAll(completeData)
@@ -111,5 +136,41 @@ describe('FAI computation', () => {
   it('preserves legitimate zero benchmark scores', () => {
     expect(benchmarkScore(5.25, { elite: 4.4, developmental: 5.25 }, false)).toBe(0)
     expect(benchmarkScore(4.4, { elite: 4.4, developmental: 5.25 }, false)).toBe(100)
+  })
+
+  it('weights and grades the 10-yard dash for offensive linemen', () => {
+    const fast = computeAll(dataForGroup('OL', 1.7))[0]
+    const developmental = computeAll(dataForGroup('OL', 2.25))[0]
+
+    expect(fast.metrics.best10).toBe(1.7)
+    expect(fast.normalized.best10).toBe(100)
+    expect(developmental.normalized.best10).toBe(0)
+    expect(fast.categories.Speed).toBeGreaterThan(developmental.categories.Speed)
+    expect(fast.fai).toBeGreaterThan(developmental.fai)
+  })
+
+  it('weights and grades the 10-yard dash for defensive linemen', () => {
+    const result = computeAll(dataForGroup('DL', 1.85))[0]
+
+    expect(result.metrics.best10).toBe(1.85)
+    expect(result.normalized.best10).toBeTypeOf('number')
+  })
+
+  it('records but does not grade or weight the 10-yard dash for non-linemen', () => {
+    const baseline = computeAll(completeData)[0]
+    const withTenDash = computeAll({
+      ...completeData,
+      sessions: completeData.sessions.map((item, index) => ({
+        ...item,
+        dash10_1: index === 0 ? 1.55 : undefined,
+        dash10_2: index === 0 ? 1.58 : undefined,
+      })),
+    })[0]
+
+    expect(withTenDash.metrics.best10).toBe(1.55)
+    expect(withTenDash.normalized.best10).toBeUndefined()
+    expect(withTenDash.categories.Speed).toBe(baseline.categories.Speed)
+    expect(withTenDash.fai).toBe(baseline.fai)
+    expect(withTenDash.completionPct).toBe(100)
   })
 })
