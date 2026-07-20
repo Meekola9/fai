@@ -11,7 +11,20 @@ interface PendingImport {
 }
 
 export default function DataPage() {
-  const { data, resetSample, importCsvText, saveStatus, saveError } = useStore()
+  const {
+    data,
+    resetSample,
+    importCsvText,
+    saveStatus,
+    saveError,
+    storageMode,
+    teamName,
+    teamRole,
+    userEmail,
+    lastSyncedAt,
+    syncNow,
+    signOut,
+  } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [flash, setFlash] = useState<string | null>(null)
@@ -40,7 +53,9 @@ export default function DataPage() {
         setImportError(null)
       } catch (error: unknown) {
         setPending(null)
-        setImportError(error instanceof Error ? error.message : 'Import failed — check CSV format.')
+        setImportError(
+          error instanceof Error ? error.message : 'Import failed — check CSV format.',
+        )
       }
     }
     reader.onerror = () => setImportError('Could not read the selected file.')
@@ -62,10 +77,21 @@ export default function DataPage() {
   }
 
   function handleReset() {
-    if (!confirm('Reset to sample data? A backup will download first.')) return
+    if (!confirm('Reset to the built-in historical baseline? A backup will download first.')) {
+      return
+    }
     exportBackup('fai-pre-reset-backup')
     resetSample()
-    notify('Sample data restored')
+    notify('Historical baseline restored')
+  }
+
+  async function handleSync() {
+    try {
+      await syncNow()
+      notify('Cloud data synchronized')
+    } catch {
+      // The store displays the detailed error above.
+    }
   }
 
   return (
@@ -75,7 +101,11 @@ export default function DataPage() {
         <div className="flex items-center gap-2">
           {flash && <Pill tone="up">✓ {flash}</Pill>}
           {saveStatus === 'saving' && <Pill>Saving…</Pill>}
-          {saveStatus === 'saved' && <Pill tone="up">Saved locally</Pill>}
+          {saveStatus === 'saved' && (
+            <Pill tone="up">
+              {storageMode === 'cloud' ? 'Saved to cloud' : 'Saved locally'}
+            </Pill>
+          )}
           {saveStatus === 'error' && <Pill tone="down">Save failed</Pill>}
         </div>
       </div>
@@ -86,33 +116,81 @@ export default function DataPage() {
         </Card>
       )}
 
-      <Card className="border-fai/30 p-4">
-        <div className="flex items-start gap-3">
-          <div className="text-2xl">🔒</div>
-          <div>
-            <div className="text-sm font-bold text-fai">Safe local mode</div>
-            <div className="mt-0.5 text-xs text-muted">
-              Anonymous cloud sync has been disabled because it could expose or overwrite team data.
-              This browser is the source of truth until authenticated team storage is released. Export
-              a CSV after each testing day and store it in a secure team drive.
+      {storageMode === 'cloud' ? (
+        <Card className="border-up/30 bg-up/5 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">☁️</div>
+              <div>
+                <div className="text-sm font-bold text-up">Cloud storage connected</div>
+                <div className="mt-0.5 text-xs leading-relaxed text-muted">
+                  {teamName ?? 'FAI team'} · {teamRole ?? 'member'}
+                  {userEmail ? ` · ${userEmail}` : ''}
+                </div>
+                <div className="mt-1 text-xs text-muted">
+                  Changes are written to Supabase and mirrored on this device for recovery.
+                  {lastSyncedAt
+                    ? ` Last synchronized ${new Date(lastSyncedAt).toLocaleString()}.`
+                    : ''}
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => void handleSync()}
+                disabled={saveStatus === 'saving'}
+                className="rounded-lg bg-up px-4 py-2 text-xs font-black text-ink disabled:opacity-60"
+              >
+                Sync now
+              </button>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="rounded-lg border border-line px-4 py-2 text-xs font-bold text-muted hover:bg-panel-2 hover:text-chalk"
+              >
+                Sign out
+              </button>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      ) : (
+        <Card className="border-fai/30 p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">🔒</div>
+            <div>
+              <div className="text-sm font-bold text-fai">Safe local mode</div>
+              <div className="mt-0.5 text-xs text-muted">
+                This build is not connected to an authenticated Supabase team. This browser is
+                the source of truth, so export a CSV after each testing day.
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Athletes" value={data.athletes.length} accent="fai" />
         <StatTile label="Testing Events" value={data.events.length} accent="up" />
         <StatTile label="Entries" value={data.sessions.length} accent="gold" />
-        <StatTile label="Testing Dates" value={new Set(data.sessions.map((session) => session.date)).size} accent="flame" />
+        <StatTile
+          label="Testing Dates"
+          value={new Set(data.sessions.map((session) => session.date)).size}
+          accent="flame"
+        />
       </div>
 
       <Card className="p-5">
         <SectionTitle>Export Complete Backup</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          The export contains roster-only athletes, testing events, historical profile snapshots, and every entry.
+          The export contains roster-only athletes, testing events, historical profile snapshots,
+          and every entry. Keep periodic CSV copies even while cloud sync is active.
         </p>
-        <button type="button" onClick={() => exportBackup()} className="rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink hover:bg-fai/90">
+        <button
+          type="button"
+          onClick={() => exportBackup()}
+          className="rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink hover:bg-fai/90"
+        >
           Export All Data (CSV)
         </button>
       </Card>
@@ -120,7 +198,8 @@ export default function DataPage() {
       <Card className="p-5">
         <SectionTitle>Import With Preview</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          Files are validated before any data changes. Replace mode automatically downloads a backup first.
+          Files are validated before any data changes. Replace mode automatically downloads a
+          backup first. Confirmed imports are synchronized to the cloud.
         </p>
         <div className="mb-3 flex gap-2">
           {(['merge', 'replace'] as const).map((mode) => (
@@ -128,14 +207,28 @@ export default function DataPage() {
               type="button"
               key={mode}
               onClick={() => setImportMode(mode)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-bold capitalize transition ${importMode === mode ? 'bg-fai text-ink' : 'bg-panel-2 text-muted hover:text-chalk'}`}
+              className={`rounded-lg px-3 py-1.5 text-sm font-bold capitalize transition ${
+                importMode === mode
+                  ? 'bg-fai text-ink'
+                  : 'bg-panel-2 text-muted hover:text-chalk'
+              }`}
             >
               {mode}
             </button>
           ))}
         </div>
-        <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
-        <button type="button" onClick={() => fileRef.current?.click()} className="rounded-lg border border-line px-5 py-2 text-sm font-bold text-chalk hover:bg-panel-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,text/csv"
+          onChange={handleFile}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-line px-5 py-2 text-sm font-bold text-chalk hover:bg-panel-2"
+        >
           Choose CSV File…
         </button>
 
@@ -143,15 +236,38 @@ export default function DataPage() {
           <div className="mt-4 rounded-xl border border-fai/30 bg-fai/5 p-4">
             <div className="font-bold text-chalk">Import preview: {pending.filename}</div>
             <div className="mt-2 grid grid-cols-3 gap-3 text-center">
-              <div><div className="text-2xl font-black text-fai">{pending.parsed.athletes.length}</div><div className="text-xs text-muted">athletes</div></div>
-              <div><div className="text-2xl font-black text-fai">{pending.parsed.events.length}</div><div className="text-xs text-muted">events</div></div>
-              <div><div className="text-2xl font-black text-fai">{pending.parsed.sessions.length}</div><div className="text-xs text-muted">entries</div></div>
+              <div>
+                <div className="text-2xl font-black text-fai">
+                  {pending.parsed.athletes.length}
+                </div>
+                <div className="text-xs text-muted">athletes</div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-fai">
+                  {pending.parsed.events.length}
+                </div>
+                <div className="text-xs text-muted">events</div>
+              </div>
+              <div>
+                <div className="text-2xl font-black text-fai">
+                  {pending.parsed.sessions.length}
+                </div>
+                <div className="text-xs text-muted">entries</div>
+              </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <button type="button" onClick={confirmImport} className="rounded-lg bg-fai px-4 py-2 text-sm font-bold text-ink">
+              <button
+                type="button"
+                onClick={confirmImport}
+                className="rounded-lg bg-fai px-4 py-2 text-sm font-bold text-ink"
+              >
                 Confirm {importMode}
               </button>
-              <button type="button" onClick={() => setPending(null)} className="rounded-lg border border-line px-4 py-2 text-sm font-bold text-muted">
+              <button
+                type="button"
+                onClick={() => setPending(null)}
+                className="rounded-lg border border-line px-4 py-2 text-sm font-bold text-muted"
+              >
                 Cancel
               </button>
             </div>
@@ -162,10 +278,15 @@ export default function DataPage() {
       <Card className="border-flame/20 p-5">
         <SectionTitle>Reset</SectionTitle>
         <p className="mb-3 text-sm text-muted">
-          Restore the built-in demonstration roster. A complete backup downloads before the reset.
+          Restore the built-in cleaned historical baseline. A complete backup downloads before the
+          reset, and the restored dataset is synchronized to the cloud.
         </p>
-        <button type="button" onClick={handleReset} className="rounded-lg border border-flame/40 px-5 py-2 text-sm font-bold text-flame hover:bg-flame/10">
-          Reset Sample Data
+        <button
+          type="button"
+          onClick={handleReset}
+          className="rounded-lg border border-flame/40 px-5 py-2 text-sm font-bold text-flame hover:bg-flame/10"
+        >
+          Reset Historical Baseline
         </button>
       </Card>
     </div>
