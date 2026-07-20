@@ -1,15 +1,15 @@
 // ---------------------------------------------------------------------------
 // Safe local persistence with bundled historical seed data.
 //
-// The stable release remains local-first. The primary record is kept in
-// localStorage for compatibility, while an IndexedDB safety mirror provides a
-// second on-device recovery path for installed/mobile use. Cloud sync stays
-// optional and separate from this store.
+// The local copy remains the recovery cache for installed/mobile use. When the
+// production build has authenticated Supabase configuration, the app mirrors
+// this data to the signed-in team database through the cloud adapter.
 // ---------------------------------------------------------------------------
 
 import type { AppData } from '../types'
 import { historicalSeedData, mergeHistoricalData } from '../data/historicalSeed'
 import { consolidateAthleteAliases } from '../lib/athleteIdentity'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 export interface DataStore {
   load(): Promise<Required<AppData>>
@@ -154,7 +154,9 @@ export class LocalStorageStore implements DataStore {
 
     const backupSaved = await writeIndexedDbBackup(normalized)
     if (!localSaved && !backupSaved) {
-      throw new Error('FAI could not save data on this device. Export a backup and check browser storage settings.')
+      throw new Error(
+        'FAI could not save data on this device. Export a backup and check browser storage settings.',
+      )
     }
   }
 
@@ -167,12 +169,12 @@ export class LocalStorageStore implements DataStore {
 }
 
 export const store: DataStore = new LocalStorageStore()
-
-/** Cloud sync is intentionally unavailable until authenticated storage ships. */
-export const isCloudConfigured = false
-export const TEAM_CODE = 'local-only'
+export const isCloudConfigured = isSupabaseConfigured
+export const TEAM_CODE = isSupabaseConfigured ? 'authenticated-team' : 'local-only'
 
 export function newId(prefix = 'id'): string {
-  const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  const random =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   return `${prefix}-${random}`
 }
