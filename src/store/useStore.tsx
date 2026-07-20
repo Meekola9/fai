@@ -14,7 +14,15 @@ import type {
   TestSession,
   TestingEvent,
 } from '../types'
-import { store as localStore, newId } from './storage'
+import {
+  clearLocalImportSnapshot,
+  localImportCompleted,
+  markLocalImportCompleted,
+  preserveLocalImportSnapshot,
+  readLocalImportSnapshot,
+  store as localStore,
+  newId,
+} from './storage'
 import {
   cloudDataIsEmpty,
   loadCloudData,
@@ -23,6 +31,7 @@ import {
 } from './cloud'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { importCsv } from '../data/csv'
+import { mergeHistoricalData } from '../data/historicalSeed'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { normalizeAppData } from '../lib/events'
@@ -53,6 +62,7 @@ interface StoreContextValue {
   teamRole?: string
   storageMode: StorageMode
   lastSyncedAt?: string
+  localImportAvailable: boolean
   computed: ComputedSession[]
   results: AthleteResult[]
   resultsForEvent: (eventId: string) => AthleteResult[]
@@ -60,6 +70,7 @@ interface StoreContextValue {
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   syncNow: () => Promise<void>
+  importLocalToCloud: () => Promise<void>
   addAthlete: (athlete: Omit<Athlete, 'id'>) => string
   updateAthlete: (athlete: Athlete) => void
   deleteAthlete: (id: string) => void
@@ -92,6 +103,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string>()
   const [team, setTeam] = useState<ActiveTeam | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string>()
+  const [localImportAvailable, setLocalImportAvailable] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -107,6 +119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setTeam(null)
       setAuthError(undefined)
       setLastSyncedAt(undefined)
+      setLocalImportAvailable(false)
       setSaveStatus('idle')
       setLoading(false)
     }
@@ -133,23 +146,62 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const cloud = await loadCloudData(access.id)
+      // A cloud failure past this point must not lock the coach out: the
+      // on-device copy is the offline cache, so fall back to it and surface
+      // the sync error instead of blocking the whole app.
+      let cloud: Required<AppData> | null = null
+      let cloudError: string | undefined
+      try {
+        cloud = await loadCloudData(access.id)
+      } catch (error: unknown) {
+        cloudError =
+          error instanceof Error ? error.message : 'Could not load cloud data.'
+      }
       if (!alive || request !== activationNumber) return
 
-      let next = cloud
-      if (cloudDataIsEmpty(cloud) && !cloudDataIsEmpty(local)) {
-        await saveCloudData(access.id, local)
+      let next = cloud ?? local
+      if (cloud && cloudDataIsEmpty(cloud) && !cloudDataIsEmpty(local)) {
         next = local
+        try {
+          await saveCloudData(access.id, local)
+          // The whole device dataset just became the team cloud, so the
+          // one-time import has effectively already happened.
+          markLocalImportCompleted(access.id)
+          clearLocalImportSnapshot()
+        } catch (error: unknown) {
+          cloudError =
+            error instanceof Error ? error.message : 'First cloud upload failed.'
+        }
+      } else if (
+        cloud &&
+        !cloudDataIsEmpty(local) &&
+        !localImportCompleted(access.id) &&
+        !readLocalImportSnapshot()
+      ) {
+        // Preserve the pre-cloud device dataset before the cloud mirror
+        // overwrites it, so it can be imported once from the Data page.
+        preserveLocalImportSnapshot(local)
       }
+      if (!alive || request !== activationNumber) return
 
       await localStore.save(next)
       if (!alive || request !== activationNumber) return
 
       setData(next)
       setTeam(access)
-      setLastSyncedAt(new Date().toISOString())
-      setSaveStatus('saved')
-      setSaveError(undefined)
+      setLocalImportAvailable(
+        !localImportCompleted(access.id) && readLocalImportSnapshot() !== null,
+      )
+      if (cloudError) {
+        setSaveStatus('error')
+        setSaveError(
+          `Working from the on-device copy. Cloud sync failed: ${cloudError}`,
+        )
+      } else {
+        setLastSyncedAt(new Date().toISOString())
+        setSaveStatus('saved')
+        setSaveError(undefined)
+      }
       setLoading(false)
     }
 
@@ -257,6 +309,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     teamRole: team?.role,
     storageMode: team ? 'cloud' : 'local',
     lastSyncedAt,
+    localImportAvailable: Boolean(team) && localImportAvailable,
     computed,
     results,
     resultsForEvent(eventId) {
@@ -302,6 +355,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } catch (error: unknown) {
         setSaveStatus('error')
         setSaveError(error instanceof Error ? error.message : 'Cloud sync failed.')
+        throw error
+      }
+    },
+
+    async importLocalToCloud() {
+      if (!team) return
+      const snapshot = readLocalImportSnapshot()
+      if (!snapshot) {
+        markLocalImportCompleted(team.id)
+        setLocalImportAvailable(false)
+        return
+      }
+      setSaveStatus('saving')
+      setSaveError(undefined)
+      try {
+        const preserved = consolidateAthleteAliases(normalizeAppData(snapshot))
+        // Cloud rows win on matching ids; device-only records are added.
+        const merged = mergeHistoricalData(preserved, data)
+        await saveCloudData(team.id, merged)
+        await localStore.save(merged)
+        markLocalImportCompleted(team.id)
+        clearLocalImportSnapshot()
+        setData(merged)
+        setLocalImportAvailable(false)
+        setLastSyncedAt(new Date().toISOString())
+        setSaveStatus('saved')
+      } catch (error: unknown) {
+        setSaveStatus('error')
+        setSaveError(
+          error instanceof Error ? error.message : 'Local data import failed.',
+        )
         throw error
       }
     },

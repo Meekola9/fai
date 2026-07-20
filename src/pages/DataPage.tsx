@@ -23,6 +23,8 @@ export default function DataPage() {
     userEmail,
     lastSyncedAt,
     syncNow,
+    localImportAvailable,
+    importLocalToCloud,
     signOut,
   } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -94,6 +96,15 @@ export default function DataPage() {
     }
   }
 
+  async function handleLocalImport() {
+    try {
+      await importLocalToCloud()
+      notify('Local data imported to cloud')
+    } catch {
+      // The store displays the detailed error above.
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -153,6 +164,22 @@ export default function DataPage() {
               </button>
             </div>
           </div>
+          {localImportAvailable && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-fai/30 bg-fai/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs leading-relaxed text-muted">
+                This device still holds data recorded before cloud sign-in. Import it once to
+                merge those records into your team cloud; existing cloud records are kept.
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleLocalImport()}
+                disabled={saveStatus === 'saving'}
+                className="shrink-0 rounded-lg bg-fai px-4 py-2 text-xs font-black text-ink disabled:opacity-60"
+              >
+                Import Local Data to Cloud
+              </button>
+            </div>
+          )}
         </Card>
       ) : (
         <Card className="border-fai/30 p-4">
