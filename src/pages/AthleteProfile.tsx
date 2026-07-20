@@ -31,7 +31,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
 
 export default function AthleteProfile() {
   const { id } = useParams()
-  const { data, computed, resultByAthlete, gradeLabelFor } = useStore()
+  const { data, computed, resultByAthlete, gradeLabelFor, canEdit } = useStore()
   const athlete = id ? data.athletes.find((item) => item.id === id) : undefined
   const result = id ? resultByAthlete.get(id) : undefined
   const timeline = useMemo(() => (id ? athleteTimeline(computed, id) : []), [computed, id])
@@ -66,7 +66,9 @@ export default function AthleteProfile() {
           <div className="mt-6 rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
             <div className="text-base font-bold text-chalk">No testing data yet</div>
             <div className="mt-1 text-sm text-muted">Create or select a testing event and enter the athlete’s results.</div>
-            <Link to={`/entry?athlete=${athlete.id}`} className="mt-4 inline-block rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink">+ Enter Testing Data</Link>
+            {canEdit && (
+              <Link to={`/entry?athlete=${athlete.id}`} className="mt-4 inline-block rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink">+ Enter Testing Data</Link>
+            )}
           </div>
         </Card>
       </div>
@@ -239,13 +241,16 @@ export default function AthleteProfile() {
 }
 
 function ProfileNav({ athleteId }: { athleteId: string }) {
+  const { canEdit } = useStore()
   return (
     <div className="flex items-center justify-between">
       <Link to="/athletes" className="text-sm font-semibold text-muted hover:text-chalk">← Athletes</Link>
-      <div className="flex gap-2">
-        <Link to={`/entry?athlete=${athleteId}`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-bold text-chalk hover:bg-panel-2">+ Testing</Link>
-        <Link to={`/athletes/${athleteId}/edit`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-bold text-chalk hover:bg-panel-2">Edit</Link>
-      </div>
+      {canEdit && (
+        <div className="flex gap-2">
+          <Link to={`/entry?athlete=${athleteId}`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-bold text-chalk hover:bg-panel-2">+ Testing</Link>
+          <Link to={`/athletes/${athleteId}/edit`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-bold text-chalk hover:bg-panel-2">Edit</Link>
+        </div>
+      )}
     </div>
   )
 }

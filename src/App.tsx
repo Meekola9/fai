@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import Dashboard from './pages/Dashboard'
 import Leaderboards from './pages/Leaderboards'
@@ -28,7 +28,10 @@ const MOBILE_NAV = [
 ]
 
 function Brand() {
-  const { teamName, storageMode } = useStore()
+  const { teamName, publicTeamName, viewerMode, storageMode } = useStore()
+  const subtitle = viewerMode
+    ? `${publicTeamName ?? 'Team'} · View only`
+    : teamName ?? (storageMode === 'cloud' ? 'Cloud team' : 'On-device mode')
   return (
     <div className="flex items-center gap-2">
       <div className="grid h-9 w-9 place-items-center rounded-lg border border-fai/40 bg-fai/10 text-sm font-black tracking-tight text-fai">
@@ -39,7 +42,7 @@ function Brand() {
           Football Athlete Index
         </div>
         <div className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-muted sm:block">
-          {teamName ?? (storageMode === 'cloud' ? 'Cloud team' : 'On-device mode')}
+          {subtitle}
         </div>
       </div>
     </div>
@@ -47,7 +50,10 @@ function Brand() {
 }
 
 function Header() {
-  const { storageMode, signOut } = useStore()
+  const { storageMode, viewerMode, signOut } = useStore()
+  const nav = viewerMode
+    ? NAV.filter((n) => n.to !== '/entry' && n.to !== '/data')
+    : NAV
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4">
@@ -56,7 +62,7 @@ function Header() {
         </NavLink>
 
         <nav className="hidden items-center gap-1 md:flex">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -88,6 +94,14 @@ function Header() {
               Sign out
             </button>
           )}
+          {viewerMode && (
+            <NavLink
+              to="/login"
+              className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted hover:bg-panel-2 hover:text-chalk"
+            >
+              Coach Sign In
+            </NavLink>
+          )}
         </nav>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -105,14 +119,20 @@ function Header() {
   )
 }
 
-function MobileNavigation() {
+function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
+  const items = viewerMode
+    ? [
+        ...MOBILE_NAV.filter((item) => item.to !== '/entry' && item.to !== '/data'),
+        { to: '/login', label: 'Sign In', icon: '→', end: false },
+      ]
+    : MOBILE_NAV
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       aria-label="Mobile navigation"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5">
-        {MOBILE_NAV.map((item) => (
+      <div className={`mx-auto grid max-w-lg ${items.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -148,7 +168,7 @@ function Loading() {
 }
 
 function LoginScreen() {
-  const { signIn, authError } = useStore()
+  const { signIn, authError, viewerMode } = useStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -223,6 +243,14 @@ function LoginScreen() {
         <p className="mt-4 text-xs leading-relaxed text-muted">
           Use the Supabase account assigned to your team. Athlete records are protected by team membership and row-level security.
         </p>
+        {viewerMode && (
+          <NavLink
+            to="/"
+            className="mt-4 inline-block text-sm font-semibold text-fai hover:underline"
+          >
+            ← Back to team view
+          </NavLink>
+        )}
       </div>
     </div>
   )
@@ -256,14 +284,20 @@ export default function App() {
     cloudConfigured,
     signedIn,
     teamName,
+    viewerMode,
     storageMode,
   } = useStore()
   const location = useLocation()
   const isTv = location.pathname.startsWith('/tv')
 
   if (loading) return <Loading />
-  if (cloudConfigured && !signedIn) return <LoginScreen />
   if (cloudConfigured && signedIn && !teamName) return <TeamAccessError />
+
+  // Signed-out visitors on a cloud build get the read-only public view when
+  // team data is publicly readable; otherwise the classic sign-in gate.
+  const signedOut = cloudConfigured && !signedIn
+  if (signedOut && !viewerMode) return <LoginScreen />
+  if (signedOut && location.pathname === '/login') return <LoginScreen />
 
   if (isTv) {
     return (
@@ -273,6 +307,9 @@ export default function App() {
     )
   }
 
+  const guarded = (element: React.ReactElement) =>
+    viewerMode ? <Navigate to="/login" replace /> : element
+
   return (
     <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
@@ -281,21 +318,24 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={<Athletes />} />
-          <Route path="/athletes/new" element={<AthleteEditor />} />
+          <Route path="/athletes/new" element={guarded(<AthleteEditor />)} />
           <Route path="/athletes/:id" element={<AthleteProfile />} />
-          <Route path="/athletes/:id/edit" element={<AthleteEditor />} />
-          <Route path="/entry" element={<SessionEntry />} />
-          <Route path="/data" element={<DataPage />} />
+          <Route path="/athletes/:id/edit" element={guarded(<AthleteEditor />)} />
+          <Route path="/entry" element={guarded(<SessionEntry />)} />
+          <Route path="/data" element={guarded(<DataPage />)} />
+          <Route path="/login" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">
         FAI — Football Athlete Index ·{' '}
-        {storageMode === 'cloud'
-          ? 'Secure cloud storage with on-device backup'
-          : 'Local-first with on-device backup'}
+        {viewerMode
+          ? 'Live team view · read only'
+          : storageMode === 'cloud'
+            ? 'Secure cloud storage with on-device backup'
+            : 'Local-first with on-device backup'}
       </footer>
       <PwaControls />
-      <MobileNavigation />
+      <MobileNavigation viewerMode={viewerMode} />
     </div>
   )
 }

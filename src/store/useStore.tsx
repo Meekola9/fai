@@ -26,6 +26,7 @@ import {
 import {
   cloudDataIsEmpty,
   loadCloudData,
+  loadPublicTeamData,
   loadTeamAccess,
   saveCloudData,
 } from './cloud'
@@ -61,6 +62,9 @@ interface StoreContextValue {
   userEmail?: string
   teamName?: string
   teamRole?: string
+  publicTeamName?: string
+  viewerMode: boolean
+  canEdit: boolean
   storageMode: StorageMode
   lastSyncedAt?: string
   localImportAvailable: boolean
@@ -106,6 +110,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [team, setTeam] = useState<ActiveTeam | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string>()
   const [localImportAvailable, setLocalImportAvailable] = useState(false)
+  const [viewerMode, setViewerMode] = useState(false)
+  const [publicTeamName, setPublicTeamName] = useState<string>()
 
   useEffect(() => {
     let alive = true
@@ -114,11 +120,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async function showSignedOut() {
       const request = ++activationNumber
       const local = await localStore.load()
+
+      // Signed-out visitors get a read-only live view of the team cloud when
+      // the public-read policies allow it. The public data is deliberately
+      // NOT written to local storage so a coach's pre-login on-device
+      // dataset (and its one-time import snapshot) is never overwritten.
+      let next = local
+      let viewer = false
+      let publicName: string | undefined
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const pub = await loadPublicTeamData()
+          if (pub && !cloudDataIsEmpty(pub.data)) {
+            next = pub.data
+            viewer = true
+            publicName = pub.teamName
+          }
+        } catch {
+          // Anonymous read unavailable (policies missing or offline);
+          // fall back to the on-device copy.
+        }
+      }
+
       if (!alive || request !== activationNumber) return
-      setData(local)
+      setData(next)
       setUserId(undefined)
       setUserEmail(undefined)
       setTeam(null)
+      setViewerMode(viewer)
+      setPublicTeamName(publicName)
       setAuthError(undefined)
       setLastSyncedAt(undefined)
       setLocalImportAvailable(false)
@@ -137,6 +167,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setUserId(user.id)
       setUserEmail(user.email ?? undefined)
+      setViewerMode(false)
+      setPublicTeamName(undefined)
 
       if (!access) {
         setData(local)
@@ -284,6 +316,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   function mutate(recipe: (current: Required<AppData>) => AppData) {
+    // Read-only public view: never mutate or persist over the team data.
+    if (viewerMode) return
     setData((current) => {
       const next = consolidateAthleteAliases(normalizeAppData(recipe(current)))
       persist(next)
@@ -309,6 +343,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     userEmail,
     teamName: team?.name,
     teamRole: team?.role,
+    publicTeamName,
+    viewerMode,
+    canEdit: !viewerMode,
     storageMode: team ? 'cloud' : 'local',
     lastSyncedAt,
     localImportAvailable: Boolean(team) && localImportAvailable,
@@ -473,6 +510,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     resetSample() {
+      if (viewerMode) return
       setSaveStatus('saving')
       void localStore
         .reset()
@@ -490,6 +528,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
     },
     replaceAll(next) {
+      if (viewerMode) return
       const normalized = consolidateAthleteAliases(normalizeAppData(next))
       setData(normalized)
       persist(normalized)

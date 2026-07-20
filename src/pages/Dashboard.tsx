@@ -58,7 +58,7 @@ function CoverageCard({ label, value, sub }: { label: string; value: string | nu
 }
 
 export default function Dashboard() {
-  const { data, results } = useStore()
+  const { data, results, canEdit } = useStore()
   const stats = useMemo(() => teamStats(results), [results])
   const available = useMemo(() => availableDashboardStats(results), [results])
   const topFive = results.filter((result) => result.rankEligible).slice(0, 5)
@@ -100,10 +100,12 @@ export default function Dashboard() {
       <Card className="p-10 text-center">
         <div className="text-lg font-bold">No athletes yet</div>
         <div className="mt-1 text-sm text-muted">Add a roster and create a testing event.</div>
-        <div className="mt-4 flex justify-center gap-2">
-          <Link to="/athletes/new" className="rounded-lg bg-fai px-4 py-2 text-sm font-bold text-ink">Add Athlete</Link>
-          <Link to="/data" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">Import Roster</Link>
-        </div>
+        {canEdit && (
+          <div className="mt-4 flex justify-center gap-2">
+            <Link to="/athletes/new" className="rounded-lg bg-fai px-4 py-2 text-sm font-bold text-ink">Add Athlete</Link>
+            <Link to="/data" className="rounded-lg border border-line px-4 py-2 text-sm font-bold">Import Roster</Link>
+          </div>
+        )}
       </Card>
     )
   }

@@ -277,6 +277,27 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
   )
 }
 
+export interface PublicTeamData {
+  teamId: string
+  teamName: string
+  data: Required<AppData>
+}
+
+/**
+ * Anonymous read-only load of the team's data for signed-out visitors.
+ * Requires the public-read RLS policies; returns null when they are absent
+ * or no team exists, so callers can fall back to on-device data.
+ */
+export async function loadPublicTeamData(): Promise<PublicTeamData | null> {
+  const db = client()
+  const { data: teams, error } = await db.from('teams').select('id, name').limit(1)
+  if (error || !teams || teams.length === 0) return null
+
+  const team = teams[0]
+  const data = await loadCloudData(String(team.id))
+  return { teamId: String(team.id), teamName: String(team.name), data }
+}
+
 export function cloudDataIsEmpty(data: Required<AppData>): boolean {
   return (
     data.athletes.length === 0 &&
