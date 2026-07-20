@@ -168,6 +168,53 @@ export class LocalStorageStore implements DataStore {
   }
 }
 
+// ---------------------------------------------------------------------------
+// One-time local-to-cloud import support.
+//
+// When a signed-in team already has cloud data, the pre-cloud on-device
+// dataset is preserved here so the coach can merge it into the team cloud
+// exactly once from the Data page.
+// ---------------------------------------------------------------------------
+
+const IMPORT_SNAPSHOT_KEY = 'fai:cloud-import:snapshot'
+const IMPORT_DONE_KEY_PREFIX = 'fai:cloud-import:done:'
+
+export function preserveLocalImportSnapshot(data: AppData): void {
+  try {
+    localStorage.setItem(IMPORT_SNAPSHOT_KEY, JSON.stringify(data))
+  } catch {
+    // Storage may be full or unavailable; the import button simply stays hidden.
+  }
+}
+
+export function readLocalImportSnapshot(): AppData | null {
+  return readLocal(IMPORT_SNAPSHOT_KEY)
+}
+
+export function clearLocalImportSnapshot(): void {
+  try {
+    localStorage.removeItem(IMPORT_SNAPSHOT_KEY)
+  } catch {
+    // Ignore: a leftover snapshot is harmless once the done flag is set.
+  }
+}
+
+export function localImportCompleted(teamId: string): boolean {
+  try {
+    return localStorage.getItem(`${IMPORT_DONE_KEY_PREFIX}${teamId}`) === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function markLocalImportCompleted(teamId: string): void {
+  try {
+    localStorage.setItem(`${IMPORT_DONE_KEY_PREFIX}${teamId}`, 'true')
+  } catch {
+    // Ignore: worst case the button reappears and re-running the merge is idempotent.
+  }
+}
+
 export const store: DataStore = new LocalStorageStore()
 export const isCloudConfigured = isSupabaseConfigured
 export const TEAM_CODE = isSupabaseConfigured ? 'authenticated-team' : 'local-only'
