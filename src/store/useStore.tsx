@@ -146,18 +146,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const cloud = await loadCloudData(access.id)
+      // A cloud failure past this point must not lock the coach out: the
+      // on-device copy is the offline cache, so fall back to it and surface
+      // the sync error instead of blocking the whole app.
+      let cloud: Required<AppData> | null = null
+      let cloudError: string | undefined
+      try {
+        cloud = await loadCloudData(access.id)
+      } catch (error: unknown) {
+        cloudError =
+          error instanceof Error ? error.message : 'Could not load cloud data.'
+      }
       if (!alive || request !== activationNumber) return
 
-      let next = cloud
-      if (cloudDataIsEmpty(cloud) && !cloudDataIsEmpty(local)) {
-        await saveCloudData(access.id, local)
+      let next = cloud ?? local
+      if (cloud && cloudDataIsEmpty(cloud) && !cloudDataIsEmpty(local)) {
         next = local
-        // The whole device dataset just became the team cloud, so the
-        // one-time import has effectively already happened.
-        markLocalImportCompleted(access.id)
-        clearLocalImportSnapshot()
+        try {
+          await saveCloudData(access.id, local)
+          // The whole device dataset just became the team cloud, so the
+          // one-time import has effectively already happened.
+          markLocalImportCompleted(access.id)
+          clearLocalImportSnapshot()
+        } catch (error: unknown) {
+          cloudError =
+            error instanceof Error ? error.message : 'First cloud upload failed.'
+        }
       } else if (
+        cloud &&
         !cloudDataIsEmpty(local) &&
         !localImportCompleted(access.id) &&
         !readLocalImportSnapshot()
@@ -166,6 +182,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // overwrites it, so it can be imported once from the Data page.
         preserveLocalImportSnapshot(local)
       }
+      if (!alive || request !== activationNumber) return
 
       await localStore.save(next)
       if (!alive || request !== activationNumber) return
@@ -175,9 +192,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLocalImportAvailable(
         !localImportCompleted(access.id) && readLocalImportSnapshot() !== null,
       )
-      setLastSyncedAt(new Date().toISOString())
-      setSaveStatus('saved')
-      setSaveError(undefined)
+      if (cloudError) {
+        setSaveStatus('error')
+        setSaveError(
+          `Working from the on-device copy. Cloud sync failed: ${cloudError}`,
+        )
+      } else {
+        setLastSyncedAt(new Date().toISOString())
+        setSaveStatus('saved')
+        setSaveError(undefined)
+      }
       setLoading(false)
     }
 
