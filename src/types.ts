@@ -76,6 +76,8 @@ export interface TestSession {
   benchMax?: number
   dash40_1?: number
   dash40_2?: number
+  dash10_1?: number
+  dash10_2?: number
   fly10_1?: number
   fly10_2?: number
   hangCleanReps?: number
