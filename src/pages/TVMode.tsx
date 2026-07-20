@@ -256,13 +256,13 @@ function BigCard({
   metricLabel: string
   official: boolean
 }) {
+  const { gradeLabelFor } = useStore()
   const result = row.result
   const athlete = result.athlete
   const trend = trendGlyph(result.faiImprovement, !!result.previous)
   const podium = rank <= 3
-  const position = result.current.session.positionSnapshot ?? athlete.position
-  const group = result.current.session.positionGroupSnapshot ?? athlete.positionGroup
-  const grade = result.current.session.gradeSnapshot ?? athlete.grade
+  const position = athlete.position
+  const group = athlete.positionGroup
 
   return (
     <div
@@ -285,7 +285,7 @@ function BigCard({
       <div className="min-w-0 flex-1">
         <div className="truncate text-2xl font-black tracking-tight text-chalk">{athlete.name}</div>
         <div className="text-sm font-semibold uppercase tracking-wide text-muted">
-          {position} · {group} · Gr {grade}
+          {position} · {group} · {gradeLabelFor(athlete)}
         </div>
         <div className="mt-0.5 text-xs font-semibold text-muted/80">
           {official
@@ -331,6 +331,7 @@ function LeaderGrid({ rows, metricLabel, official }: { rows: LeaderRow[]; metric
 }
 
 function GroupGrid({ results }: { results: AthleteResult[] }) {
+  const { gradeLabelFor } = useStore()
   const boards = positionGroupBoards(results)
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -349,7 +350,7 @@ function GroupGrid({ results }: { results: AthleteResult[] }) {
               <div className="min-w-0">
                 <div className="truncate text-xl font-black text-chalk">{athlete.name}</div>
                 <div className="text-xs font-semibold uppercase text-muted">
-                  {athlete.position} · Gr {athlete.grade}
+                  {athlete.position} · {gradeLabelFor(athlete)}
                 </div>
               </div>
             </div>

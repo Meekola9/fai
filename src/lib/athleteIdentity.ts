@@ -105,15 +105,29 @@ function mergeAthleteProfile(
     .filter((athlete) => athlete.heightIn > 0 || athlete.weightLbs > 0)
     .sort((a, b) => b.grade - a.grade)[0]
 
+  // The coach-maintained roster record wins. Alias members and historical
+  // session snapshots only fill fields the canonical record is missing —
+  // otherwise every roster edit would be reverted on the next save.
+  const baseHasPosition = Boolean(
+    base.position && base.position.toUpperCase() !== 'ATH',
+  )
   return {
     ...base,
     name: canonicalName,
-    grade: Math.max(9, Math.min(12, Math.round(latest?.gradeSnapshot ?? newestBio?.grade ?? base.grade))),
-    position: specific?.position ?? base.position ?? 'ATH',
-    positionGroup: specific?.positionGroup ?? base.positionGroup,
-    heightIn: newestBio?.heightIn || base.heightIn || 0,
-    weightLbs: latest?.weightLbsSnapshot ?? newestBio?.weightLbs ?? base.weightLbs ?? 0,
-    photoUrl: members.find((athlete) => athlete.photoUrl)?.photoUrl ?? base.photoUrl,
+    grade: Math.max(
+      9,
+      Math.min(
+        12,
+        Math.round(base.grade || latest?.gradeSnapshot || newestBio?.grade || 9),
+      ),
+    ),
+    position: baseHasPosition ? base.position : specific?.position ?? base.position ?? 'ATH',
+    positionGroup: baseHasPosition
+      ? base.positionGroup
+      : specific?.positionGroup ?? base.positionGroup,
+    heightIn: base.heightIn || newestBio?.heightIn || 0,
+    weightLbs: base.weightLbs || latest?.weightLbsSnapshot || newestBio?.weightLbs || 0,
+    photoUrl: base.photoUrl ?? members.find((athlete) => athlete.photoUrl)?.photoUrl,
   }
 }
 

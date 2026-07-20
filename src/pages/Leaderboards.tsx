@@ -18,6 +18,7 @@ function trendOf(value: number) {
 }
 
 function BoardRows({ definition, results }: { definition: LeaderboardDef; results: AthleteResult[] }) {
+  const { gradeLabelFor } = useStore()
   const rows = definition.rows(results)
   if (!rows.length) {
     return (
@@ -43,8 +44,7 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-bold text-chalk">{athlete.name}</div>
               <div className="text-xs text-muted">
-                {row.result.current.session.positionGroupSnapshot ?? athlete.positionGroup} · Gr{' '}
-                {row.result.current.session.gradeSnapshot ?? athlete.grade}
+                {athlete.positionGroup} · {gradeLabelFor(athlete)}
                 {definition.scope === 'available' && (
                   <> · {row.result.rankEligible ? 'complete battery' : 'partial battery'}</>
                 )}

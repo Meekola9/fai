@@ -53,7 +53,7 @@ describe('consolidateAthleteAliases', () => {
     expect(result.athletes.map((item) => item.name)).toContain('J. Smith')
   })
 
-  it('uses the latest historical snapshot for the canonical current grade and weight', () => {
+  it('keeps the coach-maintained roster record over historical snapshots', () => {
     const input: AppData = {
       athletes: [athlete('full', 'Logan Cross'), athlete('short', 'Lu. Cross')],
       events: [{ id: 'e1', name: 'Test', phase: 'Summer', startDate: '2025-06-01' }],
@@ -73,6 +73,39 @@ describe('consolidateAthleteAliases', () => {
 
     const result = consolidateAthleteAliases(input)
     expect(result.athletes).toHaveLength(1)
-    expect(result.athletes[0]).toMatchObject({ name: 'Logan Cross', grade: 11, weightLbs: 205 })
+    expect(result.athletes[0]).toMatchObject({ name: 'Logan Cross', grade: 10, weightLbs: 180 })
+  })
+
+  it('fills roster fields the canonical record is missing from the latest snapshot', () => {
+    const input: AppData = {
+      athletes: [{ ...athlete('full', 'Logan Cross'), grade: 0, weightLbs: 0 }],
+      events: [{ id: 'e1', name: 'Test', phase: 'Summer', startDate: '2025-06-01' }],
+      sessions: [
+        {
+          id: 's1',
+          athleteId: 'full',
+          eventId: 'e1',
+          date: '2025-06-01',
+          phase: 'Summer',
+          gradeSnapshot: 11,
+          weightLbsSnapshot: 205,
+          dash40_1: 4.8,
+        },
+      ],
+    }
+
+    const result = consolidateAthleteAliases(input)
+    expect(result.athletes[0]).toMatchObject({ grade: 11, weightLbs: 205 })
+  })
+
+  it('keeps an edited position over the previous alias-derived position', () => {
+    const input: AppData = {
+      athletes: [{ ...athlete('full', 'Logan Cross'), position: 'RB/LB', positionGroup: 'RB' }],
+      events: [],
+      sessions: [],
+    }
+
+    const result = consolidateAthleteAliases(input)
+    expect(result.athletes[0]).toMatchObject({ position: 'RB/LB', positionGroup: 'RB' })
   })
 })

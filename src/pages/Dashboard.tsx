@@ -17,6 +17,7 @@ import { RadarChart } from '../components/charts'
 import type { AthleteResult, Category } from '../types'
 
 function LeaderMini({ label, row, sub }: { label: string; row?: LeaderRow; sub: string }) {
+  const { gradeLabelFor } = useStore()
   if (!row) {
     return (
       <Card className="p-4">
@@ -34,8 +35,7 @@ function LeaderMini({ label, row, sub }: { label: string; row?: LeaderRow; sub: 
         <div className="min-w-0">
           <div className="truncate text-sm font-bold text-chalk group-hover:text-fai">{athlete.name}</div>
           <div className="text-xs text-muted">
-            {row.result.current.session.positionGroupSnapshot ?? athlete.positionGroup} · Gr{' '}
-            {row.result.current.session.gradeSnapshot ?? athlete.grade}
+            {athlete.positionGroup} · {gradeLabelFor(athlete)}
           </div>
         </div>
       </Link>
@@ -198,6 +198,7 @@ export default function Dashboard() {
 }
 
 function TopRow({ result }: { result: AthleteResult }) {
+  const { gradeLabelFor } = useStore()
   const athlete = result.athlete
   return (
     <Link
@@ -209,7 +210,7 @@ function TopRow({ result }: { result: AthleteResult }) {
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-chalk">{athlete.name}</div>
         <div className="text-xs text-muted">
-          {athlete.position} · {athlete.positionGroup} · Gr {athlete.grade} · {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
+          {athlete.position} · {athlete.positionGroup} · {gradeLabelFor(athlete)} · {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
         </div>
       </div>
       {result.previous && (

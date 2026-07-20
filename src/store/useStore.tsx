@@ -32,6 +32,7 @@ import {
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { importCsv } from '../data/csv'
 import { mergeHistoricalData } from '../data/historicalSeed'
+import { gradeLabel } from '../lib/alumni'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { normalizeAppData } from '../lib/events'
@@ -67,6 +68,7 @@ interface StoreContextValue {
   results: AthleteResult[]
   resultsForEvent: (eventId: string) => AthleteResult[]
   resultByAthlete: Map<string, AthleteResult>
+  gradeLabelFor: (athlete: Athlete, style?: 'short' | 'long') => string
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   syncNow: () => Promise<void>
@@ -316,6 +318,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return buildResults(computed, eventId)
     },
     resultByAthlete,
+    gradeLabelFor(athlete, style = 'short') {
+      return gradeLabel(athlete, data.sessions, style)
+    },
 
     async signIn(email, password) {
       if (!supabase) throw new Error('Supabase is not configured for this build.')

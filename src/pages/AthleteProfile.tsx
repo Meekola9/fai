@@ -31,7 +31,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
 
 export default function AthleteProfile() {
   const { id } = useParams()
-  const { data, computed, resultByAthlete } = useStore()
+  const { data, computed, resultByAthlete, gradeLabelFor } = useStore()
   const athlete = id ? data.athletes.find((item) => item.id === id) : undefined
   const result = id ? resultByAthlete.get(id) : undefined
   const timeline = useMemo(() => (id ? athleteTimeline(computed, id) : []), [computed, id])
@@ -57,7 +57,7 @@ export default function AthleteProfile() {
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
                 <Pill tone="fai">{athlete.positionGroup}</Pill>
                 <span>{athlete.position}</span>
-                <span>· Grade {athlete.grade}</span>
+                <span>· {gradeLabelFor(athlete, 'long')}</span>
                 <span>· {formatHeight(athlete.heightIn)}</span>
                 <span>· {athlete.weightLbs} lbs</span>
               </div>
@@ -96,9 +96,9 @@ export default function AthleteProfile() {
           <div className="flex-1">
             <h1 className="text-3xl font-black tracking-tight text-chalk">{athlete.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-              <Pill tone="fai">{current.session.positionGroupSnapshot ?? athlete.positionGroup}</Pill>
-              <span>{current.session.positionSnapshot ?? athlete.position}</span>
-              <span>· Grade {current.session.gradeSnapshot ?? athlete.grade}</span>
+              <Pill tone="fai">{athlete.positionGroup}</Pill>
+              <span>{athlete.position}</span>
+              <span>· {gradeLabelFor(athlete, 'long')}</span>
               <span>· {current.session.weightLbsSnapshot ?? athlete.weightLbs} lbs at test</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
