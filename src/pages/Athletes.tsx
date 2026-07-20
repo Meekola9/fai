@@ -16,7 +16,7 @@ interface Row {
 }
 
 export default function Athletes() {
-  const { data, results, resultsForEvent, gradeLabelFor } = useStore()
+  const { data, results, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [sort, setSort] = useState<'fai' | 'name' | 'improve'>('fai')
 
@@ -75,7 +75,9 @@ export default function Athletes() {
             <option value="improve">Sort: Improvement</option>
             <option value="name">Sort: Name</option>
           </select>
-          <Link to="/athletes/new" className="rounded-lg bg-fai px-4 py-1.5 text-sm font-bold text-ink hover:bg-fai/90">+ Add Athlete</Link>
+          {canEdit && (
+            <Link to="/athletes/new" className="rounded-lg bg-fai px-4 py-1.5 text-sm font-bold text-ink hover:bg-fai/90">+ Add Athlete</Link>
+          )}
         </div>
       </div>
 
@@ -129,7 +131,9 @@ export default function Athletes() {
                 ) : (
                   <>
                     <div className="text-sm text-muted">No testing data yet</div>
-                    <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add testing</Link>
+                    {canEdit && (
+                      <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add testing</Link>
+                    )}
                   </>
                 )}
               </div>
