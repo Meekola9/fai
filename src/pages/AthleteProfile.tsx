@@ -112,7 +112,7 @@ export default function AthleteProfile() {
               </Pill>
               {rankEligible && <Pill tone="gold">Team Rank #{result.teamRank} / {result.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{result.groupRank} / {result.groupCount}</Pill>}
-              <Pill>{current.event.name} · {current.event.startDate}</Pill>
+              <Pill>{current.event.name} season</Pill>
               {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
                 <Pill tone="gold">
                   Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph
@@ -162,7 +162,7 @@ export default function AthleteProfile() {
 
         <div className="space-y-6">
           <Card className="p-5">
-            <SectionTitle>FAI Progress by Event</SectionTitle>
+            <SectionTitle>FAI Progress by Year</SectionTitle>
             {timeline.length > 1 ? <LineChart points={linePoints} /> : <div className="py-8 text-center text-sm text-muted">Add another testing event to measure progress.</div>}
           </Card>
 
@@ -202,7 +202,7 @@ export default function AthleteProfile() {
       </div>
 
       <Card className="p-5">
-        <SectionTitle>Test-by-Test · Current vs Previous Event</SectionTitle>
+        <SectionTitle>Test-by-Test · Current vs Previous Year</SectionTitle>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-sm">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3">Test</th><th className="px-3">Cat</th><th className="px-3 text-right">Previous</th><th className="px-3 text-right">Current</th><th className="px-3 text-right">Change</th><th className="px-3 text-right">Score</th><th className="px-3 text-center">Trend</th></tr></thead>
@@ -231,10 +231,10 @@ export default function AthleteProfile() {
       </Card>
 
       <Card className="p-5">
-        <SectionTitle>Testing Event History</SectionTitle>
+        <SectionTitle>Testing History by Year</SectionTitle>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3">Event</th><th className="px-2">Date</th><th className="px-2">Status</th>{SCORED_METRICS.map((metric) => <th key={metric.key} className="px-2 text-right">{metric.shortLabel}</th>)}<th className="px-2 text-right">FAI</th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3">Year</th><th className="px-2">Latest date</th><th className="px-2">Status</th>{SCORED_METRICS.map((metric) => <th key={metric.key} className="px-2 text-right">{metric.shortLabel}</th>)}<th className="px-2 text-right">FAI</th></tr></thead>
             <tbody>
               {[...timeline].reverse().map((item) => (
                 <tr key={item.event.id} className="border-b border-line/50">

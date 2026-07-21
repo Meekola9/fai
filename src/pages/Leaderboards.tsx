@@ -11,6 +11,7 @@ import {
 } from '../lib/leaderboards'
 import { Avatar, Card, DeltaBadge, Pill, RankBadge, SectionTitle } from '../components/ui'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
+import { seasonEvents } from '../lib/events'
 import type { AthleteResult } from '../types'
 
 function trendOf(value: number) {
@@ -94,7 +95,8 @@ export default function Leaderboards() {
   const boardRows = useMemo(() => board.rows(filtered), [board, filtered])
   const groupBoards = useMemo(() => positionGroupBoards(filtered), [filtered])
   const provisional = filtered.filter((result) => !result.rankEligible).length
-  const selectedEvent = data.events.find((event) => event.id === filters.eventId)
+  const seasons = useMemo(() => seasonEvents(data), [data])
+  const selectedEvent = seasons.find((event) => event.id === filters.eventId)
 
   return (
     <div className="space-y-6">
@@ -106,11 +108,11 @@ export default function Leaderboards() {
           </div>
           {selectedEvent && (
             <div className="mt-1 text-xs text-muted">
-              Historical event: {selectedEvent.name} · {selectedEvent.startDate}
+              {selectedEvent.name} season · best mark per test that year
             </div>
           )}
         </div>
-        <FilterBar events={data.events} value={filters} onChange={setFilters} />
+        <FilterBar events={seasons} value={filters} onChange={setFilters} />
       </div>
 
       {provisional > 0 && (

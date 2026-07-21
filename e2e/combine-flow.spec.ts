@@ -134,7 +134,8 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
   await expect(page.getByText('Official score')).toBeVisible()
-  await expect(page.getByText('QA Summer Combine 2026 · 2026-07-06', { exact: true })).toBeVisible()
+  // Results are aggregated by year, so the profile shows the season, not the event day.
+  await expect(page.getByText('2026 season', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
