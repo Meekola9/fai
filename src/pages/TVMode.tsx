@@ -61,6 +61,14 @@ const SLIDE_DEFS: Slide[] = [
     official: false,
   },
   {
+    id: 'topSpeed',
+    title: 'Top Speed',
+    subtitle: 'MPH from the best 10-yard fly · partial batteries included',
+    rows: boardRows('test-topSpeed'),
+    metricLabel: 'MPH',
+    official: false,
+  },
+  {
     id: 'bench',
     title: 'Best Bench',
     subtitle: 'Available measurements · partial batteries included',

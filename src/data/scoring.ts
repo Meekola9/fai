@@ -131,6 +131,14 @@ const PROFILE_BY_GROUP: Record<PositionGroup, BenchmarkProfile> = {
   ATH: SPEED_SKILL,
 }
 
+/**
+ * Top speed over the 10-yard fly, in miles per hour. The fly covers 30 feet
+ * at full speed, so mph = (30 ft / seconds) converted from ft/s.
+ */
+export function flyTimeToMph(flySeconds: number): number {
+  return (30 / flySeconds) * (3600 / 5280)
+}
+
 export const SCORED_METRICS: ScoredMetric[] = [
   {
     key: 'best40', label: 'Best 40-Yard Dash', shortLabel: '40 Dash', category: 'Speed',
