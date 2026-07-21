@@ -66,7 +66,7 @@ jobs:
           script: |
             const build = '${{ needs.build.result }}';
             const deploy = '${{ needs.deploy.result }}';
-            const pageUrl = '${{ needs.deploy.outputs.page_url }}' || 'https://meekola9.github.io/football-athlete-index/';
+            const pageUrl = '${{ needs.deploy.outputs.page_url }}' || 'https://meekola9.github.io/fai/';
             const ok = build === 'success' && deploy === 'success';
             const body = [
               ok ? '✅ **Production deployment succeeded**' : '❌ **Production deployment failed**',
