@@ -11,7 +11,10 @@ export interface RadarSeries {
 
 const RADAR_AXES: Category[] = [
   'Speed',
+  'Acceleration',
+  'Jump',
   'Power',
+  'Pursuit',
   'Change of Direction',
   'Conditioning',
   'Strength',

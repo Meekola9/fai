@@ -152,7 +152,10 @@ export const OFFICIAL_LEADERBOARDS: LeaderboardDef[] = [
 
 export const CATEGORY_LEADERBOARDS: LeaderboardDef[] = [
   categoryBoard('Speed', 'speed', 'Speed Score'),
+  categoryBoard('Acceleration', 'acceleration', 'Acceleration Score'),
+  categoryBoard('Jump', 'jump', 'Jump Score'),
   categoryBoard('Power', 'power', 'Power Score'),
+  categoryBoard('Pursuit', 'pursuit', 'Pursuit Score'),
   categoryBoard('Strength', 'strength', 'Strength Score'),
   categoryBoard('Change of Direction', 'cod', 'COD Score'),
   categoryBoard('Conditioning', 'conditioning', 'Conditioning Score'),

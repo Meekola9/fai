@@ -26,13 +26,7 @@ export function clamp(value: number, low: number, high: number): number {
 }
 
 function emptyCategories(): CategoryScores {
-  return {
-    Speed: 0,
-    Power: 0,
-    'Change of Direction': 0,
-    Conditioning: 0,
-    Strength: 0,
-  }
+  return Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as CategoryScores
 }
 
 export function computeSession(
