@@ -12,7 +12,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 669
+    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 670
   })
 }
 
@@ -37,7 +37,7 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
 
   expect(seeded.athletes).toHaveLength(158)
   expect(seeded.events).toHaveLength(20)
-  expect(seeded.sessions).toHaveLength(669)
+  expect(seeded.sessions).toHaveLength(670)
   expect(
     [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
       (a, b) => a - b,
@@ -129,7 +129,7 @@ test('coach adds a complete testing event without losing historical data', async
   })
   expect(persisted.athletes).toHaveLength(159)
   expect(persisted.events).toHaveLength(21)
-  expect(persisted.sessions).toHaveLength(672)
+  expect(persisted.sessions).toHaveLength(673)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()

@@ -32,9 +32,9 @@ describe('historicalSeedData', () => {
     expect(data.athletes).toHaveLength(158)
   })
 
-  it('contains all 669 historical testing sessions', async () => {
+  it('contains all 670 historical testing sessions', async () => {
     const data = await historicalSeedData()
-    expect(data.sessions).toHaveLength(669)
+    expect(data.sessions).toHaveLength(670)
   })
 
   it('contains canonical full-name athletes instead of known duplicate aliases', async () => {

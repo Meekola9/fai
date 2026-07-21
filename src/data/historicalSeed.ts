@@ -79,7 +79,7 @@ export const HISTORICAL_SEED_SUMMARY = {
   lastYear: 2026,
   eventCount: 20,
   athleteCount: 158,
-  sessionCount: 669,
+  sessionCount: 670,
   mergedAliasCount: 26,
 } as const
 
@@ -87,4 +87,4 @@ export const HISTORICAL_SEED_SUMMARY = {
  * Bump whenever the bundled archive gains records, so signed-in teams get the
  * new baseline merged into their cloud data exactly once per version.
  */
-export const SEED_VERSION = '2026-07-sum26'
+export const SEED_VERSION = '2026-07-sum26-proag'
