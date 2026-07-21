@@ -1,4 +1,4 @@
-import type { AppData, Athlete, TestSession, TestingEvent } from '../types'
+import type { AppData, Athlete, TestSession, TestingEvent, TestingPhase } from '../types'
 
 export const SESSION_METRIC_KEYS = [
   'benchMax',
@@ -74,16 +74,87 @@ export function normalizeAppData(input: AppData): Required<AppData> {
   return { athletes, sessions: upgradedSessions, events }
 }
 
-function overlayMetrics(target: TestSession, source: TestSession): void {
+/** Timed tests where a lower result is better; everything else is higher-better. */
+const LOWER_IS_BETTER: ReadonlySet<SessionMetricKey> = new Set<SessionMetricKey>([
+  'dash40_1',
+  'dash40_2',
+  'dash10_1',
+  'dash10_2',
+  'fly10_1',
+  'fly10_2',
+  'shuttle20_1',
+  'shuttle20_2',
+  'latShuttle_1',
+  'latShuttle_2',
+  'illinois',
+])
+
+/**
+ * Fold one session's metrics into the running best. Testing happens on many
+ * different days across a year, so each metric keeps the athlete's best mark
+ * from any session that year — a coach only needs to have done the test, not
+ * done every test on one day.
+ */
+function overlayBest(target: TestSession, source: TestSession): void {
   for (const key of SESSION_METRIC_KEYS) {
     const value = source[key]
-    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-      ;(target as unknown as Record<string, unknown>)[key] = value
-    }
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue
+    const current = (target as unknown as Record<string, number | undefined>)[key]
+    const next =
+      typeof current !== 'number'
+        ? value
+        : LOWER_IS_BETTER.has(key)
+          ? Math.min(current, value)
+          : Math.max(current, value)
+    ;(target as unknown as Record<string, unknown>)[key] = next
   }
 }
 
-/** Merge all day-specific records into one athlete result per testing event. */
+function seasonYear(date: string): string {
+  return (date || '').slice(0, 4)
+}
+
+/** One synthetic "season" event per calendar year present in the data. */
+export function seasonEvents(data: AppData): TestingEvent[] {
+  const normalized = normalizeAppData(data)
+  const byYear = new Map<string, { dates: string[]; phase: TestingPhase; stamp: string }>()
+  for (const session of normalized.sessions) {
+    const year = seasonYear(session.date)
+    if (!year) continue
+    const stamp = `${session.date}|${session.createdAt ?? ''}`
+    const existing = byYear.get(year)
+    if (!existing) {
+      byYear.set(year, { dates: [session.date], phase: session.phase, stamp })
+    } else {
+      existing.dates.push(session.date)
+      if (stamp > existing.stamp) {
+        existing.stamp = stamp
+        existing.phase = session.phase
+      }
+    }
+  }
+
+  return [...byYear.entries()]
+    .map(([year, info]) => {
+      const dates = info.dates.filter(Boolean).sort()
+      return {
+        id: `season-${year}`,
+        name: year,
+        phase: info.phase,
+        startDate: dates[0] ?? `${year}-01-01`,
+        endDate: dates[dates.length - 1] ?? `${year}-12-31`,
+        status: 'closed' as const,
+        createdAt: `${dates[0] ?? `${year}-01-01`}T12:00:00.000Z`,
+      }
+    })
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))
+}
+
+/**
+ * Merge every testing session into one athlete result per calendar year.
+ * Tests taken on different days across the year are combined, and each metric
+ * keeps the athlete's best mark for that year.
+ */
 export function mergeEventSessions(data: AppData): Array<{
   athlete: Athlete
   event: TestingEvent
@@ -91,12 +162,13 @@ export function mergeEventSessions(data: AppData): Array<{
 }> {
   const normalized = normalizeAppData(data)
   const athleteById = new Map(normalized.athletes.map((athlete) => [athlete.id, athlete]))
-  const eventById = new Map(normalized.events.map((event) => [event.id, event]))
+  const seasonById = new Map(seasonEvents(data).map((event) => [event.id, event]))
   const groups = new Map<string, TestSession[]>()
 
   for (const session of normalized.sessions) {
-    if (!session.eventId) continue
-    const key = `${session.eventId}:${session.athleteId}`
+    const year = seasonYear(session.date)
+    if (!year) continue
+    const key = `${year}:${session.athleteId}`
     const list = groups.get(key) ?? []
     list.push(session)
     groups.set(key, list)
@@ -109,11 +181,11 @@ export function mergeEventSessions(data: AppData): Array<{
     )
     const latest = sessions[sessions.length - 1]
     const athlete = athleteById.get(latest.athleteId)
-    const event = latest.eventId ? eventById.get(latest.eventId) : undefined
+    const event = seasonById.get(`season-${seasonYear(latest.date)}`)
     if (!athlete || !event) continue
 
     const composite: TestSession = {
-      id: `merged-${event.id}-${athlete.id}`,
+      id: `season-${event.name}-${athlete.id}`,
       athleteId: athlete.id,
       eventId: event.id,
       date: latest.date,
@@ -124,7 +196,7 @@ export function mergeEventSessions(data: AppData): Array<{
       positionGroupSnapshot: latest.positionGroupSnapshot ?? athlete.positionGroup,
       weightLbsSnapshot: latest.weightLbsSnapshot ?? athlete.weightLbs,
     }
-    for (const source of sessions) overlayMetrics(composite, source)
+    for (const source of sessions) overlayBest(composite, source)
     merged.push({ athlete, event, session: composite })
   }
 

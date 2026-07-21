@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, DeltaBadge, Pill } from '../components/ui'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
+import { seasonEvents } from '../lib/events'
 import { formatHeight } from '../data/constants'
 import type { Athlete, AthleteResult } from '../types'
 
@@ -56,14 +57,15 @@ export default function Athletes() {
     return rows
   }, [data.athletes, filters, resultMap, sort])
 
-  const selectedEvent = data.events.find((event) => event.id === filters.eventId)
+  const seasons = useMemo(() => seasonEvents(data), [data])
+  const selectedEvent = seasons.find((event) => event.id === filters.eventId)
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Athletes <span className="text-muted">· {data.athletes.length}</span></h1>
-          {selectedEvent && <div className="mt-1 text-xs text-muted">Viewing {selectedEvent.name}</div>}
+          {selectedEvent && <div className="mt-1 text-xs text-muted">Viewing {selectedEvent.name} season</div>}
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -81,7 +83,7 @@ export default function Athletes() {
         </div>
       </div>
 
-      <FilterBar events={data.events} value={filters} onChange={setFilters} />
+      <FilterBar events={seasons} value={filters} onChange={setFilters} />
 
       {!list.length ? (
         <Card className="p-10 text-center text-muted">No athletes match these filters.</Card>

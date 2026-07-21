@@ -68,10 +68,10 @@ export function FilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Select value={value.eventId} onChange={(eventId) => set({ eventId })}>
-        <option value="">Latest event per athlete</option>
+        <option value="">Latest year per athlete</option>
         {orderedEvents.map((event) => (
           <option key={event.id} value={event.id}>
-            {event.name} · {event.startDate}
+            {event.name} season
           </option>
         ))}
       </Select>
