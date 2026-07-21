@@ -12,7 +12,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
+    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 670
   })
 }
 
@@ -20,7 +20,7 @@ async function fillPlaceholder(page: Page, placeholder: string, value: string) {
   await page.getByPlaceholder(placeholder, { exact: true }).fill(value)
 }
 
-test('fresh browser automatically loads 2020–2025 history and shows one exercise list', async ({ page }) => {
+test('fresh browser automatically loads 2020–2026 history and shows one exercise list', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Football Athlete Index', { exact: true })).toBeVisible()
   await waitForHistoricalSeed(page)
@@ -35,14 +35,14 @@ test('fresh browser automatically loads 2020–2025 history and shows one exerci
     }
   })
 
-  expect(seeded.athletes).toHaveLength(126)
-  expect(seeded.events).toHaveLength(18)
-  expect(seeded.sessions).toHaveLength(562)
+  expect(seeded.athletes).toHaveLength(158)
+  expect(seeded.events).toHaveLength(20)
+  expect(seeded.sessions).toHaveLength(670)
   expect(
     [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
       (a, b) => a - b,
     ),
-  ).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+  ).toEqual([2020, 2021, 2022, 2023, 2024, 2025, 2026])
 
   const names = new Set(seeded.athletes.map((athlete) => athlete.name))
   expect(names.has('Jude Nelson')).toBe(true)
@@ -127,9 +127,9 @@ test('coach adds a complete testing event without losing historical data', async
       sessions: unknown[]
     }
   })
-  expect(persisted.athletes).toHaveLength(127)
-  expect(persisted.events).toHaveLength(19)
-  expect(persisted.sessions).toHaveLength(565)
+  expect(persisted.athletes).toHaveLength(159)
+  expect(persisted.events).toHaveLength(21)
+  expect(persisted.sessions).toHaveLength(673)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()

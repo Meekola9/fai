@@ -10,7 +10,8 @@ import { normalizeAppData } from './events'
 export const HISTORICAL_NAME_ALIASES: Record<string, string> = {
   'j nelson': 'Jude Nelson',
   'd evans': 'Dillion Evans',
-  'lu cross': 'Logan Cross',
+  // 'Lu. Cross' (class of 2025) is a different athlete from Logan Cross
+  // (class of 2023) — only the 'Lo.' spelling is Logan.
   'lo cross': 'Logan Cross',
   'l kendall': 'Levi Kendall',
   's parr': 'Sawyer Parr',

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { athleteTimeline } from '../lib/compute'
 import { computeProgress, strengths, weaknesses } from '../lib/progress'
-import { SCORED_METRICS } from '../data/scoring'
+import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
   Avatar,
@@ -110,6 +110,11 @@ export default function AthleteProfile() {
               {rankEligible && <Pill tone="gold">Team Rank #{result.teamRank} / {result.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{result.groupRank} / {result.groupCount}</Pill>}
               <Pill>{current.event.name} · {current.event.startDate}</Pill>
+              {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
+                <Pill tone="gold">
+                  Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph
+                </Pill>
+              )}
             </div>
           </div>
           <div className="text-center">
@@ -204,7 +209,14 @@ export default function AthleteProfile() {
                   <td className="py-2 pr-3 font-semibold text-chalk">{metric.label}</td>
                   <td className="px-3 text-xs text-muted">{CATEGORY_SHORT[metric.category]}</td>
                   <td className="px-3 text-right nums text-muted">{formatMetric(metric.previousRaw, metric.unit)}</td>
-                  <td className="px-3 text-right nums font-bold text-chalk">{formatMetric(metric.currentRaw, metric.unit)}</td>
+                  <td className="px-3 text-right nums font-bold text-chalk">
+                    {formatMetric(metric.currentRaw, metric.unit)}
+                    {metric.key === 'bestFly' && typeof metric.currentRaw === 'number' && metric.currentRaw > 0 && (
+                      <span className="ml-1 text-xs font-semibold text-muted">
+                        ({flyTimeToMph(metric.currentRaw).toFixed(1)} mph)
+                      </span>
+                    )}
+                  </td>
                   <td className={`px-3 text-right nums font-bold ${metric.rawImprovement === undefined ? 'text-muted' : metric.rawImprovement > 0 ? 'text-up' : metric.rawImprovement < 0 ? 'text-down' : 'text-flat'}`}>{metric.rawImprovement === undefined ? '—' : `${metric.rawImprovement > 0 ? '+' : ''}${metric.rawImprovement}${metric.unit}`}</td>
                   <td className="px-3 text-right nums text-fai">{typeof metric.currentScore === 'number' ? metric.currentScore.toFixed(0) : '—'}</td>
                   <td className="px-3 text-center">{metric.rawImprovement === undefined ? <span className="text-xs text-muted">—</span> : <TrendArrow trend={metric.trend} />}</td>

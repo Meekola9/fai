@@ -3,7 +3,12 @@
 // ---------------------------------------------------------------------------
 
 import type { AthleteResult, Category, PositionGroup, TestSession } from '../types'
-import { METRIC_BY_KEY, METRICS_BY_CATEGORY, SCORED_METRICS } from '../data/scoring'
+import {
+  METRIC_BY_KEY,
+  METRICS_BY_CATEGORY,
+  SCORED_METRICS,
+  flyTimeToMph,
+} from '../data/scoring'
 import { CATEGORIES, POSITION_GROUPS } from '../data/constants'
 import { avg, round1 } from './compute'
 
@@ -156,8 +161,27 @@ export const CATEGORY_LEADERBOARDS: LeaderboardDef[] = [
 /** Compatibility export used by existing screens. */
 export const CORE_LEADERBOARDS = [...OFFICIAL_LEADERBOARDS, ...CATEGORY_LEADERBOARDS]
 
+const TOP_SPEED_BOARD: LeaderboardDef = {
+  id: 'test-topSpeed',
+  title: 'Top Speed (10 Fly)',
+  subtitle: 'Higher is better · mph from the best 10-yard fly',
+  scope: 'available',
+  rows: (results) =>
+    rankBy(
+      results,
+      (result) => {
+        const fly = result.current.metrics['bestFly']
+        return typeof fly === 'number' && fly > 0 ? flyTimeToMph(fly) : undefined
+      },
+      (value) => `${value.toFixed(1)} mph`,
+      true,
+      false,
+    ),
+}
+
 export const TEST_LEADERBOARDS: LeaderboardDef[] = [
   ...SCORED_METRICS.map((metric) => scoredTestBoard(metric.key)),
+  TOP_SPEED_BOARD,
   rawTestBoard('test-benchMax', 'Bench Max', 'benchMax', 'lbs'),
   rawTestBoard('test-squatMax', 'Squat Max', 'squatMax', 'lbs'),
 ]
