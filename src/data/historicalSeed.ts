@@ -87,4 +87,4 @@ export const HISTORICAL_SEED_SUMMARY = {
  * Bump whenever the bundled archive gains records, so signed-in teams get the
  * new baseline merged into their cloud data exactly once per version.
  */
-export const SEED_VERSION = '2026-07-sum26-proag'
+export const SEED_VERSION = '2026-07-sum26-fly10'
