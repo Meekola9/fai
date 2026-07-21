@@ -5,7 +5,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 126 && data.events?.length === 18 && data.sessions?.length === 562
+    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 669
   })
 }
 
@@ -38,7 +38,7 @@ test('fresh install shows historical coverage and populated measurement rankings
       sessions: data.sessions.length,
     }
   })
-  expect(coverage).toEqual({ athletes: 126, events: 18, sessions: 562 })
+  expect(coverage).toEqual({ athletes: 158, events: 20, sessions: 669 })
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Rankings', exact: true })).toBeVisible()

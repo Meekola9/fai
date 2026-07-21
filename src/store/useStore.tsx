@@ -32,7 +32,11 @@ import {
 } from './cloud'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { importCsv } from '../data/csv'
-import { mergeHistoricalData } from '../data/historicalSeed'
+import {
+  historicalSeedData,
+  mergeHistoricalData,
+  SEED_VERSION,
+} from '../data/historicalSeed'
 import { gradeLabel } from '../lib/alumni'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
@@ -215,6 +219,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Preserve the pre-cloud device dataset before the cloud mirror
         // overwrites it, so it can be imported once from the Data page.
         preserveLocalImportSnapshot(local)
+      }
+
+      // When the bundled historical archive gains records (new season upload),
+      // merge them into the team cloud exactly once per seed version. Cloud
+      // rows win on matching ids, so coach edits are never overwritten.
+      if (cloud && !cloudDataIsEmpty(cloud)) {
+        const seedSyncFlag = `fai:seed-sync:${SEED_VERSION}:${access.id}`
+        let seedSynced = true
+        try {
+          seedSynced = localStorage.getItem(seedSyncFlag) === 'true'
+        } catch {
+          // Storage unavailable: keep true and skip the sync this session.
+        }
+        if (!seedSynced) {
+          try {
+            const seed = await historicalSeedData()
+            const merged = mergeHistoricalData(seed, next)
+            if (
+              merged.athletes.length !== next.athletes.length ||
+              merged.events.length !== next.events.length ||
+              merged.sessions.length !== next.sessions.length
+            ) {
+              await saveCloudData(access.id, merged)
+              next = merged
+            }
+            try {
+              localStorage.setItem(seedSyncFlag, 'true')
+            } catch {
+              // Storage unavailable; worst case the merge re-runs and no-ops.
+            }
+          } catch (error: unknown) {
+            cloudError =
+              cloudError ??
+              (error instanceof Error
+                ? error.message
+                : 'Could not sync the bundled historical baseline.')
+          }
+        }
       }
       if (!alive || request !== activationNumber) return
 

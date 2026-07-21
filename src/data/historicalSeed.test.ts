@@ -19,22 +19,22 @@ describe('historicalSeedData', () => {
           .filter(Number.isFinite),
       ),
     ].sort((a, b) => a - b)
-    expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025])
+    expect(years).toEqual([2020, 2021, 2022, 2023, 2024, 2025, 2026])
   })
 
-  it('contains all 18 historical testing events', async () => {
+  it('contains all 20 historical testing events', async () => {
     const data = await historicalSeedData()
-    expect(data.events).toHaveLength(18)
+    expect(data.events).toHaveLength(20)
   })
 
-  it('contains 126 consolidated athlete identities', async () => {
+  it('contains 158 consolidated athlete identities', async () => {
     const data = await historicalSeedData()
-    expect(data.athletes).toHaveLength(126)
+    expect(data.athletes).toHaveLength(158)
   })
 
-  it('contains all 562 historical testing sessions', async () => {
+  it('contains all 669 historical testing sessions', async () => {
     const data = await historicalSeedData()
-    expect(data.sessions).toHaveLength(562)
+    expect(data.sessions).toHaveLength(669)
   })
 
   it('contains canonical full-name athletes instead of known duplicate aliases', async () => {
@@ -46,8 +46,11 @@ describe('historicalSeedData', () => {
     expect(names.has('Logan Cross')).toBe(true)
     expect(names.has('J. Nelson')).toBe(false)
     expect(names.has('D.Evans')).toBe(false)
-    expect(names.has('Lu. Cross')).toBe(false)
     expect(names.has('Lo. Cross')).toBe(false)
+    // Lu. Cross (class of 2025) is a different athlete from Logan Cross
+    // (class of 2023), kept separate under a disambiguated name.
+    expect(names.has('Lu. Cross')).toBe(false)
+    expect(names.has('Lu. Cross (2025)')).toBe(true)
   })
 
   it('overlays coach-entered records without removing historical sessions', async () => {
