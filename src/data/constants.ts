@@ -24,7 +24,10 @@ export const TESTING_PHASES: TestingPhase[] = [
 
 export const CATEGORIES: Category[] = [
   'Speed',
+  'Acceleration',
+  'Jump',
   'Power',
+  'Pursuit',
   'Change of Direction',
   'Conditioning',
   'Strength',
@@ -34,7 +37,10 @@ export const GRADES = [9, 10, 11, 12]
 
 export const CATEGORY_SHORT: Record<Category, string> = {
   Speed: 'SPD',
+  Acceleration: 'ACC',
+  Jump: 'JMP',
   Power: 'PWR',
+  Pursuit: 'PUR',
   'Change of Direction': 'COD',
   Conditioning: 'COND',
   Strength: 'STR',

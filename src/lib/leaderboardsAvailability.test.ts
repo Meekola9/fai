@@ -8,7 +8,10 @@ import {
 
 const categories: CategoryScores = {
   Speed: 78,
+  Acceleration: 74,
+  Jump: 58,
   Power: 61,
+  Pursuit: 65,
   'Change of Direction': 70,
   Conditioning: 0,
   Strength: 66,
@@ -88,12 +91,13 @@ describe('official and available-data rankings', () => {
 
   it('includes verified partial records in raw-test and category rankings', () => {
     const dash = ALL_LEADERBOARDS.find((board) => board.id === 'test-best40')!
-    const speed = ALL_LEADERBOARDS.find((board) => board.id === 'speed')!
+    // best40 now feeds the Acceleration rating (Speed is strictly the 10-fly).
+    const acceleration = ALL_LEADERBOARDS.find((board) => board.id === 'acceleration')!
 
     expect(dash.scope).toBe('available')
     expect(dash.rows(results).map((row) => row.result.athlete.id)).toEqual(['partial', 'complete'])
     expect(dash.rows(results)[0]?.display).toBe('4.60s')
-    expect(speed.rows(results).map((row) => row.result.athlete.id)).toEqual(['complete', 'partial'])
+    expect(acceleration.rows(results).map((row) => row.result.athlete.id)).toEqual(['complete', 'partial'])
   })
 
   it('populates dashboard leaders from the strongest verified measurement', () => {

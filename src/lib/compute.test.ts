@@ -145,7 +145,7 @@ describe('FAI computation', () => {
     expect(fast.metrics.best10).toBe(1.7)
     expect(fast.normalized.best10).toBe(100)
     expect(developmental.normalized.best10).toBe(0)
-    expect(fast.categories.Speed).toBeGreaterThan(developmental.categories.Speed)
+    expect(fast.categories.Acceleration).toBeGreaterThan(developmental.categories.Acceleration)
     expect(fast.fai).toBeGreaterThan(developmental.fai)
   })
 

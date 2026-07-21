@@ -23,7 +23,10 @@ function trendOf(value: number) {
 
 const CATEGORY_COLOR: Record<Category, string> = {
   Speed: '#22d3ee',
+  Acceleration: '#38bdf8',
+  Jump: '#fb7185',
   Power: '#f97316',
+  Pursuit: '#c084fc',
   'Change of Direction': '#a78bfa',
   Conditioning: '#34d399',
   Strength: '#fbbf24',

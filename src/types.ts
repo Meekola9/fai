@@ -24,7 +24,10 @@ export type TestingPhase =
 
 export type Category =
   | 'Speed'
+  | 'Acceleration'
+  | 'Jump'
   | 'Power'
+  | 'Pursuit'
   | 'Change of Direction'
   | 'Conditioning'
   | 'Strength'
@@ -99,13 +102,7 @@ export interface AppData {
   events?: TestingEvent[]
 }
 
-export interface CategoryScores {
-  Speed: number
-  Power: number
-  'Change of Direction': number
-  Conditioning: number
-  Strength: number
-}
+export type CategoryScores = Record<Category, number>
 
 /** A fully computed event result: merged raw values + stable benchmark scores. */
 export interface ComputedSession {
