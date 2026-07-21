@@ -143,6 +143,16 @@ function nullable(value: unknown): unknown {
   return value === undefined ? null : value
 }
 
+/**
+ * The cloud enforces `grade_snapshot is null or between 1 and 12`. An athlete
+ * with no grade recorded yields a 0 snapshot, which would reject the whole
+ * batch save — so anything outside 1-12 is written as null instead.
+ */
+function gradeSnapshotValue(value: unknown): number | null {
+  const parsed = Math.round(Number(value))
+  return Number.isFinite(parsed) && parsed >= 1 && parsed <= 12 ? parsed : null
+}
+
 async function existingIds(table: string, teamId: string): Promise<string[]> {
   const db = client()
   const { data, error } = await db.from(table).select('id').eq('team_id', teamId)
@@ -205,7 +215,7 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
       event_id: session.eventId,
       test_date: session.date,
       phase: session.phase,
-      grade_snapshot: nullable(session.gradeSnapshot),
+      grade_snapshot: gradeSnapshotValue(session.gradeSnapshot),
       position_snapshot: nullable(session.positionSnapshot),
       position_group_snapshot: nullable(session.positionGroupSnapshot),
       weight_lbs_snapshot: nullable(session.weightLbsSnapshot),
