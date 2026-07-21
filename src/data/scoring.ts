@@ -49,7 +49,9 @@ const ratio = (load?: number, bodyWeight?: number): number | undefined => {
 
 const SPEED_SKILL: BenchmarkProfile = {
   best40: { elite: 4.4, developmental: 5.25 },
-  bestFly: { elite: 1.4, developmental: 1.8 },
+  // Top speed is absolute, so the 10-yard fly uses one universal scale for
+  // every position: 100 = 0.90s (~23 mph), 0 = 1.60s (~13 mph).
+  bestFly: { elite: 0.9, developmental: 1.6 },
   broadJump: { elite: 124, developmental: 90 },
   verticalJump: { elite: 38, developmental: 20 },
   hangCleanReps: { elite: 15, developmental: 3 },
@@ -63,7 +65,7 @@ const SPEED_SKILL: BenchmarkProfile = {
 
 const QUARTERBACK: BenchmarkProfile = {
   best40: { elite: 4.55, developmental: 5.4 },
-  bestFly: { elite: 1.45, developmental: 1.85 },
+  bestFly: { elite: 0.9, developmental: 1.6 },
   broadJump: { elite: 120, developmental: 88 },
   verticalJump: { elite: 35, developmental: 18 },
   hangCleanReps: { elite: 12, developmental: 2 },
@@ -77,7 +79,7 @@ const QUARTERBACK: BenchmarkProfile = {
 
 const HYBRID: BenchmarkProfile = {
   best40: { elite: 4.6, developmental: 5.55 },
-  bestFly: { elite: 1.48, developmental: 1.9 },
+  bestFly: { elite: 0.9, developmental: 1.6 },
   broadJump: { elite: 118, developmental: 84 },
   verticalJump: { elite: 34, developmental: 18 },
   hangCleanReps: { elite: 15, developmental: 3 },
@@ -92,7 +94,7 @@ const HYBRID: BenchmarkProfile = {
 const BIG: BenchmarkProfile = {
   best40: { elite: 4.95, developmental: 6.3 },
   best10: { elite: 1.7, developmental: 2.25 },
-  bestFly: { elite: 1.6, developmental: 2.1 },
+  bestFly: { elite: 0.9, developmental: 1.6 },
   broadJump: { elite: 110, developmental: 70 },
   verticalJump: { elite: 30, developmental: 12 },
   hangCleanReps: { elite: 14, developmental: 2 },
@@ -106,7 +108,7 @@ const BIG: BenchmarkProfile = {
 
 const SPECIALIST: BenchmarkProfile = {
   best40: { elite: 4.7, developmental: 5.7 },
-  bestFly: { elite: 1.5, developmental: 1.95 },
+  bestFly: { elite: 0.9, developmental: 1.6 },
   broadJump: { elite: 115, developmental: 80 },
   verticalJump: { elite: 32, developmental: 15 },
   hangCleanReps: { elite: 10, developmental: 1 },
