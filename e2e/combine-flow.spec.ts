@@ -144,8 +144,8 @@ test('coach adds a complete testing event without losing historical data', async
   await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
   await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  await page.goBack()
-  await page.getByRole('link', { name: 'Data', exact: true }).click()
+  // TV Mode is full-screen and intentionally omits the app navigation.
+  await page.goto('/data')
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export All Data (CSV)' }).click()
   const download = await downloadPromise
