@@ -1,20 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { Avatar, Card, DeltaBadge, Pill } from '../components/ui'
+import { Avatar, Card, Pill } from '../components/ui'
 import { PlayerBadgeStrip } from '../components/PlayerBadges'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
 import { athleteTimeline } from '../lib/compute'
-import { seasonEvents } from '../lib/events'
 import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
 import { formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
 import type { Athlete, AthleteResult } from '../types'
 
-function trendOf(value: number) {
-  return value > 0.05 ? 'improved' : value < -0.05 ? 'regressed' : ('same' as const)
-}
+const ATHLETE_SEASON_ID = 'season-2026'
 
 interface Row {
   athlete: Athlete
@@ -22,17 +19,16 @@ interface Row {
 }
 
 export default function Athletes() {
-  const { data, computed, results, resultsForEvent, gradeLabelFor, canEdit } = useStore()
+  const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [sort, setSort] = useState<'fai' | 'name' | 'improve'>('fai')
+  const [sort, setSort] = useState<'fai' | 'name'>('fai')
 
-  const selectedResults = useMemo(
-    () => (filters.eventId ? resultsForEvent(filters.eventId) : results),
-    [filters.eventId, resultsForEvent, results],
-  )
+  // Athlete-facing roster cards are intentionally current-season only.
+  // Historical seasons remain available from Rankings.
+  const seasonResults = resultsForEvent(ATHLETE_SEASON_ID)
   const filteredResults = useMemo(
-    () => applyFilters(selectedResults, filters),
-    [selectedResults, filters],
+    () => applyFilters(seasonResults, filters),
+    [seasonResults, filters],
   )
   const resultMap = useMemo(
     () => new Map(filteredResults.map((result) => [result.athlete.id, result])),
@@ -52,7 +48,6 @@ export default function Athletes() {
           const searchable = `${athlete.position} ${athlete.secondaryPosition ?? ''}`.toLowerCase()
           if (!searchable.includes(filters.position.toLowerCase())) return false
         }
-        if (filters.eventId) return resultMap.has(athlete.id)
         return true
       })
       .map((athlete) => ({ athlete, result: resultMap.get(athlete.id) }))
@@ -62,22 +57,18 @@ export default function Athletes() {
       if (!a.result) return 1
       if (!b.result) return -1
       if (sort === 'name') return a.athlete.name.localeCompare(b.athlete.name)
-      if (sort === 'improve') return b.result.faiImprovement - a.result.faiImprovement
       if (a.result.rankEligible !== b.result.rankEligible) return a.result.rankEligible ? -1 : 1
       return b.result.current.fai - a.result.current.fai
     })
     return rows
   }, [data.athletes, filters, resultMap, sort])
 
-  const seasons = useMemo(() => seasonEvents(data), [data])
-  const selectedEvent = seasons.find((event) => event.id === filters.eventId)
-
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Athletes <span className="text-muted">· {data.athletes.length}</span></h1>
-          {selectedEvent && <div className="mt-1 text-xs text-muted">Viewing {selectedEvent.name} season</div>}
+          <div className="mt-1 text-xs font-bold uppercase tracking-wider text-fai">2026 season only</div>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -85,8 +76,7 @@ export default function Athletes() {
             onChange={(event) => setSort(event.target.value as typeof sort)}
             className="rounded-lg border border-line bg-panel px-3 py-1.5 text-sm font-semibold outline-none focus:border-fai"
           >
-            <option value="fai">Sort: FAI</option>
-            <option value="improve">Sort: Improvement</option>
+            <option value="fai">Sort: 2026 FAI</option>
             <option value="name">Sort: Name</option>
           </select>
           {canEdit && (
@@ -95,7 +85,7 @@ export default function Athletes() {
         </div>
       </div>
 
-      <FilterBar events={seasons} value={filters} onChange={setFilters} />
+      <FilterBar events={[]} value={filters} onChange={setFilters} showEventFilter={false} />
 
       {!list.length ? (
         <Card className="p-10 text-center text-muted">No athletes match these filters.</Card>
@@ -103,8 +93,11 @@ export default function Athletes() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map(({ athlete, result }) => {
             const archetype = result ? archetypeFor(result.current) : undefined
+            const seasonTimeline = athleteTimeline(computed, athlete.id).filter(
+              (item) => item.event.id === ATHLETE_SEASON_ID,
+            )
             const badges = result
-              ? playerBadgesFor({ result, timeline: athleteTimeline(computed, athlete.id) })
+              ? playerBadgesFor({ result: { ...result, previous: undefined, faiImprovement: 0, faiImprovementPct: 0 }, timeline: seasonTimeline })
               : []
             const usage = athlete.usage ?? 'one-way'
             return (
@@ -123,7 +116,7 @@ export default function Athletes() {
                     </div>
                     <div className="mt-1 text-xs text-muted">
                       {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
-                      {result?.rankEligible ? ` · Rank #${result.teamRank}` : ''}
+                      {result?.rankEligible ? ` · 2026 Rank #${result.teamRank}` : ''}
                     </div>
                     <PlayerBadgeStrip badges={badges} />
                     {archetype && (
@@ -133,7 +126,7 @@ export default function Athletes() {
                         title={`${archetype.description} Based on: ${archetype.evidence.join(', ')}.`}
                       >
                         <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">
-                          Player archetype · {archetype.confidence} confidence
+                          2026 archetype · {archetype.confidence} confidence
                         </div>
                         <div className="mt-0.5 truncate text-xs font-black text-fai">{archetype.name}</div>
                         <div className="mt-0.5 truncate text-[10px] text-muted">{archetype.evidence.join(' · ')}</div>
@@ -143,12 +136,12 @@ export default function Athletes() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                <div className="mt-3 flex items-end justify-between border-t border-line pt-3">
                   {result ? (
                     <>
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                          {result.current.scoreStatus === 'complete' ? 'Official FAI' : 'Provisional FAI'}
+                          {result.current.scoreStatus === 'complete' ? '2026 Official FAI' : '2026 Provisional FAI'}
                         </div>
                         <div className={`text-3xl font-black nums ${result.rankEligible ? 'text-fai' : 'text-flame'}`}>
                           {result.current.fai.toFixed(1)}
@@ -157,20 +150,13 @@ export default function Athletes() {
                           <div className="text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
                         )}
                       </div>
-                      <div className="text-right">
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">Since prior event</div>
-                        {result.previous ? (
-                          <DeltaBadge value={result.faiImprovement} trend={trendOf(result.faiImprovement)} size="lg" />
-                        ) : (
-                          <div className="text-sm text-muted">First event</div>
-                        )}
-                      </div>
+                      <Pill tone="fai">2026 season</Pill>
                     </>
                   ) : (
                     <>
-                      <div className="text-sm text-muted">No testing data yet</div>
+                      <div className="text-sm text-muted">No 2026 testing data</div>
                       {canEdit && (
-                        <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add testing</Link>
+                        <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add 2026 testing</Link>
                       )}
                     </>
                   )}
