@@ -8,6 +8,7 @@ import type {
   TestingPhase,
 } from '../types'
 import { POSITION_GROUPS, TESTING_PHASES, parseHeight } from './constants'
+import { normalizePlayerUsage, positionGroupFor } from './positions'
 import { normalizeAppData, SESSION_METRIC_KEYS } from '../lib/events'
 
 const COLUMNS = [
@@ -17,6 +18,9 @@ const COLUMNS = [
   'grade',
   'position',
   'positionGroup',
+  'usage',
+  'secondaryPosition',
+  'secondaryPositionGroup',
   'heightIn',
   'weightLbs',
   'photoUrl',
@@ -69,6 +73,9 @@ export function exportCsv(input: AppData): string {
       grade: athlete.grade,
       position: athlete.position,
       positionGroup: athlete.positionGroup,
+      usage: athlete.usage ?? 'one-way',
+      secondaryPosition: athlete.secondaryPosition,
+      secondaryPositionGroup: athlete.secondaryPositionGroup,
       heightIn: athlete.heightIn,
       weightLbs: athlete.weightLbs,
       photoUrl: athlete.photoUrl,
@@ -175,6 +182,9 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   grade: ['grade', 'year', 'class', 'gradelevel', 'yr'],
   position: ['position', 'pos'],
   positionGroup: ['positiongroup', 'group', 'unit', 'posgroup', 'posgrp'],
+  usage: ['usage', 'deployment', 'playerusage', 'roleusage', 'twowaystatus'],
+  secondaryPosition: ['secondaryposition', 'secondposition', 'position2', 'secondarypos'],
+  secondaryPositionGroup: ['secondarypositiongroup', 'secondgroup', 'positiongroup2', 'secondarygroup'],
   heightIn: ['heightin', 'height', 'ht'],
   weightLbs: ['weightlbs', 'weight', 'wt', 'weightlb'],
   photoUrl: ['photourl', 'photo'],
@@ -197,32 +207,10 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   note: ['note', 'notes'],
 }
 
-const POSITION_TO_GROUP: Record<string, PositionGroup> = {
-  QB: 'QB',
-  RB: 'RB', HB: 'RB', FB: 'RB', TB: 'RB',
-  WR: 'WR', SLOT: 'WR', WO: 'WR', SE: 'WR', FL: 'WR', X: 'WR', Z: 'WR',
-  TE: 'TE', Y: 'TE',
-  OL: 'OL', OT: 'OL', OG: 'OL', C: 'OL', LT: 'OL', RT: 'OL', LG: 'OL', RG: 'OL', G: 'OL', T: 'OL',
-  DL: 'DL', DE: 'DL', DT: 'DL', NT: 'DL', NG: 'DL', EDGE: 'DL',
-  LB: 'LB', OLB: 'LB', ILB: 'LB', MLB: 'LB', WLB: 'LB', SLB: 'LB', MIKE: 'LB', WILL: 'LB', SAM: 'LB', JACK: 'LB', ROVER: 'LB',
-  DB: 'DB', CB: 'DB', S: 'DB', FS: 'DB', SS: 'DB', NB: 'DB', NICKEL: 'DB', CORNER: 'DB', SAFETY: 'DB',
-  K: 'K/P', P: 'K/P', 'K/P': 'K/P', KP: 'K/P', PK: 'K/P', LS: 'K/P',
-  ATH: 'ATH',
-}
-
 function resolveGroup(rawGroup: string, position: string): PositionGroup {
-  const clean = (value: string) => value.trim().toUpperCase().replace(/\s/g, '')
-  const group = clean(rawGroup)
-  const direct = POSITION_GROUPS.find((item) => item.toUpperCase() === group)
-  if (direct) return direct
-  if (POSITION_TO_GROUP[group]) return POSITION_TO_GROUP[group]
-
-  const cleanedPosition = clean(position)
-  if (POSITION_TO_GROUP[cleanedPosition]) return POSITION_TO_GROUP[cleanedPosition]
-  for (const token of cleanedPosition.split(/[/\-|]/)) {
-    if (POSITION_TO_GROUP[token]) return POSITION_TO_GROUP[token]
-  }
-  return 'ATH'
+  const cleanGroup = rawGroup.trim().toUpperCase().replace(/\s/g, '')
+  const direct = POSITION_GROUPS.find((item) => item.toUpperCase() === cleanGroup)
+  return direct ?? positionGroupFor(position, 'ATH')
 }
 
 function generatedId(prefix: string): string {
@@ -265,12 +253,19 @@ export function importCsv(text: string): AppData {
     const name = field('name')
     const athleteId = field('athleteId') || generatedId('athlete')
     if ((recordType === 'athlete' || !recordType || recordType === 'session') && name) {
+      const primaryPosition = field('position') || 'ATH'
+      const secondaryPosition = field('secondaryPosition') || undefined
       athletes.set(athleteId, {
         id: athleteId,
         name,
         grade: numberValue(field('grade')) ?? 9,
-        position: field('position') || 'ATH',
-        positionGroup: resolveGroup(field('positionGroup'), field('position') || 'ATH'),
+        position: primaryPosition,
+        positionGroup: resolveGroup(field('positionGroup'), primaryPosition),
+        usage: normalizePlayerUsage(field('usage')),
+        secondaryPosition,
+        secondaryPositionGroup: secondaryPosition
+          ? resolveGroup(field('secondaryPositionGroup'), secondaryPosition)
+          : undefined,
         heightIn: parseHeight(field('heightIn')),
         weightLbs: numberValue(field('weightLbs')) ?? 0,
         photoUrl: field('photoUrl') || undefined,
