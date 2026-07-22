@@ -52,7 +52,7 @@ const completeData: AppData = {
       fly10_2: 1.48,
     }),
     session('tuesday', '2026-06-02', {
-      hangCleanReps: 10,
+      powerCleanMax: 240,
       shuttle20_1: 4.35,
       shuttle20_2: 4.3,
       latShuttle_1: 2.75,
@@ -99,8 +99,50 @@ describe('FAI computation', () => {
     expect(computed[0].session.benchMax).toBe(225)
     expect(computed[0].session.illinois).toBe(15.8)
     expect(computed[0].session.verticalJump).toBe(34)
+    expect(computed[0].metrics.powerCleanMax).toBe(240)
     expect(computed[0].completionPct).toBe(100)
     expect(computed[0].scoreStatus).toBe('complete')
+  })
+
+  it('converts legacy body-weight clean reps into a Power Clean 1RM', () => {
+    const legacyData: AppData = {
+      ...completeData,
+      sessions: completeData.sessions.map((item) =>
+        item.id === 'tuesday'
+          ? {
+              ...item,
+              powerCleanMax: undefined,
+              weightLbsSnapshot: 180,
+              hangCleanReps: 10,
+            }
+          : item,
+      ),
+    }
+    const computed = computeAll(legacyData)[0]
+
+    expect(computed.session.hangCleanReps).toBe(10)
+    expect(computed.session.hangCleanWeightLbsSnapshot).toBe(180)
+    expect(computed.session.estimatedPowerCleanMax).toBe(240)
+    expect(computed.metrics.powerCleanMax).toBe(240)
+    expect(computed.normalized.powerCleanMax).toBeTypeOf('number')
+  })
+
+  it('uses a recorded Power Clean max instead of a larger legacy estimate', () => {
+    const mixedData: AppData = {
+      ...completeData,
+      sessions: [
+        ...completeData.sessions,
+        session('legacy-clean', '2026-05-01', {
+          weightLbsSnapshot: 240,
+          hangCleanReps: 15,
+        }),
+      ],
+    }
+    const computed = computeAll(mixedData)[0]
+
+    expect(computed.session.estimatedPowerCleanMax).toBe(360)
+    expect(computed.session.powerCleanMax).toBe(240)
+    expect(computed.metrics.powerCleanMax).toBe(240)
   })
 
   it('keeps an athlete score stable when another athlete joins the roster', () => {
