@@ -159,11 +159,11 @@ export function FaiRing({
   const c = 2 * Math.PI * r
   const pct = Math.max(0, Math.min(100, score)) / 100
   const color =
-    score >= 75 ? '#22d3ee' : score >= 50 ? '#fbbf24' : '#f97316'
+    score >= 75 ? '#c6f24e' : score >= 50 ? '#fbbf24' : '#ff7a1a'
   return (
     <div className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#1e2637" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="#242b33" strokeWidth={stroke} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}

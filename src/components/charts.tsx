@@ -46,7 +46,7 @@ export function RadarChart({
           key={lvl}
           points={RADAR_AXES.map((_, i) => point(i, lvl).join(',')).join(' ')}
           fill="none"
-          stroke="#1e2637"
+          stroke="#242b33"
           strokeWidth={1}
         />
       ))}
@@ -56,11 +56,11 @@ export function RadarChart({
         const [ex, ey] = point(i, 100)
         return (
           <g key={cat}>
-            <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#1e2637" strokeWidth={1} />
+            <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#242b33" strokeWidth={1} />
             <text
               x={x}
               y={y}
-              fill="#7c8aa5"
+              fill="#8b96a3"
               fontSize={11}
               fontWeight={700}
               textAnchor="middle"
@@ -102,7 +102,7 @@ export interface LinePoint {
 export function LineChart({
   points,
   height = 200,
-  color = '#22d3ee',
+  color = '#c6f24e',
   yMin,
   yMax,
 }: {
@@ -143,18 +143,18 @@ export function LineChart({
         {[0, 0.5, 1].map((t) => {
           const gy = padY + t * (height - padY * 2)
           return (
-            <line key={t} x1={padX} y1={gy} x2={width - padX} y2={gy} stroke="#1e2637" strokeWidth={1} />
+            <line key={t} x1={padX} y1={gy} x2={width - padX} y2={gy} stroke="#242b33" strokeWidth={1} />
           )
         })}
         {points.length > 1 && <path d={area} fill="url(#faiArea)" />}
         <path d={path} fill="none" stroke={color} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) => (
           <g key={i}>
-            <circle cx={x(i)} cy={y(p.value)} r={4.5} fill="#05070b" stroke={color} strokeWidth={2.5} />
-            <text x={x(i)} y={y(p.value) - 12} fill="#e8eef7" fontSize={12} fontWeight={800} textAnchor="middle" className="nums">
+            <circle cx={x(i)} cy={y(p.value)} r={4.5} fill="#060809" stroke={color} strokeWidth={2.5} />
+            <text x={x(i)} y={y(p.value) - 12} fill="#eef2f6" fontSize={12} fontWeight={800} textAnchor="middle" className="nums">
               {p.value.toFixed(1)}
             </text>
-            <text x={x(i)} y={height - 8} fill="#7c8aa5" fontSize={11} fontWeight={600} textAnchor="middle">
+            <text x={x(i)} y={height - 8} fill="#8b96a3" fontSize={11} fontWeight={600} textAnchor="middle">
               {p.label}
             </text>
           </g>
@@ -168,7 +168,7 @@ export function LineChart({
 
 export function ScoreMeter({
   value,
-  color = '#22d3ee',
+  color = '#c6f24e',
 }: {
   value: number
   color?: string

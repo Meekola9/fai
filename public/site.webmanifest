@@ -3,8 +3,8 @@
   "short_name": "FAI",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#05070b",
-  "theme_color": "#0a0e14",
+  "background_color": "#060809",
+  "theme_color": "#060809",
   "icons": [
     {
       "src": "./favicon.svg",
