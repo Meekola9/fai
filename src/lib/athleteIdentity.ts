@@ -173,9 +173,15 @@ export function consolidateAthleteAliases(input: AppData): Required<AppData> {
     sessionById.set(remapped.id, remapped)
   }
 
+  const plays = (data.plays ?? []).map((play) => ({
+    ...play,
+    athleteId: idMap.get(play.athleteId) ?? play.athleteId,
+  }))
+
   return normalizeAppData({
     athletes: athletes.sort((a, b) => a.name.localeCompare(b.name)),
     events: data.events,
     sessions: [...sessionById.values()],
+    plays,
   })
 }

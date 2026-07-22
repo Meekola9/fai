@@ -71,7 +71,8 @@ export function normalizeAppData(input: AppData): Required<AppData> {
     }
   })
 
-  return { athletes, sessions: upgradedSessions, events }
+  const plays = Array.isArray(input.plays) ? input.plays : []
+  return { athletes, sessions: upgradedSessions, events, plays }
 }
 
 /** Timed tests where a lower result is better; everything else is higher-better. */

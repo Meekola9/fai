@@ -70,6 +70,7 @@ export function mergeHistoricalData(
       athletes: upsertById(seed.athletes, normalizedCurrent.athletes),
       events: upsertById(seed.events, normalizedCurrent.events),
       sessions: upsertById(seed.sessions, normalizedCurrent.sessions),
+      plays: upsertById(seed.plays, normalizedCurrent.plays),
     }),
   )
 }

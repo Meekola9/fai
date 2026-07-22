@@ -11,6 +11,7 @@ import type {
   Athlete,
   AthleteResult,
   ComputedSession,
+  PlayEvent,
   TestSession,
   TestingEvent,
 } from '../types'
@@ -90,13 +91,15 @@ interface StoreContextValue {
   addSession: (session: Omit<TestSession, 'id' | 'createdAt'>) => string
   updateSession: (session: TestSession) => void
   deleteSession: (id: string) => void
+  addPlay: (play: Omit<PlayEvent, 'id' | 'createdAt'>) => string
+  deletePlay: (id: string) => void
   resetSample: () => void
   replaceAll: (data: AppData) => void
   importCsvText: (text: string, mode: 'merge' | 'replace') => void
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null)
-const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [] }
+const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [], plays: [] }
 
 interface AuthUserLike {
   id: string
@@ -495,6 +498,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...current,
         athletes: current.athletes.filter((athlete) => athlete.id !== id),
         sessions: current.sessions.filter((session) => session.athleteId !== id),
+        plays: current.plays.filter((play) => play.athleteId !== id),
       }))
     },
 
@@ -548,6 +552,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mutate((current) => ({
         ...current,
         sessions: current.sessions.filter((session) => session.id !== id),
+      }))
+    },
+
+    addPlay(play) {
+      const id = newId('play')
+      const createdAt = new Date().toISOString()
+      mutate((current) => ({
+        ...current,
+        plays: [...current.plays, { ...play, id, createdAt }],
+      }))
+      return id
+    },
+    deletePlay(id) {
+      mutate((current) => ({
+        ...current,
+        plays: current.plays.filter((play) => play.id !== id),
       }))
     },
 
