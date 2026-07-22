@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   combine-flow:
@@ -25,22 +24,7 @@ jobs:
       - name: Run archive and exercise-list QA
         run: npx playwright test --grep "fresh browser automatically loads"
       - name: Run coach Power Clean entry flow
-        run: |
-          set -o pipefail
-          npx playwright test --grep "coach adds a complete testing event" 2>&1 | tee coach-flow.log
-      - name: Comment coach-flow failure
-        if: failure() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          {
-            echo '### Temporary browser QA diagnostic'
-            echo '```text'
-            tail -80 coach-flow.log
-            echo '```'
-          } > coach-flow-comment.md
-          gh pr comment "$PR_NUMBER" --body-file coach-flow-comment.md
+        run: npx playwright test --grep "coach adds a complete testing event"
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
