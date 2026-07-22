@@ -4,6 +4,7 @@ import { useStore } from './store/useStore'
 import Dashboard from './pages/Dashboard'
 import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
+import Archetypes from './pages/Archetypes'
 import AthleteProfile from './pages/AthleteProfile'
 import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
@@ -15,6 +16,7 @@ const NAV = [
   { to: '/', label: 'Coach Dashboard', end: true },
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
+  { to: '/archetypes', label: 'Archetypes' },
   { to: '/entry', label: 'Enter Testing' },
   { to: '/data', label: 'Data' },
 ]
@@ -107,6 +109,13 @@ function Header() {
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
           <NavLink
+            to="/archetypes"
+            className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted"
+            aria-label="Open archetype guide"
+          >
+            GUIDE
+          </NavLink>
+          <NavLink
             to="/tv"
             className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame"
             aria-label="Open TV Mode"
@@ -123,6 +132,7 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
   const items = viewerMode
     ? [
         ...MOBILE_NAV.filter((item) => item.to !== '/entry' && item.to !== '/data'),
+        { to: '/archetypes', label: 'Guide', icon: '?', end: false },
         { to: '/login', label: 'Sign In', icon: '→', end: false },
       ]
     : MOBILE_NAV
@@ -318,6 +328,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={<Athletes />} />
+          <Route path="/archetypes" element={<Archetypes />} />
           <Route path="/athletes/new" element={guarded(<AthleteEditor />)} />
           <Route path="/athletes/:id" element={<AthleteProfile />} />
           <Route path="/athletes/:id/edit" element={guarded(<AthleteEditor />)} />
