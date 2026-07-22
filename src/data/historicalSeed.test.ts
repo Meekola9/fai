@@ -136,7 +136,7 @@ describe('historicalSeedData', () => {
     expect(names.has('Lu. Cross (2025)')).toBe(true)
   })
 
-  it('repairs stale Summer 2026 athlete IDs already stored on a device', async () => {
+  it('repairs stale Summer 2026 athlete IDs without dropping film analysis', async () => {
     const seed = await historicalSeedData()
     const event = seed.events.find((item) => item.id === 'event-7badc8422c3808')
     expect(event).toBeDefined()
@@ -154,11 +154,36 @@ describe('historicalSeedData', () => {
           squatMax: 250,
         },
       ],
+      filmPlays: [
+        {
+          id: 'film-play-1',
+          ballCarrierId: 'athlete-14721a441f4e09',
+          targetId: 'athlete-14721a441f4e09',
+          annotations: [
+            {
+              id: 'annotation-1',
+              kind: 'trail',
+              athleteId: 'athlete-14721a441f4e09',
+              points: [],
+            },
+          ],
+        },
+      ],
     })
 
     expect(
       merged.sessions.find((session) => session.id === 'stale-device-session'),
     ).toMatchObject({ athleteId: 'athlete-31f3ca620f838f' })
+    expect(merged.filmPlays).toEqual([
+      expect.objectContaining({
+        id: 'film-play-1',
+        ballCarrierId: 'athlete-31f3ca620f838f',
+        targetId: 'athlete-31f3ca620f838f',
+        annotations: [
+          expect.objectContaining({ athleteId: 'athlete-31f3ca620f838f' }),
+        ],
+      }),
+    ])
   })
 
   it('overlays coach-entered records without removing historical sessions', async () => {
