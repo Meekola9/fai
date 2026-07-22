@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Card, Pill } from '../components/ui'
+import { ARCHETYPE_MINDSET_GUIDE } from '../data/archetypeMindsets'
 import { ARCHETYPE_CATALOG, type ArchetypeRole } from '../lib/archetypes'
 
 const ROLE_ORDER: ArchetypeRole[] = [
@@ -68,9 +69,12 @@ export default function Archetypes() {
     return ARCHETYPE_CATALOG.filter((archetype) => {
       if (role !== 'ALL' && archetype.role !== role) return false
       if (!term) return true
+      const coaching = ARCHETYPE_MINDSET_GUIDE[archetype.id]
       return [
         archetype.name,
         archetype.description,
+        coaching?.mindset ?? '',
+        coaching?.onFieldUse ?? '',
         ROLE_LABEL[archetype.role],
         ...archetype.primary,
       ].some((value) => value.toLowerCase().includes(term))
@@ -95,15 +99,15 @@ export default function Archetypes() {
         <h1 className="mt-1 text-3xl font-black tracking-tight text-chalk">Player Archetypes</h1>
         <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
           Archetypes translate an athlete’s position-adjusted testing profile into a recognizable football label.
-          They explain how the athlete moves and produces force; they do not replace film evaluation.
+          Each entry now includes a developmental mindset and potential ways a coach could deploy that profile.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <GuidePoint title="Measured evidence" text="Speed, acceleration, jump, power, pursuit, change of direction, conditioning, and strength." />
         <GuidePoint title="Position-specific" text="The same test profile can produce a different label at quarterback, receiver, linebacker, or defensive back." />
-        <GuidePoint title="Frame is secondary" text="Testing weight and height help separate body-type labels but do not override the performance categories." />
-        <GuidePoint title="Film still matters" text="Names implying technique, football IQ, arm talent, coverage, or ball skills are projections that require film confirmation." />
+        <GuidePoint title="Coaching projection" text="Mindset describes the habits a player could develop; potential usage describes schematic possibilities rather than a guaranteed role." />
+        <GuidePoint title="Film still matters" text="Technique, football IQ, arm talent, coverage, ball skills, toughness, and decision-making must still be confirmed through film and practice." />
       </div>
 
       <Card className="border-fai/25 bg-fai/5 p-4">
@@ -111,6 +115,14 @@ export default function Archetypes() {
         <p className="mt-1 text-sm leading-relaxed text-muted">
           For RB, WR, DB, and ATH, Strength counts only 5% of overall FAI and receives reduced influence in archetype matching.
           This prevents very light athletes from being classified primarily by an inflated Bench/Body-Weight or Squat/Body-Weight ratio.
+        </p>
+      </Card>
+
+      <Card className="border-gold/25 bg-gold/5 p-4">
+        <div className="text-sm font-black text-chalk">How to read the mindset and usage sections</div>
+        <p className="mt-1 text-sm leading-relaxed text-muted">
+          The mindset is a coaching target—not a personality diagnosis. Potential on-field use lists roles and concepts that may fit the athlete’s measured profile.
+          Final deployment should account for film, football skill, assignment reliability, health, maturity, and the team’s actual scheme.
         </p>
       </Card>
 
@@ -122,7 +134,7 @@ export default function Archetypes() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search name, trait, or position…"
+              placeholder="Search name, trait, mindset, or usage…"
               className="w-full rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-chalk outline-none placeholder:text-muted focus:border-fai"
             />
           </label>
@@ -157,6 +169,7 @@ export default function Archetypes() {
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {group.items.map((archetype) => {
                 const frame = frameSignals(archetype)
+                const coaching = ARCHETYPE_MINDSET_GUIDE[archetype.id]
                 return (
                   <div
                     key={archetype.id}
@@ -175,6 +188,23 @@ export default function Archetypes() {
                       </div>
 
                       <p className="mt-3 text-sm leading-relaxed text-muted">{archetype.description}</p>
+
+                      {coaching && (
+                        <div className="mt-4 space-y-3">
+                          <div className="rounded-xl border border-fai/20 bg-fai/5 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-fai">
+                              Mindset to develop
+                            </div>
+                            <p className="mt-1.5 text-sm leading-relaxed text-chalk/90">{coaching.mindset}</p>
+                          </div>
+                          <div className="rounded-xl border border-gold/20 bg-gold/5 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-gold">
+                              Potential on-field use
+                            </div>
+                            <p className="mt-1.5 text-sm leading-relaxed text-chalk/90">{coaching.onFieldUse}</p>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="mt-4">
                         <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
