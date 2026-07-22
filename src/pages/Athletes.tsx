@@ -9,6 +9,7 @@ import { seasonEvents } from '../lib/events'
 import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
 import { formatHeight } from '../data/constants'
+import { athletePositionLine, usageLabel } from '../data/positions'
 import type { Athlete, AthleteResult } from '../types'
 
 function trendOf(value: number) {
@@ -42,8 +43,15 @@ export default function Athletes() {
     const rows = data.athletes
       .filter((athlete) => {
         if (filters.grade && String(athlete.grade) !== filters.grade) return false
-        if (filters.group && athlete.positionGroup !== filters.group) return false
-        if (filters.position && !athlete.position.toLowerCase().includes(filters.position.toLowerCase())) return false
+        if (
+          filters.group
+          && athlete.positionGroup !== filters.group
+          && athlete.secondaryPositionGroup !== filters.group
+        ) return false
+        if (filters.position) {
+          const searchable = `${athlete.position} ${athlete.secondaryPosition ?? ''}`.toLowerCase()
+          if (!searchable.includes(filters.position.toLowerCase())) return false
+        }
         if (filters.eventId) return resultMap.has(athlete.id)
         return true
       })
@@ -98,6 +106,7 @@ export default function Athletes() {
             const badges = result
               ? playerBadgesFor({ result, timeline: athleteTimeline(computed, athlete.id) })
               : []
+            const usage = athlete.usage ?? 'one-way'
             return (
               <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
                 <div className="flex items-start gap-3">
@@ -106,7 +115,10 @@ export default function Athletes() {
                     <Link to={`/athletes/${athlete.id}`} className="block truncate text-base font-bold text-chalk hover:text-fai">{athlete.name}</Link>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                       <Pill tone="fai">{athlete.positionGroup}</Pill>
-                      <span>{athlete.position}</span>
+                      {usage !== 'one-way' && (
+                        <Pill tone={usage === 'iron-man' ? 'gold' : 'up'}>{usageLabel(usage)}</Pill>
+                      )}
+                      <span>{athletePositionLine(athlete)}</span>
                       <span>· {gradeLabelFor(athlete)}</span>
                     </div>
                     <div className="mt-1 text-xs text-muted">

@@ -21,13 +21,13 @@ export function applyFilters(results: AthleteResult[], filters: FilterState): At
   return results.filter((result) => {
     const group = result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup
     if (filters.grade && String(result.current.session.gradeSnapshot ?? result.athlete.grade) !== filters.grade) return false
+    // Leaderboard group filters stay tied to the primary test-day benchmark.
     if (filters.group && group !== filters.group) return false
-    if (
-      filters.position &&
-      !(result.current.session.positionSnapshot ?? result.athlete.position)
-        .toLowerCase()
-        .includes(filters.position.toLowerCase())
-    ) return false
+    if (filters.position) {
+      const primary = result.current.session.positionSnapshot ?? result.athlete.position
+      const searchable = `${primary} ${result.athlete.secondaryPosition ?? ''}`.toLowerCase()
+      if (!searchable.includes(filters.position.toLowerCase())) return false
+    }
     return true
   })
 }

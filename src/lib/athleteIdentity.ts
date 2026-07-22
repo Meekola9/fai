@@ -105,6 +105,10 @@ function mergeAthleteProfile(
   const newestBio = [...members]
     .filter((athlete) => athlete.heightIn > 0 || athlete.weightLbs > 0)
     .sort((a, b) => b.grade - a.grade)[0]
+  const deployment = members.find(
+    (athlete) => athlete.usage && athlete.usage !== 'one-way',
+  )
+  const secondaryRole = members.find((athlete) => athlete.secondaryPosition)
 
   // The coach-maintained roster record wins. Alias members and historical
   // session snapshots only fill fields the canonical record is missing —
@@ -126,6 +130,10 @@ function mergeAthleteProfile(
     positionGroup: baseHasPosition
       ? base.positionGroup
       : specific?.positionGroup ?? base.positionGroup,
+    usage: base.usage ?? deployment?.usage ?? 'one-way',
+    secondaryPosition: base.secondaryPosition ?? secondaryRole?.secondaryPosition,
+    secondaryPositionGroup:
+      base.secondaryPositionGroup ?? secondaryRole?.secondaryPositionGroup,
     heightIn: base.heightIn || newestBio?.heightIn || 0,
     weightLbs: base.weightLbs || latest?.weightLbsSnapshot || newestBio?.weightLbs || 0,
     photoUrl: base.photoUrl ?? members.find((athlete) => athlete.photoUrl)?.photoUrl,

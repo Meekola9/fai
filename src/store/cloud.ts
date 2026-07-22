@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { normalizeAppData } from '../lib/events'
 import { consolidateAthleteAliases } from '../lib/athleteIdentity'
+import { decodeCloudPosition, encodeCloudPosition } from '../data/positions'
 import { supabase } from '../lib/supabase'
 
 interface TeamAccess {
@@ -85,17 +86,23 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
   // play_events is newer; if the migration has not run yet, treat it as empty
   // rather than failing the whole load.
 
-  const athletes: Athlete[] = (athleteResult.data ?? []).map((row) => ({
-    id: String(row.id),
-    name: String(row.name),
-    grade: requiredNumber(row.grade),
-    position: String(row.position),
-    positionGroup: String(row.position_group) as PositionGroup,
-    heightIn: requiredNumber(row.height_in),
-    weightLbs: requiredNumber(row.weight_lbs),
-    photoUrl: optionalText(row.photo_url),
-    hudlUrl: optionalText(row.hudl_url),
-  }))
+  const athletes: Athlete[] = (athleteResult.data ?? []).map((row) => {
+    const packed = decodeCloudPosition(String(row.position))
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      grade: requiredNumber(row.grade),
+      position: packed.position,
+      positionGroup: String(row.position_group) as PositionGroup,
+      usage: packed.usage,
+      secondaryPosition: packed.secondaryPosition,
+      secondaryPositionGroup: packed.secondaryPositionGroup,
+      heightIn: requiredNumber(row.height_in),
+      weightLbs: requiredNumber(row.weight_lbs),
+      photoUrl: optionalText(row.photo_url),
+      hudlUrl: optionalText(row.hudl_url),
+    }
+  })
 
   const events: TestingEvent[] = (eventResult.data ?? []).map((row) => ({
     id: String(row.id),
@@ -204,7 +211,9 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     id: athlete.id,
     name: athlete.name,
     grade: athlete.grade,
-    position: athlete.position,
+    // Two-way metadata is packed into the existing text field so the feature
+    // works on current Supabase schemas without a destructive migration.
+    position: encodeCloudPosition(athlete),
     position_group: athlete.positionGroup,
     height_in: athlete.heightIn,
     weight_lbs: athlete.weightLbs,
