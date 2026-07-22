@@ -37,6 +37,26 @@ describe('historicalSeedData', () => {
     expect(data.sessions).toHaveLength(762)
   })
 
+  it('contains no sessions whose athlete or event is missing', async () => {
+    const data = await historicalSeedData()
+    const athleteIds = new Set(data.athletes.map((athlete) => athlete.id))
+    const eventIds = new Set(data.events.map((event) => event.id))
+    const orphanSessions = data.sessions
+      .filter(
+        (session) =>
+          !athleteIds.has(session.athleteId) || !eventIds.has(session.eventId),
+      )
+      .map((session) => ({
+        id: session.id,
+        athleteId: session.athleteId,
+        eventId: session.eventId,
+        missingAthlete: !athleteIds.has(session.athleteId),
+        missingEvent: !eventIds.has(session.eventId),
+      }))
+
+    expect(orphanSessions).toEqual([])
+  })
+
   it('contains the recorded 2026 vertical, broad-jump, and squat results', async () => {
     const data = await historicalSeedData()
 
