@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
+import { GameDayBadgeArtwork } from '../components/GameDayBadges'
 import {
   HAVOC_TYPES,
   HAVOC_NEGATIVES,
@@ -11,6 +12,14 @@ import {
   buildImpact,
   type AthleteImpact,
 } from '../lib/impact'
+import {
+  NEGATIVE_GAME_DAY_BADGES,
+  POSITIVE_GAME_DAY_BADGES,
+  activeTeamGameDayBadgeAwards,
+  athleteGameDayBadgeSummary,
+  gameDayBadgeForType,
+  isGameDayBadgeType,
+} from '../lib/gameDayBadges'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -243,11 +252,23 @@ export default function Playmakers() {
 
   const roster = useMemo(() => [...data.athletes].sort((a, b) => a.name.localeCompare(b.name)), [data.athletes])
   const athleteById = useMemo(() => new Map(data.athletes.map((a) => [a.id, a])), [data.athletes])
-  const recentPlays = useMemo(
-    () =>
-      [...data.plays]
-        .sort((a, b) => `${b.date}${b.createdAt ?? ''}`.localeCompare(`${a.date}${a.createdAt ?? ''}`))
-        .slice(0, 12),
+  const impactPlays = useMemo(() => data.plays.filter((play) => !isGameDayBadgeType(play.type)), [data.plays])
+  const badgePlays = useMemo(() => data.plays.filter((play) => isGameDayBadgeType(play.type)), [data.plays])
+  const activeBadgeAwards = useMemo(
+    () => activeTeamGameDayBadgeAwards(data.plays, data.athletes),
+    [data.plays, data.athletes],
+  )
+  const seasonBadgeLeaders = useMemo(
+    () => data.athletes
+      .map((athlete) => ({ athlete, summary: athleteGameDayBadgeSummary(data.plays, athlete.id, 2026) }))
+      .filter((item) => item.summary.seasonTotal > 0)
+      .sort((a, b) => b.summary.seasonTotal - a.summary.seasonTotal || a.athlete.name.localeCompare(b.athlete.name)),
+    [data.athletes, data.plays],
+  )
+  const recentLogs = useMemo(
+    () => [...data.plays]
+      .sort((a, b) => `${b.date}${b.createdAt ?? ''}`.localeCompare(`${a.date}${a.createdAt ?? ''}`))
+      .slice(0, 16),
     [data.plays],
   )
 
@@ -257,8 +278,9 @@ export default function Playmakers() {
     .sort((a, b) => b.playmakerPoints - a.playmakerPoints)
 
   const scale = Math.max(summary.teamHavoc, summary.teamPlaymaker, 20)
-  const havocPlays = data.plays.filter((play) => PLAY_TYPE_BY_KEY.get(play.type)?.category === 'havoc').length
-  const playmakerPlays = data.plays.length - havocPlays
+  const havocPlays = impactPlays.filter((play) => PLAY_TYPE_BY_KEY.get(play.type)?.category === 'havoc').length
+  const playmakerPlays = impactPlays.length - havocPlays
+  const selectedBadge = gameDayBadgeForType(playType)
 
   function logPlay() {
     if (!athleteId) return
@@ -272,13 +294,14 @@ export default function Playmakers() {
         <h1 className="text-3xl font-black uppercase tracking-tight text-chalk">
           Playmakers <span className="text-down">&amp;</span> Havoc
         </h1>
-        <div className="mt-1 text-xs text-muted">Make plays. Create chaos. Level up.</div>
+        <div className="mt-1 text-xs text-muted">Make plays. Create chaos. Earn game-day badges.</div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-panel/70 px-4 py-4">
+      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-line bg-panel/70 px-4 py-4 sm:grid-cols-4">
         <HeroStat label="Havoc Pts" value={summary.teamHavoc} tone="text-down" />
         <HeroStat label="Playmaker Pts" value={summary.teamPlaymaker} tone="text-up" />
-        <HeroStat label="Plays Logged" value={data.plays.length} tone="text-fai" />
+        <HeroStat label="Impact Plays" value={impactPlays.length} tone="text-fai" />
+        <HeroStat label="Game Badges" value={badgePlays.length} tone="text-gold" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -294,7 +317,10 @@ export default function Playmakers() {
 
       {canEdit && (
         <Card className="p-5">
-          <SectionTitle>Log a Play</SectionTitle>
+          <SectionTitle>Log a Play or Award a Badge</SectionTitle>
+          <div className="mt-2 text-xs leading-relaxed text-muted">
+            Game-day badges stay visible for seven days and remain in the 2026 season total. Badge awards do not change impact points.
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <select
               value={athleteId}
@@ -311,6 +337,16 @@ export default function Playmakers() {
               onChange={(event) => setPlayType(event.target.value)}
               className="rounded-lg border border-line bg-panel px-3 py-2 text-sm font-semibold text-chalk outline-none focus:border-fai"
             >
+              <optgroup label="Positive game-day badges">
+                {POSITIVE_GAME_DAY_BADGES.map((badge) => (
+                  <option key={badge.key} value={badge.key}>{badge.name} — {badge.earnedBy}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Negative game-day badges">
+                {NEGATIVE_GAME_DAY_BADGES.map((badge) => (
+                  <option key={badge.key} value={badge.key}>{badge.name} — {badge.earnedBy}</option>
+                ))}
+              </optgroup>
               <optgroup label="Havoc (defense)">
                 {HAVOC_TYPES.map((play) => (
                   <option key={play.key} value={play.key}>{play.emoji} {play.label} (+{play.points})</option>
@@ -345,23 +381,88 @@ export default function Playmakers() {
               className="rounded-lg border border-line bg-panel px-3 py-2 text-sm font-semibold text-chalk outline-none placeholder:text-muted focus:border-fai"
             />
           </div>
+          {selectedBadge && (
+            <div className={`mt-3 flex items-center gap-3 rounded-xl border p-3 ${selectedBadge.tone === 'positive' ? 'border-fai/25 bg-fai/5' : 'border-down/30 bg-down/5'}`}>
+              <GameDayBadgeArtwork badge={selectedBadge} size={48} />
+              <div>
+                <div className="text-sm font-black text-chalk">{selectedBadge.name}</div>
+                <div className="text-xs text-muted">{selectedBadge.earnedBy}</div>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             onClick={logPlay}
             disabled={!athleteId}
             className="mt-3 rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink disabled:opacity-40"
           >
-            + Log Play
+            {selectedBadge ? '+ Award Game-Day Badge' : '+ Log Play'}
           </button>
         </Card>
       )}
 
       <Card className="p-5">
+        <SectionTitle>Active Game-Day Badges · This Week</SectionTitle>
+        <div className="mb-3 text-xs text-muted">Awards disappear from the active display after seven days, but remain in the season count.</div>
+        {activeBadgeAwards.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line bg-panel-2/25 p-5 text-center text-sm text-muted">No badges are active this week.</div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {activeBadgeAwards.map((award) => (
+              <Link
+                key={award.play.id}
+                to={`/athletes/${award.athlete.id}`}
+                className={`flex items-center gap-3 rounded-xl border p-3 transition hover:border-fai/50 ${award.badge.tone === 'positive' ? 'border-fai/25 bg-fai/5' : 'border-down/30 bg-down/5'}`}
+              >
+                <GameDayBadgeArtwork badge={award.badge} size={56} />
+                <div className="min-w-0 flex-1">
+                  <div className={`text-[10px] font-black uppercase tracking-wider ${award.badge.tone === 'positive' ? 'text-fai' : 'text-down'}`}>{award.badge.name}</div>
+                  <div className="truncate text-sm font-black text-chalk">{award.athlete.name}</div>
+                  <div className="text-[11px] text-muted">{award.play.date}{award.play.opponent ? ` · vs ${award.play.opponent}` : ''}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
+        <SectionTitle>2026 Game-Day Badge Totals</SectionTitle>
+        <div className="mb-3 text-xs text-muted">Season count includes every positive and negative badge awarded.</div>
+        {seasonBadgeLeaders.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-line bg-panel-2/25 p-5 text-center text-sm text-muted">No 2026 game-day badges have been awarded.</div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {seasonBadgeLeaders.map(({ athlete, summary: badgeSummary }, index) => (
+              <Link key={athlete.id} to={`/athletes/${athlete.id}`} className="rounded-xl border border-line bg-panel-2/35 p-3 transition hover:border-fai/40">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-black/40 text-sm font-black nums text-muted">{index + 1}</span>
+                  <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-black text-chalk">{athlete.name}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                      <span className="text-fai">{badgeSummary.positiveTotal} positive</span> · <span className="text-down">{badgeSummary.negativeTotal} negative</span>
+                    </div>
+                  </div>
+                  <div className="text-2xl font-black nums text-gold">{badgeSummary.seasonTotal}</div>
+                </div>
+                <div className="mt-2 flex -space-x-1">
+                  {badgeSummary.seasonCounts.slice(0, 5).map((item) => (
+                    <GameDayBadgeArtwork key={item.badge.key} badge={item.badge} size={32} />
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-5">
         <SectionTitle>Level Up</SectionTitle>
-        <div className="mb-3 text-xs text-muted">Every athlete ranked by total impact points earned.</div>
+        <div className="mb-3 text-xs text-muted">Every athlete ranked by total impact points earned. Game-day badges are tracked separately.</div>
         {summary.athletes.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center text-sm text-muted">
-            No plays logged yet.{canEdit ? ' Use “Log a Play” above to charge up the meters.' : ''}
+            No impact plays logged yet.{canEdit ? ' Use “Log a Play or Award a Badge” above to charge up the meters.' : ''}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -372,27 +473,30 @@ export default function Playmakers() {
         )}
       </Card>
 
-      {canEdit && recentPlays.length > 0 && (
+      {canEdit && recentLogs.length > 0 && (
         <Card className="p-5">
-          <SectionTitle>Recent Plays</SectionTitle>
+          <SectionTitle>Recent Plays &amp; Badge Awards</SectionTitle>
           <div className="mt-3 space-y-1.5">
-            {recentPlays.map((play) => {
+            {recentLogs.map((play) => {
+              const badge = gameDayBadgeForType(play.type)
               const type = PLAY_TYPE_BY_KEY.get(play.type)
               const athlete = athleteById.get(play.athleteId)
               const points = type?.points ?? 0
-              const isNegative = points < 0
+              const isNegative = badge ? badge.tone === 'negative' : points < 0
               return (
                 <div
                   key={play.id}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isNegative ? 'bg-down/10 ring-1 ring-inset ring-down/20' : 'bg-panel-2/40'}`}
                 >
-                  <span className="text-base">{type?.emoji ?? '•'}</span>
+                  {badge ? <GameDayBadgeArtwork badge={badge} size={34} /> : <span className="text-base">{type?.emoji ?? '•'}</span>}
                   <span className="font-bold text-chalk">{athlete?.name ?? 'Unknown'}</span>
-                  <span className="text-muted">{type?.label ?? play.type}</span>
+                  <span className="text-muted">{badge?.name ?? type?.label ?? play.type}</span>
                   <span className="text-xs text-muted">
-                    <span className={`font-bold ${isNegative ? 'text-down' : 'text-up'}`}>
-                      {points >= 0 ? `+${points}` : points}
-                    </span>{' '}
+                    {badge ? (
+                      <span className={`font-bold ${badge.tone === 'positive' ? 'text-fai' : 'text-down'}`}>Game-day badge</span>
+                    ) : (
+                      <span className={`font-bold ${isNegative ? 'text-down' : 'text-up'}`}>{points >= 0 ? `+${points}` : points}</span>
+                    )}{' '}
                     · {play.date}{play.opponent ? ` · vs ${play.opponent}` : ''}
                   </span>
                   <button
