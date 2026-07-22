@@ -2,27 +2,23 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { athleteTimeline } from '../lib/compute'
-import { computeProgress, strengths, weaknesses } from '../lib/progress'
+import { strengths, weaknesses } from '../lib/progress'
 import { playerBadgesFor } from '../lib/badges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
   Avatar,
   Card,
-  DeltaBadge,
   FaiRing,
   Pill,
   SectionTitle,
-  TrendArrow,
 } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
-import { RadarChart, LineChart, ScoreMeter } from '../components/charts'
+import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
-import type { Category } from '../types'
+import type { AthleteResult, Category } from '../types'
 
-function trendOf(value: number) {
-  return value > 0.05 ? 'improved' : value < -0.05 ? 'regressed' : ('same' as const)
-}
+const ATHLETE_SEASON_ID = 'season-2026'
 
 function FilmCard({ hudlUrl }: { hudlUrl?: string }) {
   const film = resolveFilm(hudlUrl)
@@ -68,12 +64,28 @@ const CATEGORY_COLOR: Record<Category, string> = {
   Strength: '#fbbf24',
 }
 
+function currentSeasonResult(result: AthleteResult): AthleteResult {
+  return {
+    ...result,
+    previous: undefined,
+    faiImprovement: 0,
+    faiImprovementPct: 0,
+  }
+}
+
 export default function AthleteProfile() {
   const { id } = useParams()
-  const { data, computed, resultByAthlete, gradeLabelFor, canEdit } = useStore()
+  const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const athlete = id ? data.athletes.find((item) => item.id === id) : undefined
-  const result = id ? resultByAthlete.get(id) : undefined
-  const timeline = useMemo(() => (id ? athleteTimeline(computed, id) : []), [computed, id])
+  const result = id
+    ? resultsForEvent(ATHLETE_SEASON_ID).find((item) => item.athlete.id === id)
+    : undefined
+  const timeline = useMemo(
+    () => (id
+      ? athleteTimeline(computed, id).filter((item) => item.event.id === ATHLETE_SEASON_ID)
+      : []),
+    [computed, id],
+  )
 
   if (!athlete) {
     return (
@@ -103,30 +115,28 @@ export default function AthleteProfile() {
             </div>
           </div>
           <div className="mt-6 rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
-            <div className="text-base font-bold text-chalk">No testing data yet</div>
-            <div className="mt-1 text-sm text-muted">Create or select a testing event and enter the athlete’s results.</div>
-            {canEdit && (
-              <Link to={`/entry?athlete=${athlete.id}`} className="mt-4 inline-block rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink">+ Enter Testing Data</Link>
-            )}
+            <div className="text-base font-bold text-chalk">No 2026 testing data yet</div>
+            <div className="mt-1 text-sm text-muted">Historical seasons are available only from Rankings.</div>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {canEdit && (
+                <Link to={`/entry?athlete=${athlete.id}`} className="inline-block rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink">+ Enter 2026 Testing Data</Link>
+              )}
+              <Link to="/leaderboard" className="inline-block rounded-lg border border-line px-5 py-2 text-sm font-bold text-chalk">View Rankings</Link>
+            </div>
           </div>
         </Card>
       </div>
     )
   }
 
-  const { current, previous, faiImprovement, faiImprovementPct, rankEligible } = result
-  const progress = computeProgress(current, previous)
+  const displayResult = currentSeasonResult(result)
+  const { current, rankEligible } = displayResult
   const strong = strengths(current)
   const weak = weaknesses(current)
-  const badges = playerBadgesFor({ result, timeline })
+  const badges = playerBadgesFor({ result: displayResult, timeline })
   const radarSeries = [
-    ...(previous ? [{ label: 'Previous', color: '#64748b', values: previous.categories as Record<Category, number> }] : []),
-    { label: 'Current', color: '#c6f24e', values: current.categories as Record<Category, number> },
+    { label: '2026', color: '#c6f24e', values: current.categories as Record<Category, number> },
   ]
-  const linePoints = timeline.map((item) => ({
-    label: item.event.name.length > 12 ? item.event.phase : item.event.name,
-    value: item.fai,
-  }))
 
   return (
     <div className="space-y-6">
@@ -144,15 +154,15 @@ export default function AthleteProfile() {
               <span>· {current.session.weightLbsSnapshot ?? athlete.weightLbs} lbs at test</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
+              <Pill tone="fai">2026 season</Pill>
               <Pill tone={rankEligible ? 'up' : 'gold'}>
                 {rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
               </Pill>
-              {rankEligible && <Pill tone="gold">Team Rank #{result.teamRank} / {result.teamCount}</Pill>}
-              {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{result.groupRank} / {result.groupCount}</Pill>}
-              <Pill>{current.event.name} season</Pill>
-              {result.impactBoostPct > 0 && (
+              {rankEligible && <Pill tone="gold">2026 Team Rank #{displayResult.teamRank} / {displayResult.teamCount}</Pill>}
+              {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{displayResult.groupRank} / {displayResult.groupCount}</Pill>}
+              {displayResult.impactBoostPct > 0 && (
                 <Pill tone="fai">
-                  ⚡ +{result.impactBoostPct}% Playmaker boost ({result.baseFai.toFixed(1)} → {current.fai.toFixed(1)})
+                  ⚡ +{displayResult.impactBoostPct}% Playmaker boost ({displayResult.baseFai.toFixed(1)} → {current.fai.toFixed(1)})
                 </Pill>
               )}
               {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
@@ -164,25 +174,20 @@ export default function AthleteProfile() {
           </div>
           <div className="text-center">
             <FaiRing score={current.fai} size={130} label={rankEligible ? 'FAI' : 'PROV'} />
-            {previous && (
-              <div className="mt-2 flex items-center justify-center gap-2">
-                <DeltaBadge value={faiImprovement} trend={trendOf(faiImprovement)} size="lg" />
-                <span className="text-xs text-muted">({faiImprovementPct >= 0 ? '+' : ''}{faiImprovementPct}%)</span>
-              </div>
-            )}
+            <div className="mt-2 text-xs font-bold uppercase tracking-wider text-fai">2026</div>
           </div>
         </div>
 
         {!rankEligible && (
           <div className="mt-5 rounded-xl border border-flame/30 bg-flame/5 p-4 text-sm text-muted">
-            This score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
+            This 2026 score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
           </div>
         )}
       </Card>
 
       <Card className="p-5">
         <SectionTitle right={<Link to="/badges" className="text-xs font-bold text-gold hover:underline">Badge guide →</Link>}>
-          Earned Badges · {badges.length}
+          2026 Earned Badges · {badges.length}
         </SectionTitle>
         <PlayerBadgeGallery badges={badges} />
       </Card>
@@ -191,61 +196,54 @@ export default function AthleteProfile() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <SectionTitle right={<div className="flex gap-3 text-xs">{previous && <span className="text-flat">● Previous</span>}<span className="text-fai">● Current</span></div>}>
-            Category Profile
+          <SectionTitle right={<span className="text-xs font-bold text-fai">● 2026</span>}>
+            2026 Category Profile
           </SectionTitle>
           <RadarChart series={radarSeries} />
           <div className="mt-3 space-y-2">
-            {progress.categories.map((category) => (
-              <div key={category.category} className="flex items-center gap-3">
-                <div className="w-10 text-xs font-bold text-muted">{CATEGORY_SHORT[category.category]}</div>
-                <div className="flex-1"><ScoreMeter value={category.current ?? 0} color={CATEGORY_COLOR[category.category]} /></div>
-                <div className="w-10 text-right text-sm font-black nums text-chalk">{typeof category.current === 'number' ? category.current.toFixed(0) : '—'}</div>
-                <div className="w-14 text-right">
-                  {typeof category.current === 'number' && typeof category.previous === 'number'
-                    ? <DeltaBadge value={category.improvement} trend={category.trend} />
-                    : <span className="text-xs text-muted">—</span>}
-                </div>
+            {CATEGORIES.map((category) => (
+              <div key={category} className="flex items-center gap-3">
+                <div className="w-10 text-xs font-bold text-muted">{CATEGORY_SHORT[category]}</div>
+                <div className="flex-1"><ScoreMeter value={current.categories[category]} color={CATEGORY_COLOR[category]} /></div>
+                <div className="w-10 text-right text-sm font-black nums text-chalk">{current.categories[category].toFixed(0)}</div>
               </div>
             ))}
           </div>
         </Card>
 
         <div className="space-y-6">
-          <Card className="p-5">
-            <SectionTitle>FAI Progress by Year</SectionTitle>
-            {timeline.length > 1 ? <LineChart points={linePoints} /> : <div className="py-8 text-center text-sm text-muted">Add another testing event to measure progress.</div>}
-          </Card>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <InsightCard title="Biggest Improvement" tone="up">
-              {progress.biggestImprovement ? (
-                <>
-                  <div className="text-sm font-bold text-chalk">{progress.biggestImprovement.label}</div>
-                  <div className="mt-1 text-xs text-muted">
-                    {formatMetric(progress.biggestImprovement.previousRaw, progress.biggestImprovement.unit)} →{' '}
-                    <span className="font-bold text-up">{formatMetric(progress.biggestImprovement.currentRaw, progress.biggestImprovement.unit)}</span>
-                  </div>
-                </>
-              ) : <div className="text-xs text-muted">No comparable prior result.</div>}
-            </InsightCard>
-            <InsightCard title="Biggest Weakness" tone="down">
-              {progress.biggestWeakness ? (
-                <><div className="text-sm font-bold text-chalk">{progress.biggestWeakness.category}</div><div className="mt-1 text-2xl font-black nums text-flame">{progress.biggestWeakness.current?.toFixed(0)}</div></>
-              ) : <div className="text-xs text-muted">Not enough data.</div>}
-            </InsightCard>
-            <InsightCard title="Suggested Focus" tone="fai">
-              {progress.suggestedFocus ? <><div className="text-lg font-black text-fai">{progress.suggestedFocus}</div><div className="mt-1 text-xs text-muted">Prioritize this category next block.</div></> : <div className="text-xs text-muted">—</div>}
-            </InsightCard>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card className="border-down/30 p-4">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted">2026 Development Need</div>
+              <div className="mt-1.5">
+                {weak.length ? (
+                  <>
+                    <div className="text-lg font-black text-flame">{weak[0]}</div>
+                    <div className="mt-1 text-xs text-muted">Lowest flagged 2026 category.</div>
+                  </>
+                ) : <div className="text-xs text-muted">No major weakness flagged.</div>}
+              </div>
+            </Card>
+            <Card className="border-fai/30 p-4">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted">Suggested Focus</div>
+              <div className="mt-1.5">
+                {weak.length ? (
+                  <>
+                    <div className="text-lg font-black text-fai">{weak[0]}</div>
+                    <div className="mt-1 text-xs text-muted">Prioritize this category next block.</div>
+                  </>
+                ) : <div className="text-xs text-muted">Maintain the current 2026 profile.</div>}
+              </div>
+            </Card>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="p-4">
-              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-up">Strengths</div>
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-up">2026 Strengths</div>
               <div className="flex flex-wrap gap-1.5">{strong.length ? strong.map((category) => <Pill key={category} tone="up">{category} · {current.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">Building baseline strengths.</span>}</div>
             </Card>
             <Card className="p-4">
-              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-down">Weaknesses</div>
+              <div className="mb-2 text-xs font-bold uppercase tracking-wider text-down">2026 Weaknesses</div>
               <div className="flex flex-wrap gap-1.5">{weak.length ? weak.map((category) => <Pill key={category} tone="down">{category} · {current.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">No major weakness flagged.</span>}</div>
             </Card>
           </div>
@@ -253,55 +251,45 @@ export default function AthleteProfile() {
       </div>
 
       <Card className="p-5">
-        <SectionTitle>Test-by-Test · Current vs Previous Year</SectionTitle>
+        <SectionTitle>2026 Test Results</SectionTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3">Test</th><th className="px-3">Cat</th><th className="px-3 text-right">Previous</th><th className="px-3 text-right">Current</th><th className="px-3 text-right">Change</th><th className="px-3 text-right">Score</th><th className="px-3 text-center">Trend</th></tr></thead>
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="py-2 pr-3">Test</th>
+                <th className="px-3">Category</th>
+                <th className="px-3 text-right">2026 Result</th>
+                <th className="px-3 text-right">Score</th>
+              </tr>
+            </thead>
             <tbody>
-              {progress.metrics.map((metric) => (
-                <tr key={metric.key} className="border-b border-line/50">
-                  <td className="py-2 pr-3 font-semibold text-chalk">{metric.label}</td>
-                  <td className="px-3 text-xs text-muted">{CATEGORY_SHORT[metric.category]}</td>
-                  <td className="px-3 text-right nums text-muted">{formatMetric(metric.previousRaw, metric.unit)}</td>
-                  <td className="px-3 text-right nums font-bold text-chalk">
-                    {formatMetric(metric.currentRaw, metric.unit)}
-                    {metric.key === 'bestFly' && typeof metric.currentRaw === 'number' && metric.currentRaw > 0 && (
-                      <span className="ml-1 text-xs font-semibold text-muted">
-                        ({flyTimeToMph(metric.currentRaw).toFixed(1)} mph)
-                      </span>
-                    )}
-                  </td>
-                  <td className={`px-3 text-right nums font-bold ${metric.rawImprovement === undefined ? 'text-muted' : metric.rawImprovement > 0 ? 'text-up' : metric.rawImprovement < 0 ? 'text-down' : 'text-flat'}`}>{metric.rawImprovement === undefined ? '—' : `${metric.rawImprovement > 0 ? '+' : ''}${metric.rawImprovement}${metric.unit}`}</td>
-                  <td className="px-3 text-right nums text-fai">{typeof metric.currentScore === 'number' ? metric.currentScore.toFixed(0) : '—'}</td>
-                  <td className="px-3 text-center">{metric.rawImprovement === undefined ? <span className="text-xs text-muted">—</span> : <TrendArrow trend={metric.trend} />}</td>
-                </tr>
-              ))}
+              {SCORED_METRICS.map((metric) => {
+                const raw = current.metrics[metric.key]
+                const score = current.normalized[metric.key]
+                return (
+                  <tr key={metric.key} className="border-b border-line/50">
+                    <td className="py-2 pr-3 font-semibold text-chalk">{metric.label}</td>
+                    <td className="px-3 text-xs text-muted">{CATEGORY_SHORT[metric.category]}</td>
+                    <td className="px-3 text-right nums font-bold text-chalk">
+                      {formatMetric(raw, metric.unit)}
+                      {metric.key === 'bestFly' && typeof raw === 'number' && raw > 0 && (
+                        <span className="ml-1 text-xs font-semibold text-muted">
+                          ({flyTimeToMph(raw).toFixed(1)} mph)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 text-right nums text-fai">{typeof score === 'number' ? score.toFixed(0) : '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       </Card>
 
-      <Card className="p-5">
-        <SectionTitle>Testing History by Year</SectionTitle>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="py-2 pr-3">Year</th><th className="px-2">Latest date</th><th className="px-2">Status</th>{SCORED_METRICS.map((metric) => <th key={metric.key} className="px-2 text-right">{metric.shortLabel}</th>)}<th className="px-2 text-right">FAI</th></tr></thead>
-            <tbody>
-              {[...timeline].reverse().map((item) => (
-                <tr key={item.event.id} className="border-b border-line/50">
-                  <td className="py-2 pr-3 font-semibold text-chalk">{item.event.name}</td>
-                  <td className="px-2 text-muted">{item.event.startDate}</td>
-                  <td className="px-2"><span className={item.scoreStatus === 'complete' ? 'text-up' : 'text-flame'}>{item.scoreStatus} · {item.completionPct}%</span></td>
-                  {SCORED_METRICS.map((metric) => <td key={metric.key} className="px-2 text-right nums text-chalk">{formatMetric(item.metrics[metric.key], metric.unit)}</td>)}
-                  <td className="px-2 text-right nums font-black text-fai">{item.fai.toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      <div className="text-center text-xs text-muted">Category weights: {CATEGORIES.map((category) => CATEGORY_SHORT[category]).join(' · ')}</div>
+      <div className="text-center text-xs text-muted">
+        Athlete pages display 2026 only. <Link to="/leaderboard" className="font-bold text-fai hover:underline">View historical seasons in Rankings.</Link>
+      </div>
     </div>
   )
 }
@@ -319,11 +307,6 @@ function ProfileNav({ athleteId }: { athleteId: string }) {
       )}
     </div>
   )
-}
-
-function InsightCard({ title, tone, children }: { title: string; tone: 'up' | 'down' | 'fai'; children: React.ReactNode }) {
-  const border = tone === 'up' ? 'border-up/30' : tone === 'down' ? 'border-down/30' : 'border-fai/30'
-  return <Card className={`p-4 ${border}`}><div className="text-[11px] font-bold uppercase tracking-wider text-muted">{title}</div><div className="mt-1.5">{children}</div></Card>
 }
 
 function formatMetric(value: number | undefined, unit: string): string {
