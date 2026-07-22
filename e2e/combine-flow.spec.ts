@@ -144,10 +144,13 @@ test('coach adds a complete testing event without losing historical data', async
   await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
   await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  // TV Mode is full-screen and intentionally omits the app navigation.
-  await page.goto('/data')
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export All Data (CSV)' }).click()
-  const download = await downloadPromise
+  // TV Mode is full-screen and the app uses hash routing.
+  await page.goto('/#/data')
+  const exportButton = page.getByRole('button', { name: 'Export All Data (CSV)' })
+  await expect(exportButton).toBeVisible()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    exportButton.click(),
+  ])
   expect(download.suggestedFilename()).toMatch(/^fai-export-.*\.csv$/)
 })
