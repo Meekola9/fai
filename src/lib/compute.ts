@@ -12,7 +12,7 @@ import type {
   TestingEvent,
 } from '../types'
 import {
-  CATEGORY_WEIGHTS,
+  categoryWeightsFor,
   METRICS_BY_CATEGORY,
   REQUIRED_METRICS,
   SCORED_METRICS,
@@ -61,14 +61,18 @@ export function computeSession(
   const scoreStatus =
     completionPct >= 100 ? 'complete' : completionPct >= 60 ? 'provisional' : 'insufficient'
 
-  // Conditioning is optional. When absent, remove only its 15% from the denominator.
-  // Missing required categories keep their weight and therefore lower the provisional FAI.
+  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
+  const categoryWeights = categoryWeightsFor(positionGroup)
+
+  // Conditioning is optional. When absent, remove only its position-specific
+  // weight from the denominator. Missing required categories keep their weight
+  // and therefore lower the provisional FAI.
   const conditioningPresent = categoryHasData.get('Conditioning') === true
-  const denominator = conditioningPresent ? 1 : 1 - CATEGORY_WEIGHTS.Conditioning
+  const denominator = conditioningPresent ? 1 : 1 - categoryWeights.Conditioning
   let weighted = 0
   for (const category of CATEGORIES) {
     if (category === 'Conditioning' && !conditioningPresent) continue
-    weighted += categories[category] * CATEGORY_WEIGHTS[category]
+    weighted += categories[category] * categoryWeights[category]
   }
   const fai = denominator > 0 ? round1(clamp(weighted / denominator, 0, 100)) : 0
 
