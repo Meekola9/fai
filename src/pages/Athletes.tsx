@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill } from '../components/ui'
 import { PlayerBadgeStrip } from '../components/PlayerBadges'
+import { GameDayBadgeArtwork } from '../components/GameDayBadges'
+import { OverallRatingName } from '../components/OverallRatingName'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
 import { athleteTimeline } from '../lib/compute'
 import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
+import { athleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
 import type { Athlete, AthleteResult } from '../types'
@@ -99,6 +102,7 @@ export default function Athletes() {
             const badges = result
               ? playerBadgesFor({ result: { ...result, previous: undefined, faiImprovement: 0, faiImprovementPct: 0 }, timeline: seasonTimeline })
               : []
+            const gameBadges = athleteGameDayBadgeSummary(data.plays, athlete.id, 2026)
             const usage = athlete.usage ?? 'one-way'
             return (
               <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
@@ -119,6 +123,19 @@ export default function Athletes() {
                       {result?.rankEligible ? ` · 2026 Rank #${result.teamRank}` : ''}
                     </div>
                     <PlayerBadgeStrip badges={badges} />
+                    {gameBadges.activeAwards.length > 0 && (
+                      <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-fai/20 bg-fai/5 px-2 py-1.5">
+                        <div className="flex -space-x-1">
+                          {gameBadges.activeAwards.slice(0, 3).map((award) => (
+                            <GameDayBadgeArtwork key={award.play.id} badge={award.badge} size={30} />
+                          ))}
+                        </div>
+                        <div className="min-w-0 text-[10px] font-bold text-muted">
+                          <div className="truncate text-chalk">{gameBadges.activeAwards.length} active game-day badge{gameBadges.activeAwards.length === 1 ? '' : 's'}</div>
+                          <div>{gameBadges.seasonTotal} earned in 2026</div>
+                        </div>
+                      </div>
+                    )}
                     {archetype && (
                       <Link
                         to={`/archetypes#${archetype.id}`}
@@ -146,8 +163,9 @@ export default function Athletes() {
                         <div className={`text-3xl font-black nums ${result.rankEligible ? 'text-fai' : 'text-flame'}`}>
                           {result.current.fai.toFixed(1)}
                         </div>
+                        <OverallRatingName score={result.current.fai} compact />
                         {!result.rankEligible && (
-                          <div className="text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
+                          <div className="mt-1 text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
                         )}
                       </div>
                       <Pill tone="fai">2026 season</Pill>
