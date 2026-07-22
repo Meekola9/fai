@@ -151,7 +151,7 @@ export function BadgeArtwork({
 
       <g filter={`url(#${id}-shadow)`}>
         <path d={frame} fill={`url(#${id}-metal)`} stroke={palette.edge} strokeWidth="1.4" />
-        <path d={frame} fill="none" stroke="#ffffff" strokeOpacity="0.28" strokeWidth="0.8" transform="translate(0 1) scale(0.94)" transformOrigin="32px 32px" />
+        <path d={frame} fill="none" stroke="#ffffff" strokeOpacity="0.28" strokeWidth="0.8" transform="translate(1.92 2.92) scale(0.94)" />
         <g clipPath={`url(#${id}-clip)`}>
           <circle cx="32" cy="32" r="24" fill={`url(#${id}-core)`} stroke={palette.edge} strokeOpacity="0.55" strokeWidth="1.2" />
           <GroupPattern group={badge.group} color={palette.edge} />
