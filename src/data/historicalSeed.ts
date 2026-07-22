@@ -21,6 +21,7 @@ import chunk15 from './historicalSeedPayload/6b.csv?raw'
 import chunk16 from './historicalSeedPayload/6c.csv?raw'
 import chunk17 from './historicalSeedPayload/7a.csv?raw'
 import chunk18 from './historicalSeedPayload/7b.csv?raw'
+import chunk19 from './historicalSeedPayload/8.csv?raw'
 
 const HISTORICAL_CSV = [
   chunk0,
@@ -42,6 +43,7 @@ const HISTORICAL_CSV = [
   chunk16,
   chunk17,
   chunk18,
+  chunk19,
 ].join('')
 
 let seedCache: Required<AppData> | null = null
@@ -80,7 +82,7 @@ export const HISTORICAL_SEED_SUMMARY = {
   lastYear: 2026,
   eventCount: 20,
   athleteCount: 158,
-  sessionCount: 670,
+  sessionCount: 762,
   mergedAliasCount: 26,
 } as const
 
@@ -88,4 +90,4 @@ export const HISTORICAL_SEED_SUMMARY = {
  * Bump whenever the bundled archive gains records, so signed-in teams get the
  * new baseline merged into their cloud data exactly once per version.
  */
-export const SEED_VERSION = '2026-07-sum26-fly10'
+export const SEED_VERSION = '2026-07-sum26-jumps-squats'
