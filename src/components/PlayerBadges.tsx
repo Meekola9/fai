@@ -55,7 +55,7 @@ export function BadgeMedallion({
   return (
     <div className={`relative grid shrink-0 place-items-center ${dimensions}`} aria-hidden="true">
       <div className={`absolute inset-[6%] rotate-45 rounded-[28%] border ${style.frame} ${style.glow}`} />
-      <div className={`absolute inset-[20%] rotate-45 rounded-[24%] border border-white/10 bg-ink/35`} />
+      <div className="absolute inset-[20%] rotate-45 rounded-[24%] border border-white/10 bg-ink/35" />
       <span className={`relative z-10 drop-shadow ${iconSize}`}>{badge.icon}</span>
     </div>
   )
@@ -135,10 +135,12 @@ export function PlayerBadgeGallery({ badges }: { badges: EarnedPlayerBadge[] }) 
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function badgeTierName(tier: BadgeTier): string {
   return TIER_NAME[tier]
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function badgeTierLabelClass(tier: BadgeTier): string {
   return TIER_STYLE[tier].label
 }
