@@ -85,16 +85,29 @@ const HISTORICAL_ATHLETE_ID_REMAP: Readonly<Record<string, string>> = {
   'athlete-ddefae980061fa': 'athlete-18357eff701e60',
 }
 
+function remapHistoricalAthleteId(id?: string): string | undefined {
+  return id ? HISTORICAL_ATHLETE_ID_REMAP[id] ?? id : id
+}
+
 function repairHistoricalReferences(input: AppData): AppData {
   return {
     ...input,
     sessions: (input.sessions ?? []).map((session) => ({
       ...session,
-      athleteId: HISTORICAL_ATHLETE_ID_REMAP[session.athleteId] ?? session.athleteId,
+      athleteId: remapHistoricalAthleteId(session.athleteId) ?? session.athleteId,
     })),
     plays: (input.plays ?? []).map((play) => ({
       ...play,
-      athleteId: HISTORICAL_ATHLETE_ID_REMAP[play.athleteId] ?? play.athleteId,
+      athleteId: remapHistoricalAthleteId(play.athleteId) ?? play.athleteId,
+    })),
+    filmPlays: (input.filmPlays ?? []).map((film) => ({
+      ...film,
+      ballCarrierId: remapHistoricalAthleteId(film.ballCarrierId),
+      targetId: remapHistoricalAthleteId(film.targetId),
+      annotations: film.annotations?.map((annotation) => ({
+        ...annotation,
+        athleteId: remapHistoricalAthleteId(annotation.athleteId),
+      })),
     })),
   }
 }
@@ -129,6 +142,7 @@ export function mergeHistoricalData(
       events: upsertById(repairedSeed.events, normalizedCurrent.events),
       sessions: upsertById(repairedSeed.sessions, normalizedCurrent.sessions),
       plays: upsertById(repairedSeed.plays, normalizedCurrent.plays),
+      filmPlays: upsertById(repairedSeed.filmPlays, normalizedCurrent.filmPlays),
     }),
   )
 }
