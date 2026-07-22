@@ -1,35 +1,30 @@
 import { Link } from 'react-router-dom'
+import { BadgeArtwork } from './BadgeArtwork'
 import type { EarnedPlayerBadge, PlayerBadgeDefinition, BadgeTier } from '../lib/badges'
 
 const TIER_STYLE: Record<BadgeTier, {
-  frame: string
   label: string
-  glow: string
+  ring: string
 }> = {
   bronze: {
-    frame: 'border-flame/50 bg-gradient-to-br from-flame/25 to-panel text-flame',
-    label: 'text-flame',
-    glow: 'shadow-[0_0_22px_-10px_rgba(249,115,22,0.75)]',
+    label: 'text-orange-300',
+    ring: 'group-hover:drop-shadow-[0_0_8px_rgba(251,146,60,0.55)]',
   },
   silver: {
-    frame: 'border-slate-400/50 bg-gradient-to-br from-slate-300/20 to-panel text-slate-200',
     label: 'text-slate-200',
-    glow: 'shadow-[0_0_22px_-10px_rgba(203,213,225,0.65)]',
+    ring: 'group-hover:drop-shadow-[0_0_8px_rgba(226,232,240,0.45)]',
   },
   gold: {
-    frame: 'border-gold/60 bg-gradient-to-br from-gold/25 to-panel text-gold',
     label: 'text-gold',
-    glow: 'shadow-[0_0_24px_-10px_rgba(251,191,36,0.8)]',
+    ring: 'group-hover:drop-shadow-[0_0_9px_rgba(252,211,77,0.6)]',
   },
   elite: {
-    frame: 'border-fai/60 bg-gradient-to-br from-fai/25 to-panel text-fai',
     label: 'text-fai',
-    glow: 'shadow-[0_0_25px_-10px_rgba(34,211,238,0.85)]',
+    ring: 'group-hover:drop-shadow-[0_0_10px_rgba(103,232,249,0.65)]',
   },
   legend: {
-    frame: 'border-violet-400/60 bg-gradient-to-br from-violet-500/25 to-panel text-violet-300',
     label: 'text-violet-300',
-    glow: 'shadow-[0_0_28px_-10px_rgba(167,139,250,0.9)]',
+    ring: 'group-hover:drop-shadow-[0_0_11px_rgba(196,181,253,0.7)]',
   },
 }
 
@@ -48,15 +43,16 @@ export function BadgeMedallion({
   badge: PlayerBadgeDefinition
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const dimensions = size === 'sm' ? 'h-9 w-9' : size === 'lg' ? 'h-16 w-16' : 'h-12 w-12'
-  const iconSize = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-3xl' : 'text-xl'
+  const pixels = size === 'sm' ? 40 : size === 'lg' ? 72 : 54
   const style = TIER_STYLE[badge.tier]
 
   return (
-    <div className={`relative grid shrink-0 place-items-center ${dimensions}`} aria-hidden="true">
-      <div className={`absolute inset-[6%] rotate-45 rounded-[28%] border ${style.frame} ${style.glow}`} />
-      <div className="absolute inset-[20%] rotate-45 rounded-[24%] border border-white/10 bg-ink/35" />
-      <span className={`relative z-10 drop-shadow ${iconSize}`}>{badge.icon}</span>
+    <div
+      className={`relative grid shrink-0 place-items-center transition duration-200 group-hover:-translate-y-0.5 group-hover:scale-[1.04] ${style.ring}`}
+      style={{ width: pixels, height: pixels }}
+      aria-hidden="true"
+    >
+      <BadgeArtwork badge={badge} size={pixels} />
     </div>
   )
 }
@@ -72,7 +68,7 @@ export function PlayerBadgeStrip({
   if (!shown.length) return null
 
   return (
-    <div className="mt-3 flex items-center gap-1.5" aria-label={`${badges.length} earned player badges`}>
+    <div className="mt-3 flex items-center gap-1" aria-label={`${badges.length} earned player badges`}>
       {shown.map((badge) => (
         <Link
           key={badge.id}
@@ -82,7 +78,7 @@ export function PlayerBadgeStrip({
           aria-label={`${badge.name}. ${badge.evidence}`}
         >
           <BadgeMedallion badge={badge} size="sm" />
-          <div className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 hidden w-48 -translate-x-1/2 rounded-lg border border-line bg-ink px-2.5 py-2 text-left shadow-xl group-hover:block group-focus:block">
+          <div className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 hidden w-52 -translate-x-1/2 rounded-lg border border-line bg-ink px-3 py-2.5 text-left shadow-xl group-hover:block group-focus:block">
             <div className={`text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[badge.tier].label}`}>
               {TIER_NAME[badge.tier]}
             </div>
@@ -94,7 +90,7 @@ export function PlayerBadgeStrip({
       {badges.length > shown.length && (
         <Link
           to="/badges"
-          className="grid h-8 min-w-8 place-items-center rounded-full border border-line bg-panel-2 px-2 text-[10px] font-black text-muted hover:border-fai/40 hover:text-fai"
+          className="ml-1 grid h-8 min-w-8 place-items-center rounded-full border border-line bg-panel-2 px-2 text-[10px] font-black text-muted hover:border-fai/40 hover:text-fai"
           aria-label={`View ${badges.length - shown.length} more badges`}
         >
           +{badges.length - shown.length}
