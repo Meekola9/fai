@@ -14,6 +14,9 @@ export type PositionGroup =
   | 'K/P'
   | 'ATH'
 
+/** Coach-entered roster deployment, separate from combine scoring. */
+export type PlayerUsage = 'one-way' | 'two-way' | 'iron-man'
+
 export type TestingPhase =
   | 'Baseline'
   | 'Midpoint'
@@ -39,8 +42,14 @@ export interface Athlete {
   id: string
   name: string
   grade: number // 9-12
+  /** Primary football position. This position group controls FAI benchmarking. */
   position: string
   positionGroup: PositionGroup
+  /** One-way, regular two-way, or near-full-time Iron Man deployment. */
+  usage?: PlayerUsage
+  /** Optional second role for two-way and Iron Man players. */
+  secondaryPosition?: string
+  secondaryPositionGroup?: PositionGroup
   heightIn: number
   weightLbs: number
   photoUrl?: string
