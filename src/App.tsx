@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
+import FilmRoom from './pages/FilmRoom'
 import Archetypes from './pages/Archetypes'
 import StatsGuide from './pages/StatsGuide'
 import Badges from './pages/Badges'
@@ -20,6 +21,7 @@ const NAV = [
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
+  { to: '/film', label: 'Film Room' },
   { to: '/archetypes', label: 'Archetypes' },
   { to: '/badges', label: 'Badges' },
   { to: '/stats', label: 'Stats Guide' },
@@ -335,6 +337,7 @@ export default function App() {
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={<Athletes />} />
           <Route path="/playmakers" element={<Playmakers />} />
+          <Route path="/film" element={<FilmRoom />} />
           <Route path="/archetypes" element={<Archetypes />} />
           <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />

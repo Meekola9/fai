@@ -74,7 +74,8 @@ export function normalizeAppData(input: AppData): Required<AppData> {
   })
 
   const plays = Array.isArray(input.plays) ? input.plays : []
-  return { athletes, sessions: upgradedSessions, events, plays }
+  const filmPlays = Array.isArray(input.filmPlays) ? input.filmPlays : []
+  return { athletes, sessions: upgradedSessions, events, plays, filmPlays }
 }
 
 /** Timed tests where a lower result is better; everything else is higher-better. */
