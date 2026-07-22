@@ -1,6 +1,7 @@
 import type {
   AppData,
   Athlete,
+  PlayEvent,
   PositionGroup,
   TestSession,
   TestingEvent,
@@ -33,6 +34,10 @@ const COLUMNS = [
   'positionGroupSnapshot',
   'weightLbsSnapshot',
   ...SESSION_METRIC_KEYS,
+  'playId',
+  'playType',
+  'opponent',
+  'note',
 ] as const
 
 function protectSpreadsheetFormula(value: string): string {
@@ -98,6 +103,19 @@ export function exportCsv(input: AppData): string {
     }
     for (const key of SESSION_METRIC_KEYS) values[key] = session[key]
     lines.push(row(values))
+  }
+
+  for (const play of data.plays) {
+    lines.push(row({
+      recordType: 'play',
+      athleteId: play.athleteId,
+      playId: play.id,
+      playType: play.type,
+      date: play.date,
+      opponent: play.opponent,
+      note: play.note,
+      createdAt: play.createdAt,
+    }))
   }
 
   return lines.join('\n')
@@ -173,6 +191,10 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   positionSnapshot: ['positionsnapshot'],
   positionGroupSnapshot: ['positiongroupsnapshot'],
   weightLbsSnapshot: ['weightlbssnapshot', 'testsnapshotweight'],
+  playId: ['playid'],
+  playType: ['playtype', 'play'],
+  opponent: ['opponent', 'opp'],
+  note: ['note', 'notes'],
 }
 
 const POSITION_TO_GROUP: Record<string, PositionGroup> = {
@@ -232,6 +254,7 @@ export function importCsv(text: string): AppData {
   const athletes = new Map<string, Athlete>()
   const events = new Map<string, TestingEvent>()
   const sessions: TestSession[] = []
+  const plays: PlayEvent[] = []
 
   for (let rowIndex = headerIndex + 1; rowIndex < rows.length; rowIndex += 1) {
     const cells = rows[rowIndex]
@@ -270,6 +293,23 @@ export function importCsv(text: string): AppData {
         status: 'closed',
         createdAt: field('createdAt') || undefined,
       })
+      continue
+    }
+
+    if (recordType === 'play') {
+      const type = field('playType')
+      const date = field('date')
+      if (type && date) {
+        plays.push({
+          id: field('playId') || generatedId('play'),
+          athleteId,
+          type,
+          date,
+          opponent: field('opponent') || undefined,
+          note: field('note') || undefined,
+          createdAt: field('createdAt') || undefined,
+        })
+      }
       continue
     }
 
@@ -318,7 +358,7 @@ export function importCsv(text: string): AppData {
   }
 
   if (athletes.size === 0) throw new Error('CSV did not contain any valid athlete rows.')
-  return normalizeAppData({ athletes: [...athletes.values()], events: [...events.values()], sessions })
+  return normalizeAppData({ athletes: [...athletes.values()], events: [...events.values()], sessions, plays })
 }
 
 export function downloadCsv(filename: string, csv: string): void {

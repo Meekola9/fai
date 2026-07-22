@@ -4,6 +4,7 @@ import { useStore } from './store/useStore'
 import Dashboard from './pages/Dashboard'
 import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
+import Playmakers from './pages/Playmakers'
 import Archetypes from './pages/Archetypes'
 import StatsGuide from './pages/StatsGuide'
 import Badges from './pages/Badges'
@@ -18,6 +19,7 @@ const NAV = [
   { to: '/', label: 'Coach Dashboard', end: true },
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
+  { to: '/playmakers', label: 'Playmakers' },
   { to: '/archetypes', label: 'Archetypes' },
   { to: '/badges', label: 'Badges' },
   { to: '/stats', label: 'Stats Guide' },
@@ -332,6 +334,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={<Athletes />} />
+          <Route path="/playmakers" element={<Playmakers />} />
           <Route path="/archetypes" element={<Archetypes />} />
           <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />

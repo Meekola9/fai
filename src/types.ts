@@ -97,11 +97,24 @@ export interface TestSession {
   cond51015?: number
 }
 
+/** A single game/scrimmage play that earns Havoc (defense) or Playmaker (offense) points. */
+export interface PlayEvent {
+  id: string
+  athleteId: string
+  /** Play-type key from the impact catalog (see lib/impact.ts). */
+  type: string
+  date: string
+  opponent?: string
+  note?: string
+  createdAt?: string
+}
+
 /** Everything the app persists. `events` stays optional for legacy imports. */
 export interface AppData {
   athletes: Athlete[]
   sessions: TestSession[]
   events?: TestingEvent[]
+  plays?: PlayEvent[]
 }
 
 export type CategoryScores = Record<Category, number>

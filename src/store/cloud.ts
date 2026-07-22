@@ -1,6 +1,7 @@
 import type {
   AppData,
   Athlete,
+  PlayEvent,
   PositionGroup,
   TestSession,
   TestingEvent,
@@ -71,15 +72,18 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult] = await Promise.all([
+  const [athleteResult, eventResult, sessionResult, playResult] = await Promise.all([
     db.from('athletes').select('*').eq('team_id', teamId),
     db.from('testing_events').select('*').eq('team_id', teamId),
     db.from('test_sessions').select('*').eq('team_id', teamId),
+    db.from('play_events').select('*').eq('team_id', teamId),
   ])
 
   throwIfError(athleteResult.error, 'Could not load athletes')
   throwIfError(eventResult.error, 'Could not load testing events')
   throwIfError(sessionResult.error, 'Could not load testing entries')
+  // play_events is newer; if the migration has not run yet, treat it as empty
+  // rather than failing the whole load.
 
   const athletes: Athlete[] = (athleteResult.data ?? []).map((row) => ({
     id: String(row.id),
@@ -135,8 +139,20 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
     cond51015: optionalNumber(row.cond51015),
   }))
 
+  const plays: PlayEvent[] = playResult.error
+    ? []
+    : (playResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        athleteId: String(row.athlete_id),
+        type: String(row.type),
+        date: String(row.play_date),
+        opponent: optionalText(row.opponent),
+        note: optionalText(row.note),
+        createdAt: optionalText(row.created_at),
+      }))
+
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions }),
+    normalizeAppData({ athletes, events, sessions, plays }),
   )
 }
 
@@ -287,6 +303,31 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     oldEvents,
     new Set(data.events.map((event) => event.id)),
   )
+
+  // Playmaker/Havoc plays sync separately and non-fatally: a team that has not
+  // yet run the play_events migration keeps saving athletes and testing data.
+  try {
+    const playRows = (data.plays ?? []).map((play) => ({
+      team_id: teamId,
+      id: play.id,
+      athlete_id: play.athleteId,
+      type: play.type,
+      play_date: play.date,
+      opponent: nullable(play.opponent),
+      note: nullable(play.note),
+      created_at: play.createdAt ?? now,
+    }))
+    const oldPlays = await existingIds('play_events', teamId)
+    if (playRows.length > 0) {
+      const { error } = await db
+        .from('play_events')
+        .upsert(playRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save plays')
+    }
+    await deleteMissing('play_events', teamId, oldPlays, new Set((data.plays ?? []).map((play) => play.id)))
+  } catch {
+    // play_events table not provisioned yet — skip play sync this save.
+  }
 }
 
 export interface PublicTeamData {
