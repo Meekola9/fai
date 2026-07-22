@@ -105,6 +105,8 @@ function resultFor(
     groupRank: options.groupRank ?? 0,
     groupCount: options.groupCount ?? 0,
     rankEligible: current.scoreStatus === 'complete',
+    baseFai: current.fai,
+    impactBoostPct: 0,
   }
 }
 

@@ -41,6 +41,7 @@ import {
 import { gradeLabel } from '../lib/alumni'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
+import { buildImpact } from '../lib/impact'
 import { normalizeAppData } from '../lib/events'
 import {
   consolidateAthleteAliases,
@@ -371,7 +372,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const computed = useMemo(() => computeAll(data), [data])
-  const results = useMemo(() => buildResults(computed), [computed])
+  const impactBoost = useMemo(
+    () => buildImpact(data.plays, data.athletes).boostByAthlete,
+    [data.plays, data.athletes],
+  )
+  const results = useMemo(() => buildResults(computed, undefined, impactBoost), [computed, impactBoost])
   const resultByAthlete = useMemo(
     () => new Map(results.map((result) => [result.athlete.id, result])),
     [results],
@@ -397,7 +402,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     computed,
     results,
     resultsForEvent(eventId) {
-      return buildResults(computed, eventId)
+      return buildResults(computed, eventId, impactBoost)
     },
     resultByAthlete,
     gradeLabelFor(athlete, style = 'short') {

@@ -4,7 +4,9 @@ import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
 import {
   HAVOC_TYPES,
+  HAVOC_NEGATIVES,
   PLAYMAKER_TYPES,
+  PLAYMAKER_NEGATIVES,
   PLAY_TYPE_BY_KEY,
   buildImpact,
   type AthleteImpact,
@@ -208,6 +210,8 @@ function LevelCard({ item, rank }: { item: AthleteImpact; rank: number }) {
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
             {item.havocPoints > 0 && <Pill tone="down">💥 {item.havocPoints}</Pill>}
             {item.playmakerPoints > 0 && <Pill tone="up">⚡ {item.playmakerPoints}</Pill>}
+            {item.boostPct > 0 && <Pill tone="gold">📈 +{item.boostPct}% overall</Pill>}
+            {item.negativePoints > 0 && <Pill tone="down">⚠️ −{item.negativePoints}</Pill>}
           </div>
         </div>
         <div className="text-right">
@@ -312,9 +316,19 @@ export default function Playmakers() {
                   <option key={play.key} value={play.key}>{play.emoji} {play.label} (+{play.points})</option>
                 ))}
               </optgroup>
+              <optgroup label="Defensive mistakes">
+                {HAVOC_NEGATIVES.map((play) => (
+                  <option key={play.key} value={play.key}>{play.emoji} {play.label} ({play.points})</option>
+                ))}
+              </optgroup>
               <optgroup label="Playmaker (offense / ST)">
                 {PLAYMAKER_TYPES.map((play) => (
                   <option key={play.key} value={play.key}>{play.emoji} {play.label} (+{play.points})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Offensive mistakes">
+                {PLAYMAKER_NEGATIVES.map((play) => (
+                  <option key={play.key} value={play.key}>{play.emoji} {play.label} ({play.points})</option>
                 ))}
               </optgroup>
             </select>
@@ -365,13 +379,21 @@ export default function Playmakers() {
             {recentPlays.map((play) => {
               const type = PLAY_TYPE_BY_KEY.get(play.type)
               const athlete = athleteById.get(play.athleteId)
+              const points = type?.points ?? 0
+              const isNegative = points < 0
               return (
-                <div key={play.id} className="flex items-center gap-3 rounded-lg bg-panel-2/40 px-3 py-2 text-sm">
+                <div
+                  key={play.id}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isNegative ? 'bg-down/10 ring-1 ring-inset ring-down/20' : 'bg-panel-2/40'}`}
+                >
                   <span className="text-base">{type?.emoji ?? '•'}</span>
                   <span className="font-bold text-chalk">{athlete?.name ?? 'Unknown'}</span>
                   <span className="text-muted">{type?.label ?? play.type}</span>
                   <span className="text-xs text-muted">
-                    +{type?.points ?? 0} · {play.date}{play.opponent ? ` · vs ${play.opponent}` : ''}
+                    <span className={`font-bold ${isNegative ? 'text-down' : 'text-up'}`}>
+                      {points >= 0 ? `+${points}` : points}
+                    </span>{' '}
+                    · {play.date}{play.opponent ? ` · vs ${play.opponent}` : ''}
                   </span>
                   <button
                     type="button"
