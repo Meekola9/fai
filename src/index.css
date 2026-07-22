@@ -132,6 +132,79 @@ textarea {
   animation: fai-pop 0.4s ease-out both;
 }
 
+/* ------------------------------------------------------------------ */
+/* Playmakers / Havoc — Next-Gen-style broadcast graphics + electricity */
+/* ------------------------------------------------------------------ */
+
+/* Faded perspective field grid behind the meters. */
+.field-grid {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* Lightning bolts flicker like live current. */
+@keyframes fai-flicker {
+  0%, 100% { opacity: 0; }
+  4% { opacity: 1; }
+  9% { opacity: 0.2; }
+  13% { opacity: 0.95; }
+  18% { opacity: 0.1; }
+  24% { opacity: 0.8; }
+  30% { opacity: 0; }
+}
+.animate-bolt {
+  animation: fai-flicker 1.6s steps(1, end) infinite;
+}
+
+/* Pulsing electric glow around the headline number. */
+@keyframes fai-volt {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.animate-volt { animation: fai-volt 2.2s ease-in-out infinite; }
+
+/* Crackling charge running along the meter bar. */
+@keyframes fai-charge {
+  from { background-position: 0 0; }
+  to { background-position: 200% 0; }
+}
+.animate-charge {
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    currentColor 45%,
+    #ffffff 50%,
+    currentColor 55%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: fai-charge 1.4s linear infinite;
+}
+
+/* Sweeping shine across progress bars. */
+@keyframes fai-shine {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(320%); }
+}
+.animate-shine { animation: fai-shine 2.4s ease-in-out infinite; }
+
+/* Rising energy streaks for the playmaker surge. */
+@keyframes fai-surge {
+  0% { transform: translateY(110%); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-140%); opacity: 0; }
+}
+.animate-surge { animation: fai-surge 2.6s ease-in infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bolt, .animate-volt, .animate-charge, .animate-shine, .animate-surge {
+    animation: none;
+  }
+  .animate-bolt { opacity: 0.85; }
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
