@@ -19,6 +19,7 @@ const COLUMNS = [
   'heightIn',
   'weightLbs',
   'photoUrl',
+  'hudlUrl',
   'eventId',
   'eventName',
   'eventPhase',
@@ -66,6 +67,7 @@ export function exportCsv(input: AppData): string {
       heightIn: athlete.heightIn,
       weightLbs: athlete.weightLbs,
       photoUrl: athlete.photoUrl,
+      hudlUrl: athlete.hudlUrl,
     }))
   }
 
@@ -158,6 +160,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   heightIn: ['heightin', 'height', 'ht'],
   weightLbs: ['weightlbs', 'weight', 'wt', 'weightlb'],
   photoUrl: ['photourl', 'photo'],
+  hudlUrl: ['hudlurl', 'hudl', 'film', 'filmurl', 'filmlink'],
   eventId: ['eventid', 'testingeventid'],
   eventName: ['eventname', 'testingevent', 'combine'],
   eventPhase: ['eventphase', 'phase', 'testingphase', 'period'],
@@ -248,6 +251,7 @@ export function importCsv(text: string): AppData {
         heightIn: parseHeight(field('heightIn')),
         weightLbs: numberValue(field('weightLbs')) ?? 0,
         photoUrl: field('photoUrl') || undefined,
+        hudlUrl: field('hudlUrl') || undefined,
       })
     }
 

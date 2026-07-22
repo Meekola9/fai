@@ -129,6 +129,7 @@ function mergeAthleteProfile(
     heightIn: base.heightIn || newestBio?.heightIn || 0,
     weightLbs: base.weightLbs || latest?.weightLbsSnapshot || newestBio?.weightLbs || 0,
     photoUrl: base.photoUrl ?? members.find((athlete) => athlete.photoUrl)?.photoUrl,
+    hudlUrl: base.hudlUrl ?? members.find((athlete) => athlete.hudlUrl)?.hudlUrl,
   }
 }
 
