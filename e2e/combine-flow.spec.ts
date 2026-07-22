@@ -64,6 +64,25 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
   await expect(page.getByText('Optional', { exact: true })).toHaveCount(0)
 })
 
+test('athlete pages show 2026 only while Rankings retains historical seasons', async ({ page }) => {
+  await page.goto('/')
+  await waitForHistoricalSeed(page)
+
+  await page.getByRole('link', { name: 'Athletes', exact: true }).click()
+  await expect(page.getByText('2026 season only', { exact: true })).toBeVisible()
+  await expect(page.getByRole('option', { name: '2025 season' })).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'AJ Bailey', exact: true }).click()
+  await expect(page.getByText('2026 Category Profile', { exact: true })).toBeVisible()
+  await expect(page.getByText('2026 Test Results', { exact: true })).toBeVisible()
+  await expect(page.getByText('FAI Progress by Year', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Testing History by Year', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Test-by-Test · Current vs Previous Year', { exact: true })).toHaveCount(0)
+
+  await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
+  await expect(page.getByRole('option', { name: '2025 season' })).toBeVisible()
+})
+
 test('coach adds a complete testing event without losing historical data', async ({ page }) => {
   await page.goto('/')
   await waitForHistoricalSeed(page)
@@ -134,8 +153,8 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
   await expect(page.getByText('Official score')).toBeVisible()
-  // Results are aggregated by year, so the profile shows the season, not the event day.
   await expect(page.getByText('2026 season', { exact: true })).toBeVisible()
+  await expect(page.getByText('Testing History by Year', { exact: true })).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
