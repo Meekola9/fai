@@ -139,7 +139,7 @@ export const HISTORICAL_SEED_SUMMARY = {
   eventCount: 20,
   athleteCount: 159,
   sessionCount: 762,
-  mergedAliasCount: 55,
+  mergedAliasCount: 26,
 } as const
 
 /**
