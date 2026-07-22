@@ -124,6 +124,20 @@ describe('player archetypes', () => {
     expect(powerBack?.evidence[0]).toContain('Power')
   })
 
+  it('does not let a light speed-skill athlete’s relative-strength score dominate the archetype evidence', () => {
+    const receiver = archetypeFor(resultFor('WR', {
+      Speed: 82,
+      Acceleration: 79,
+      Jump: 70,
+      Power: 68,
+      'Change of Direction': 76,
+      Strength: 100,
+    }, 135))
+
+    expect(receiver?.evidence[0]).toContain('Speed')
+    expect(receiver?.evidence.slice(0, 2).some((item) => item.startsWith('Strength'))).toBe(false)
+  })
+
   it('marks sparse testing profiles as low confidence', () => {
     const archetype = archetypeFor(resultFor('ATH', { Acceleration: 80 }))
     expect(archetype?.confidence).toBe('low')

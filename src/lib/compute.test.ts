@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppData, Athlete, PositionGroup, TestSession, TestingEvent } from '../types'
-import { benchmarkScore } from '../data/scoring'
+import { benchmarkScore, categoryWeightsFor } from '../data/scoring'
 import { computeAll } from './compute'
 import { buildResults } from './progress'
 
@@ -136,6 +136,20 @@ describe('FAI computation', () => {
   it('preserves legitimate zero benchmark scores', () => {
     expect(benchmarkScore(5.25, { elite: 4.4, developmental: 5.25 }, false)).toBe(0)
     expect(benchmarkScore(4.4, { elite: 4.4, developmental: 5.25 }, false)).toBe(100)
+  })
+
+  it('cuts Strength to 5% for RB, WR, DB, and ATH while preserving 10% for other groups', () => {
+    for (const group of ['RB', 'WR', 'DB', 'ATH'] as PositionGroup[]) {
+      const weights = categoryWeightsFor(group)
+      expect(weights.Strength).toBe(0.05)
+      expect(weights.Speed).toBe(0.18)
+      expect(weights.Acceleration).toBe(0.17)
+      expect(Object.values(weights).reduce((sum, value) => sum + value, 0)).toBeCloseTo(1)
+    }
+
+    for (const group of ['QB', 'TE', 'OL', 'DL', 'LB', 'K/P'] as PositionGroup[]) {
+      expect(categoryWeightsFor(group).Strength).toBe(0.1)
+    }
   })
 
   it('weights and grades the 10-yard dash for offensive linemen', () => {

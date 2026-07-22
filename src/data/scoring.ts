@@ -4,6 +4,7 @@
 
 import type { Category, PositionGroup, TestSession } from '../types'
 
+/** Default FAI weighting for quarterbacks, hybrids, linemen, and specialists. */
 export const CATEGORY_WEIGHTS: Record<Category, number> = {
   Speed: 0.15,
   Acceleration: 0.15,
@@ -13,6 +14,33 @@ export const CATEGORY_WEIGHTS: Record<Category, number> = {
   'Change of Direction': 0.13,
   Conditioning: 0.15,
   Strength: 0.1,
+}
+
+/**
+ * RB, WR, DB, and ATH are speed-skill groups. Pure body-weight ratios can
+ * over-reward very light athletes, so Strength counts half as much in their
+ * overall FAI. The removed five percentage points move to Speed and
+ * Acceleration, keeping the complete weight profile at 100%.
+ */
+export const SPEED_SKILL_CATEGORY_WEIGHTS: Record<Category, number> = {
+  Speed: 0.18,
+  Acceleration: 0.17,
+  Jump: 0.08,
+  Power: 0.17,
+  Pursuit: 0.07,
+  'Change of Direction': 0.13,
+  Conditioning: 0.15,
+  Strength: 0.05,
+}
+
+const SPEED_SKILL_GROUPS: readonly PositionGroup[] = ['RB', 'WR', 'DB', 'ATH']
+
+export function isSpeedSkillGroup(group: PositionGroup): boolean {
+  return SPEED_SKILL_GROUPS.includes(group)
+}
+
+export function categoryWeightsFor(group: PositionGroup): Record<Category, number> {
+  return isSpeedSkillGroup(group) ? SPEED_SKILL_CATEGORY_WEIGHTS : CATEGORY_WEIGHTS
 }
 
 export const NEUTRAL_SCORE = 50
