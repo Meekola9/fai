@@ -34,7 +34,6 @@ jobs:
           path: |
             test.log
             build.log
-            src/data/historicalSeedPayload/
           if-no-files-found: ignore
           retention-days: 14
       - name: Install mobile browser
