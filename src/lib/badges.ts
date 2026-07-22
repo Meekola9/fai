@@ -233,8 +233,8 @@ export const PLAYER_BADGE_CATALOG = catalog([
   },
 ] as const)
 
-const DEFINITION_BY_ID = new Map(
-  PLAYER_BADGE_CATALOG.map((definition) => [definition.id, definition]),
+const DEFINITION_BY_ID: ReadonlyMap<string, PlayerBadgeDefinition> = new Map(
+  PLAYER_BADGE_CATALOG.map((definition) => [definition.id, definition] as const),
 )
 
 function definition(id: string): PlayerBadgeDefinition {
