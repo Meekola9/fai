@@ -11,6 +11,7 @@ import type {
   Athlete,
   AthleteResult,
   ComputedSession,
+  FilmPlay,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -94,13 +95,16 @@ interface StoreContextValue {
   deleteSession: (id: string) => void
   addPlay: (play: Omit<PlayEvent, 'id' | 'createdAt'>) => string
   deletePlay: (id: string) => void
+  addFilmPlay: (film: Omit<FilmPlay, 'id' | 'createdAt'>) => string
+  updateFilmPlay: (film: FilmPlay) => void
+  deleteFilmPlay: (id: string) => void
   resetSample: () => void
   replaceAll: (data: AppData) => void
   importCsvText: (text: string, mode: 'merge' | 'replace') => void
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null)
-const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [], plays: [] }
+const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [], plays: [], filmPlays: [] }
 
 interface AuthUserLike {
   id: string
@@ -504,6 +508,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         athletes: current.athletes.filter((athlete) => athlete.id !== id),
         sessions: current.sessions.filter((session) => session.athleteId !== id),
         plays: current.plays.filter((play) => play.athleteId !== id),
+        // Keep the film breakdown but detach the removed athlete from its tags.
+        filmPlays: current.filmPlays.map((film) => ({
+          ...film,
+          ballCarrierId: film.ballCarrierId === id ? undefined : film.ballCarrierId,
+          targetId: film.targetId === id ? undefined : film.targetId,
+          annotations: film.annotations?.map((annotation) =>
+            annotation.athleteId === id ? { ...annotation, athleteId: undefined } : annotation,
+          ),
+        })),
       }))
     },
 
@@ -573,6 +586,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mutate((current) => ({
         ...current,
         plays: current.plays.filter((play) => play.id !== id),
+      }))
+    },
+
+    addFilmPlay(film) {
+      const id = newId('film')
+      const createdAt = new Date().toISOString()
+      mutate((current) => ({
+        ...current,
+        filmPlays: [...current.filmPlays, { ...film, id, createdAt }],
+      }))
+      return id
+    },
+    updateFilmPlay(film) {
+      mutate((current) => ({
+        ...current,
+        filmPlays: current.filmPlays.map((item) =>
+          item.id === film.id
+            ? { ...film, createdAt: film.createdAt ?? item.createdAt ?? new Date().toISOString() }
+            : item,
+        ),
+      }))
+    },
+    deleteFilmPlay(id) {
+      mutate((current) => ({
+        ...current,
+        filmPlays: current.filmPlays.filter((film) => film.id !== id),
       }))
     },
 
@@ -669,6 +708,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           athletes: existingAthletes,
           events: existingEvents,
           sessions: [...current.sessions, ...incomingSessions],
+          // CSV import never carries plays or film, so keep what's on device.
+          plays: current.plays,
+          filmPlays: current.filmPlays,
         })
       })
     },

@@ -125,12 +125,84 @@ export interface PlayEvent {
   createdAt?: string
 }
 
+// ---------------------------------------------------------------------------
+// Film analysis — the Video Analyst / "Next Gen"-style breakdown layer.
+//
+// A FilmPlay is one tagged snap from game film (usually an opponent's, for
+// scouting). The video itself is never persisted — only where to seek within
+// the loaded film plus the lightweight situational tags and drawn overlays.
+// Auto-detection (players / ball / trails) will later fill the same fields a
+// coach can tag by hand today.
+// ---------------------------------------------------------------------------
+
+/** A single drawn point on the film overlay, normalized to the video frame. */
+export interface FilmAnnotationPoint {
+  x: number // 0-1 across the frame width
+  y: number // 0-1 down the frame height
+  t?: number // optional seconds from the play's start, for trails / speed
+}
+
+export type FilmAnnotationKind = 'route' | 'trail' | 'zone' | 'arrow'
+
+/** A route line, defender trail, coverage zone, or pointer drawn over film. */
+export interface FilmAnnotation {
+  id: string
+  kind: FilmAnnotationKind
+  /** Rostered athlete this path belongs to, when known. */
+  athleteId?: string
+  label?: string
+  color?: string
+  points: FilmAnnotationPoint[]
+}
+
+export type PlaySide = 'offense' | 'defense' | 'special'
+export type PlayCall = 'run' | 'pass' | 'rpo' | 'screen' | 'special'
+export type FieldHash = 'L' | 'M' | 'R'
+
+/** One tagged play broken down from film. */
+export interface FilmPlay {
+  id: string
+  /** Human label for the film source, e.g. "vs Central — Q1" or a file name. */
+  filmLabel?: string
+  /** Seek point (seconds) within the loaded film, so a coach can jump back. */
+  videoTimeSec?: number
+
+  // Game context
+  opponent?: string
+  date?: string
+  /** Which unit this snap describes — defaults to the scouted offense. */
+  side?: PlaySide
+  quarter?: number
+  down?: number // 1-4
+  distance?: number // yards to go
+  yardLine?: number // 1-99 (own 1 … opponent 1)
+  hash?: FieldHash
+
+  // What was called / seen
+  formation?: string // formation key from the catalog
+  personnel?: string // e.g. '11', '21', '12'
+  call?: PlayCall
+  concept?: string // run or pass concept key
+  ballCarrierId?: string // rostered athlete
+  targetId?: string // rostered athlete (intended receiver)
+
+  // Result
+  gain?: number // yards gained (may be negative)
+  result?: string // 'TD' | 'INT' | 'incomplete' | free text
+
+  // Analysis overlay
+  annotations?: FilmAnnotation[]
+  note?: string
+  createdAt?: string
+}
+
 /** Everything the app persists. `events` stays optional for legacy imports. */
 export interface AppData {
   athletes: Athlete[]
   sessions: TestSession[]
   events?: TestingEvent[]
   plays?: PlayEvent[]
+  filmPlays?: FilmPlay[]
 }
 
 export type CategoryScores = Record<Category, number>
