@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Athlete, PlayEvent } from '../types'
+import { isGameDayBadgeType } from './gameDayBadges'
 
 export type PlayCategory = 'havoc' | 'playmaker'
 
@@ -138,8 +139,10 @@ export interface ImpactSummary {
 }
 
 export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSummary {
+  // Game-day badges are temporary recognition records, not impact-point events.
+  const impactPlays = plays.filter((play) => !isGameDayBadgeType(play.type))
   const byAthlete = new Map<string, PlayEvent[]>()
-  for (const play of plays) {
+  for (const play of impactPlays) {
     byAthlete.set(play.athleteId, [...(byAthlete.get(play.athleteId) ?? []), play])
   }
 
@@ -181,10 +184,10 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
   return {
     athletes: results,
     // Team meters show chaos/explosions created — positives only.
-    teamHavoc: plays
+    teamHavoc: impactPlays
       .filter((p) => PLAY_TYPE_BY_KEY.get(p.type)?.category === 'havoc' && (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0) > 0)
       .reduce((sum, p) => sum + (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0), 0),
-    teamPlaymaker: plays
+    teamPlaymaker: impactPlays
       .filter((p) => PLAY_TYPE_BY_KEY.get(p.type)?.category === 'playmaker' && (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0) > 0)
       .reduce((sum, p) => sum + (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0), 0),
     boostByAthlete,
