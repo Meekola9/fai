@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, Pill } from '../components/ui'
+import { OverallRatingGuide } from '../components/OverallRatingGuide'
 import {
   CATEGORY_WEIGHTS,
   SPEED_SKILL_CATEGORY_WEIGHTS,
@@ -95,6 +96,8 @@ export default function StatsGuide() {
           text="Testing supports development and role decisions, but film, health, football skill, maturity, and assignment reliability still decide usage."
         />
       </div>
+
+      <OverallRatingGuide />
 
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
