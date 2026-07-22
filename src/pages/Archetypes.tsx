@@ -135,7 +135,7 @@ export default function Archetypes() {
           <RoleChip active={role === 'ALL'} onClick={() => setRole('ALL')}>All</RoleChip>
           {ROLE_ORDER.map((item) => (
             <RoleChip key={item} active={role === item} onClick={() => setRole(item)}>
-              {item === 'EDGE' ? 'EDGE' : item}
+              {item}
             </RoleChip>
           ))}
         </div>
@@ -158,45 +158,47 @@ export default function Archetypes() {
               {group.items.map((archetype) => {
                 const frame = frameSignals(archetype)
                 return (
-                  <Card
+                  <div
                     key={archetype.id}
                     id={archetype.id}
-                    className="scroll-mt-40 p-4 transition target:border-fai target:ring-2 target:ring-fai/20"
+                    className="scroll-mt-40 rounded-2xl target:ring-2 target:ring-fai/30"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
-                          {ROLE_LABEL[archetype.role]}
+                    <Card className="h-full p-4 transition target:border-fai">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+                            {ROLE_LABEL[archetype.role]}
+                          </div>
+                          <h3 className="mt-1 text-lg font-black text-fai">{archetype.name}</h3>
                         </div>
-                        <h3 className="mt-1 text-lg font-black text-fai">{archetype.name}</h3>
+                        {archetype.developmental && <Pill tone="gold">Developmental</Pill>}
                       </div>
-                      {archetype.developmental && <Pill tone="gold">Developmental</Pill>}
-                    </div>
 
-                    <p className="mt-3 text-sm leading-relaxed text-muted">{archetype.description}</p>
+                      <p className="mt-3 text-sm leading-relaxed text-muted">{archetype.description}</p>
 
-                    <div className="mt-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
-                        Primary measured signals
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {archetype.primary.map((trait) => (
-                          <Pill key={trait} tone="fai">{trait}</Pill>
-                        ))}
-                      </div>
-                    </div>
-
-                    {frame.length > 0 && (
-                      <div className="mt-4 border-t border-line pt-3">
+                      <div className="mt-4">
                         <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
-                          Additional matching signals
+                          Primary measured signals
                         </div>
-                        <div className="mt-1.5 space-y-1 text-xs text-muted">
-                          {frame.map((signal) => <div key={signal}>• {signal}</div>)}
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {archetype.primary.map((trait) => (
+                            <Pill key={trait} tone="fai">{trait}</Pill>
+                          ))}
                         </div>
                       </div>
-                    )}
-                  </Card>
+
+                      {frame.length > 0 && (
+                        <div className="mt-4 border-t border-line pt-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">
+                            Additional matching signals
+                          </div>
+                          <div className="mt-1.5 space-y-1 text-xs text-muted">
+                            {frame.map((signal) => <div key={signal}>• {signal}</div>)}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
+                  </div>
                 )
               })}
             </div>
