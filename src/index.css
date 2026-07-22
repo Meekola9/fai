@@ -2,24 +2,26 @@
 
 /* ------------------------------------------------------------------ */
 /* FAI combine-broadcast theme — dark, bold, high-contrast.            */
+/* Data-Dense Pro pushed toward Cinematic Dark: distinctive display    */
+/* type + an ownable "volt" accent (no Inter, no generic cyan).        */
 /* ------------------------------------------------------------------ */
 @theme {
-  --color-ink: #05070b; /* deepest bg */
-  --color-panel: #0c111b; /* card bg */
-  --color-panel-2: #131a28; /* raised card / hover */
-  --color-line: #1e2637; /* borders */
-  --color-muted: #7c8aa5; /* secondary text */
-  --color-chalk: #e8eef7; /* primary text */
+  --color-ink: #060809; /* deepest bg (neutral, not blue-black) */
+  --color-panel: #0e1115; /* card bg */
+  --color-panel-2: #171b21; /* raised card / hover */
+  --color-line: #242b33; /* borders */
+  --color-muted: #8b96a3; /* secondary text */
+  --color-chalk: #eef2f6; /* primary text */
 
-  --color-fai: #22d3ee; /* signature cyan */
-  --color-fai-2: #0891b2;
-  --color-flame: #f97316; /* accent orange */
-  --color-up: #22c55e; /* improvement */
-  --color-down: #ef4444; /* regression */
-  --color-flat: #64748b; /* no change */
+  --color-fai: #c6f24e; /* signature volt */
+  --color-fai-2: #9bcc1f; /* deep volt (gradients / hover) */
+  --color-flame: #ff7a1a; /* secondary heat / low-score accent */
+  --color-up: #34d399; /* improvement (emerald — distinct from volt) */
+  --color-down: #f2555a; /* regression */
+  --color-flat: #6b7684; /* no change */
   --color-gold: #fbbf24; /* #1 / leaders */
 
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Space Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 html,
@@ -38,10 +40,11 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(1200px 600px at 50% -10%, #0d1930 0%, transparent 60%),
+    radial-gradient(1100px 520px at 50% -12%, rgba(198, 242, 78, 0.07) 0%, transparent 62%),
     var(--color-ink);
   color: var(--color-chalk);
   font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv01';
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;

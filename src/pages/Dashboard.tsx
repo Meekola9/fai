@@ -87,7 +87,7 @@ export default function Dashboard() {
   const radar = useMemo(
     () => ({
       label: profileLabel,
-      color: '#22d3ee',
+      color: '#c6f24e',
       values: Object.fromEntries(
         profileAverages.map((item) => [item.category, item.avg]),
       ) as Record<Category, number>,

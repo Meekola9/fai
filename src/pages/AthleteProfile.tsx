@@ -58,7 +58,7 @@ function FilmCard({ hudlUrl }: { hudlUrl?: string }) {
 }
 
 const CATEGORY_COLOR: Record<Category, string> = {
-  Speed: '#22d3ee',
+  Speed: '#c6f24e',
   Acceleration: '#38bdf8',
   Jump: '#fb7185',
   Power: '#f97316',
@@ -121,7 +121,7 @@ export default function AthleteProfile() {
   const badges = playerBadgesFor({ result, timeline })
   const radarSeries = [
     ...(previous ? [{ label: 'Previous', color: '#64748b', values: previous.categories as Record<Category, number> }] : []),
-    { label: 'Current', color: '#22d3ee', values: current.categories as Record<Category, number> },
+    { label: 'Current', color: '#c6f24e', values: current.categories as Record<Category, number> },
   ]
   const linePoints = timeline.map((item) => ({
     label: item.event.name.length > 12 ? item.event.phase : item.event.name,
