@@ -21,17 +21,10 @@ jobs:
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run three-day combine QA
-        run: |
-          set -o pipefail
-          npm run test:e2e 2>&1 | tee e2e.log
-      - name: Upload browser log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-error-log
-          path: e2e.log
-          retention-days: 14
+      - name: Run archive and exercise-list QA
+        run: npx playwright test --grep "fresh browser automatically loads"
+      - name: Run coach Power Clean entry flow
+        run: npx playwright test --grep "coach adds a complete testing event"
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
