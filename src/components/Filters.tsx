@@ -56,25 +56,29 @@ export function FilterBar({
   events,
   value,
   onChange,
+  showEventFilter = true,
 }: {
   events: TestingEvent[]
   value: FilterState
   onChange: (filters: FilterState) => void
+  showEventFilter?: boolean
 }) {
   const set = (patch: Partial<FilterState>) => onChange({ ...value, ...patch })
-  const active = value.grade || value.group || value.position || value.eventId
+  const active = value.grade || value.group || value.position || (showEventFilter && value.eventId)
   const orderedEvents = [...events].sort((a, b) => b.startDate.localeCompare(a.startDate))
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Select value={value.eventId} onChange={(eventId) => set({ eventId })}>
-        <option value="">Latest year per athlete</option>
-        {orderedEvents.map((event) => (
-          <option key={event.id} value={event.id}>
-            {event.name} season
-          </option>
-        ))}
-      </Select>
+      {showEventFilter && (
+        <Select value={value.eventId} onChange={(eventId) => set({ eventId })}>
+          <option value="">Latest year per athlete</option>
+          {orderedEvents.map((event) => (
+            <option key={event.id} value={event.id}>
+              {event.name} season
+            </option>
+          ))}
+        </Select>
+      )}
       <Select value={value.group} onChange={(group) => set({ group })}>
         <option value="">All Groups</option>
         {POSITION_GROUPS.map((group) => <option key={group}>{group}</option>)}
