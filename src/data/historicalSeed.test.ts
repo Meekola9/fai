@@ -27,9 +27,9 @@ describe('historicalSeedData', () => {
     expect(data.events).toHaveLength(20)
   })
 
-  it('contains 158 consolidated athlete identities', async () => {
+  it('contains 159 consolidated athlete identities', async () => {
     const data = await historicalSeedData()
-    expect(data.athletes).toHaveLength(158)
+    expect(data.athletes).toHaveLength(159)
   })
 
   it('contains all 762 historical testing sessions', async () => {
@@ -57,6 +57,22 @@ describe('historicalSeedData', () => {
     expect(orphanSessions).toEqual([])
   })
 
+  it('attaches spreadsheet initials to the existing roster athletes', async () => {
+    const data = await historicalSeedData()
+    const easton = data.athletes.find((athlete) => athlete.name === 'Easton Reynolds')
+    const eastonSummer = data.sessions.find(
+      (session) => session.id === 'session-57ea7998399026',
+    )
+
+    expect(easton?.id).toBe('athlete-31f3ca620f838f')
+    expect(eastonSummer).toMatchObject({
+      athleteId: 'athlete-31f3ca620f838f',
+      squatMax: 240,
+      broadJump: 82,
+      verticalJump: 17,
+    })
+  })
+
   it('contains the recorded 2026 vertical, broad-jump, and squat results', async () => {
     const data = await historicalSeedData()
 
@@ -73,7 +89,7 @@ describe('historicalSeedData', () => {
       verticalJump: 36,
     })
 
-    // The two K. Crump records remain separated by their stable athlete IDs.
+    // Kn. Crump (2030) is separate from K. Crump (2028).
     const crump2030 = data.sessions.find(
       (session) => session.id === 'session-9039e5408d6d7f',
     )
@@ -116,6 +132,31 @@ describe('historicalSeedData', () => {
     // (class of 2023), kept separate under a disambiguated name.
     expect(names.has('Lu. Cross')).toBe(false)
     expect(names.has('Lu. Cross (2025)')).toBe(true)
+  })
+
+  it('repairs stale Summer 2026 athlete IDs already stored on a device', async () => {
+    const seed = await historicalSeedData()
+    const event = seed.events.find((item) => item.id === 'event-7badc8422c3808')
+    expect(event).toBeDefined()
+
+    const merged = mergeHistoricalData(seed, {
+      athletes: [],
+      events: [],
+      sessions: [
+        {
+          id: 'stale-device-session',
+          athleteId: 'athlete-14721a441f4e09',
+          eventId: event!.id,
+          date: '2026-07-22',
+          phase: 'Summer',
+          squatMax: 250,
+        },
+      ],
+    })
+
+    expect(
+      merged.sessions.find((session) => session.id === 'stale-device-session'),
+    ).toMatchObject({ athleteId: 'athlete-31f3ca620f838f' })
   })
 
   it('overlays coach-entered records without removing historical sessions', async () => {
