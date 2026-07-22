@@ -1,6 +1,11 @@
 import type {
   AppData,
   Athlete,
+  FilmAnnotation,
+  FilmPlay,
+  PlayCall,
+  PlaySide,
+  FieldHash,
   PlayEvent,
   PositionGroup,
   TestSession,
@@ -73,18 +78,19 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult, playResult] = await Promise.all([
+  const [athleteResult, eventResult, sessionResult, playResult, filmResult] = await Promise.all([
     db.from('athletes').select('*').eq('team_id', teamId),
     db.from('testing_events').select('*').eq('team_id', teamId),
     db.from('test_sessions').select('*').eq('team_id', teamId),
     db.from('play_events').select('*').eq('team_id', teamId),
+    db.from('film_plays').select('*').eq('team_id', teamId),
   ])
 
   throwIfError(athleteResult.error, 'Could not load athletes')
   throwIfError(eventResult.error, 'Could not load testing events')
   throwIfError(sessionResult.error, 'Could not load testing entries')
-  // play_events is newer; if the migration has not run yet, treat it as empty
-  // rather than failing the whole load.
+  // play_events and film_plays are newer; if a migration has not run yet, treat
+  // that table as empty rather than failing the whole load.
 
   const athletes: Athlete[] = (athleteResult.data ?? []).map((row) => {
     const packed = decodeCloudPosition(String(row.position))
@@ -159,8 +165,37 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         createdAt: optionalText(row.created_at),
       }))
 
+  const filmPlays: FilmPlay[] = filmResult.error
+    ? []
+    : (filmResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        filmLabel: optionalText(row.film_label),
+        videoTimeSec: optionalNumber(row.video_time_sec),
+        opponent: optionalText(row.opponent),
+        date: optionalText(row.play_date),
+        side: optionalText(row.side) as PlaySide | undefined,
+        quarter: optionalNumber(row.quarter),
+        down: optionalNumber(row.down),
+        distance: optionalNumber(row.distance),
+        yardLine: optionalNumber(row.yard_line),
+        hash: optionalText(row.hash) as FieldHash | undefined,
+        formation: optionalText(row.formation),
+        personnel: optionalText(row.personnel),
+        call: optionalText(row.call) as PlayCall | undefined,
+        concept: optionalText(row.concept),
+        ballCarrierId: optionalText(row.ball_carrier_id),
+        targetId: optionalText(row.target_id),
+        gain: optionalNumber(row.gain),
+        result: optionalText(row.result),
+        annotations: Array.isArray(row.annotations)
+          ? (row.annotations as FilmAnnotation[])
+          : undefined,
+        note: optionalText(row.note),
+        createdAt: optionalText(row.created_at),
+      }))
+
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions, plays }),
+    normalizeAppData({ athletes, events, sessions, plays, filmPlays }),
   )
 }
 
@@ -338,6 +373,46 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     await deleteMissing('play_events', teamId, oldPlays, new Set((data.plays ?? []).map((play) => play.id)))
   } catch {
     // play_events table not provisioned yet — skip play sync this save.
+  }
+
+  // Film breakdowns sync separately and non-fatally, same as plays: a team that
+  // has not run the film_plays migration keeps saving everything else.
+  try {
+    const filmRows = (data.filmPlays ?? []).map((film) => ({
+      team_id: teamId,
+      id: film.id,
+      film_label: nullable(film.filmLabel),
+      video_time_sec: nullable(film.videoTimeSec),
+      opponent: nullable(film.opponent),
+      play_date: nullable(film.date),
+      side: nullable(film.side),
+      quarter: nullable(film.quarter),
+      down: nullable(film.down),
+      distance: nullable(film.distance),
+      yard_line: nullable(film.yardLine),
+      hash: nullable(film.hash),
+      formation: nullable(film.formation),
+      personnel: nullable(film.personnel),
+      call: nullable(film.call),
+      concept: nullable(film.concept),
+      ball_carrier_id: nullable(film.ballCarrierId),
+      target_id: nullable(film.targetId),
+      gain: nullable(film.gain),
+      result: nullable(film.result),
+      annotations: film.annotations ?? [],
+      note: nullable(film.note),
+      created_at: film.createdAt ?? now,
+    }))
+    const oldFilm = await existingIds('film_plays', teamId)
+    if (filmRows.length > 0) {
+      const { error } = await db
+        .from('film_plays')
+        .upsert(filmRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save film')
+    }
+    await deleteMissing('film_plays', teamId, oldFilm, new Set((data.filmPlays ?? []).map((film) => film.id)))
+  } catch {
+    // film_plays table not provisioned yet — skip film sync this save.
   }
 }
 

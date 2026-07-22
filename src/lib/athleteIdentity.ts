@@ -186,10 +186,22 @@ export function consolidateAthleteAliases(input: AppData): Required<AppData> {
     athleteId: idMap.get(play.athleteId) ?? play.athleteId,
   }))
 
+  const remap = (id?: string) => (id ? idMap.get(id) ?? id : id)
+  const filmPlays = (data.filmPlays ?? []).map((film) => ({
+    ...film,
+    ballCarrierId: remap(film.ballCarrierId),
+    targetId: remap(film.targetId),
+    annotations: film.annotations?.map((annotation) => ({
+      ...annotation,
+      athleteId: remap(annotation.athleteId),
+    })),
+  }))
+
   return normalizeAppData({
     athletes: athletes.sort((a, b) => a.name.localeCompare(b.name)),
     events: data.events,
     sessions: [...sessionById.values()],
     plays,
+    filmPlays,
   })
 }

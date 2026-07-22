@@ -73,6 +73,7 @@ export function mergeHistoricalData(
       events: upsertById(seed.events, normalizedCurrent.events),
       sessions: upsertById(seed.sessions, normalizedCurrent.sessions),
       plays: upsertById(seed.plays, normalizedCurrent.plays),
+      filmPlays: upsertById(seed.filmPlays, normalizedCurrent.filmPlays),
     }),
   )
 }
