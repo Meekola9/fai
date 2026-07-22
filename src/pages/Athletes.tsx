@@ -2,9 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, DeltaBadge, Pill } from '../components/ui'
+import { PlayerBadgeStrip } from '../components/PlayerBadges'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
+import { athleteTimeline } from '../lib/compute'
 import { seasonEvents } from '../lib/events'
 import { archetypeFor } from '../lib/archetypes'
+import { playerBadgesFor } from '../lib/badges'
 import { formatHeight } from '../data/constants'
 import type { Athlete, AthleteResult } from '../types'
 
@@ -18,7 +21,7 @@ interface Row {
 }
 
 export default function Athletes() {
-  const { data, results, resultsForEvent, gradeLabelFor, canEdit } = useStore()
+  const { data, computed, results, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [sort, setSort] = useState<'fai' | 'name' | 'improve'>('fai')
 
@@ -92,6 +95,9 @@ export default function Athletes() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map(({ athlete, result }) => {
             const archetype = result ? archetypeFor(result.current) : undefined
+            const badges = result
+              ? playerBadgesFor({ result, timeline: athleteTimeline(computed, athlete.id) })
+              : []
             return (
               <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
                 <div className="flex items-start gap-3">
@@ -107,6 +113,7 @@ export default function Athletes() {
                       {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
                       {result?.rankEligible ? ` · Rank #${result.teamRank}` : ''}
                     </div>
+                    <PlayerBadgeStrip badges={badges} />
                     {archetype && (
                       <Link
                         to={`/archetypes#${archetype.id}`}

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { athleteTimeline } from '../lib/compute'
 import { computeProgress, strengths, weaknesses } from '../lib/progress'
+import { playerBadgesFor } from '../lib/badges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
@@ -14,6 +15,7 @@ import {
   SectionTitle,
   TrendArrow,
 } from '../components/ui'
+import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { RadarChart, LineChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
 import type { Category } from '../types'
@@ -116,6 +118,7 @@ export default function AthleteProfile() {
   const progress = computeProgress(current, previous)
   const strong = strengths(current)
   const weak = weaknesses(current)
+  const badges = playerBadgesFor({ result, timeline })
   const radarSeries = [
     ...(previous ? [{ label: 'Previous', color: '#64748b', values: previous.categories as Record<Category, number> }] : []),
     { label: 'Current', color: '#22d3ee', values: current.categories as Record<Category, number> },
@@ -170,6 +173,13 @@ export default function AthleteProfile() {
             This score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
           </div>
         )}
+      </Card>
+
+      <Card className="p-5">
+        <SectionTitle right={<Link to="/badges" className="text-xs font-bold text-gold hover:underline">Badge guide →</Link>}>
+          Earned Badges · {badges.length}
+        </SectionTitle>
+        <PlayerBadgeGallery badges={badges} />
       </Card>
 
       <FilmCard hudlUrl={athlete.hudlUrl} />

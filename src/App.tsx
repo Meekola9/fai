@@ -6,6 +6,7 @@ import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import Archetypes from './pages/Archetypes'
 import StatsGuide from './pages/StatsGuide'
+import Badges from './pages/Badges'
 import AthleteProfile from './pages/AthleteProfile'
 import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
@@ -18,6 +19,7 @@ const NAV = [
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
   { to: '/archetypes', label: 'Archetypes' },
+  { to: '/badges', label: 'Badges' },
   { to: '/stats', label: 'Stats Guide' },
   { to: '/entry', label: 'Enter Testing' },
   { to: '/data', label: 'Data' },
@@ -281,7 +283,7 @@ function TeamAccessError() {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="mt-5 rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk hover:bg-panel-2"
+          className="mt-5 rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk hover:bg-panel-2 hover:text-chalk"
         >
           Sign out
         </button>
@@ -331,6 +333,7 @@ export default function App() {
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={<Athletes />} />
           <Route path="/archetypes" element={<Archetypes />} />
+          <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />
           <Route path="/athletes/new" element={guarded(<AthleteEditor />)} />
           <Route path="/athletes/:id" element={<AthleteProfile />} />
