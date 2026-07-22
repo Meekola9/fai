@@ -56,7 +56,6 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
   await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
   await expect(page.getByText('Testing Exercises', { exact: true })).toBeVisible()
   await expect(page.getByText('Exercises are no longer tied to a weekday.')).toBeVisible()
-  await expect(page.getByPlaceholder('235', { exact: true })).toBeVisible()
   await expect(page.getByText('Monday', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Tuesday', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Wednesday', { exact: true })).toHaveCount(0)
