@@ -22,7 +22,16 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run three-day combine QA
-        run: npm run test:e2e
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee e2e.log
+      - name: Upload browser log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-error-log
+          path: e2e.log
+          retention-days: 14
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
