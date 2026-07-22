@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Category, PositionGroup, TestSession } from '../types'
+import { powerCleanMaxFor } from '../lib/powerClean'
 
 /** Default FAI weighting for quarterbacks, hybrids, linemen, and specialists. */
 export const CATEGORY_WEIGHTS: Record<Category, number> = {
@@ -78,6 +79,12 @@ const ratio = (load?: number, bodyWeight?: number): number | undefined => {
   return load / bodyWeight
 }
 
+/**
+ * Power Clean is graded as an absolute max on position-specific standards.
+ * Legacy body-weight hang-clean repetitions are first converted to an estimated
+ * max, which prevents a very light athlete from receiving an inflated relative
+ * power score solely because the original bar matched body weight.
+ */
 const SPEED_SKILL: BenchmarkProfile = {
   best40: { elite: 4.4, developmental: 5.25 },
   // Top speed is absolute, so the 10-yard fly is the pure Speed rating on one
@@ -85,7 +92,7 @@ const SPEED_SKILL: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 124, developmental: 90 },
   verticalJump: { elite: 38, developmental: 20 },
-  hangCleanReps: { elite: 15, developmental: 3 },
+  powerCleanMax: { elite: 275, developmental: 135 },
   best20Shuttle: { elite: 4.1, developmental: 5.1 },
   bestLatShuttle: { elite: 2.55, developmental: 3.35 },
   illinois: { elite: 15, developmental: 18.5 },
@@ -99,7 +106,7 @@ const QUARTERBACK: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 120, developmental: 88 },
   verticalJump: { elite: 35, developmental: 18 },
-  hangCleanReps: { elite: 12, developmental: 2 },
+  powerCleanMax: { elite: 285, developmental: 155 },
   best20Shuttle: { elite: 4.2, developmental: 5.2 },
   bestLatShuttle: { elite: 2.65, developmental: 3.45 },
   illinois: { elite: 15.4, developmental: 19 },
@@ -113,7 +120,7 @@ const HYBRID: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 118, developmental: 84 },
   verticalJump: { elite: 34, developmental: 18 },
-  hangCleanReps: { elite: 15, developmental: 3 },
+  powerCleanMax: { elite: 325, developmental: 175 },
   best20Shuttle: { elite: 4.25, developmental: 5.35 },
   bestLatShuttle: { elite: 2.7, developmental: 3.55 },
   illinois: { elite: 15.6, developmental: 19.5 },
@@ -128,7 +135,7 @@ const BIG: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 110, developmental: 70 },
   verticalJump: { elite: 30, developmental: 12 },
-  hangCleanReps: { elite: 14, developmental: 2 },
+  powerCleanMax: { elite: 385, developmental: 205 },
   best20Shuttle: { elite: 4.5, developmental: 6 },
   bestLatShuttle: { elite: 2.9, developmental: 4 },
   illinois: { elite: 16.5, developmental: 22 },
@@ -142,7 +149,7 @@ const SPECIALIST: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 115, developmental: 80 },
   verticalJump: { elite: 32, developmental: 15 },
-  hangCleanReps: { elite: 10, developmental: 1 },
+  powerCleanMax: { elite: 225, developmental: 95 },
   best20Shuttle: { elite: 4.35, developmental: 5.5 },
   bestLatShuttle: { elite: 2.75, developmental: 3.65 },
   illinois: { elite: 16, developmental: 20 },
@@ -199,9 +206,9 @@ export const SCORED_METRICS: ScoredMetric[] = [
     value: (session) => session.verticalJump,
   },
   {
-    key: 'hangCleanReps', label: 'Hang Clean Reps (BW)', shortLabel: 'Hang Clean', category: 'Power',
-    higherBetter: true, unit: 'reps', day: 'Tuesday', required: true,
-    value: (session) => session.hangCleanReps,
+    key: 'powerCleanMax', label: 'Power Clean Max', shortLabel: 'Power Clean', category: 'Power',
+    higherBetter: true, unit: 'lb', day: 'Tuesday', required: true,
+    value: powerCleanMaxFor,
   },
   {
     key: 'best20Shuttle', label: 'Best 20-Yard Shuttle', shortLabel: '20 Shuttle', category: 'Change of Direction',

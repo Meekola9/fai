@@ -85,7 +85,14 @@ export interface TestSession {
   dash10_2?: number
   fly10_1?: number
   fly10_2?: number
+  /** Direct, measured one-repetition maximum for the Power Clean in pounds. */
+  powerCleanMax?: number
+  /** Legacy body-weight hang-clean AMRAP result retained for audit/conversion. */
   hangCleanReps?: number
+  /** Derived only when yearly results are merged; never required for storage. */
+  estimatedPowerCleanMax?: number
+  /** Body weight recorded with the winning legacy hang-clean AMRAP result. */
+  hangCleanWeightLbsSnapshot?: number
   shuttle20_1?: number
   shuttle20_2?: number
   latShuttle_1?: number

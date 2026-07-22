@@ -19,8 +19,9 @@ export const RAW_FIELDS: RawField[] = [
   { key: 'dash10_2', label: '10 Dash — Attempt 2 (OL/DL graded)', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.86' },
   { key: 'fly10_1', label: '10 Fly — Attempt 1', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.55' },
   { key: 'fly10_2', label: '10 Fly — Attempt 2', unit: 's', day: 'Monday', step: 0.01, placeholder: '1.58' },
-  // Tuesday — Power Endurance + COD
-  { key: 'hangCleanReps', label: 'Hang Clean Reps (bodyweight)', unit: 'reps', day: 'Tuesday', step: 1, placeholder: '8' },
+  // Tuesday — Power Clean + COD
+  { key: 'powerCleanMax', label: 'Power Clean Max', unit: 'lbs', day: 'Tuesday', step: 5, placeholder: '235' },
+  { key: 'hangCleanReps', label: 'Legacy Hang-Clean Reps at Body Weight', unit: 'reps', day: 'Tuesday', step: 1, placeholder: '8' },
   { key: 'shuttle20_1', label: '20 Shuttle — Attempt 1', unit: 's', day: 'Tuesday', step: 0.01, placeholder: '4.35' },
   { key: 'shuttle20_2', label: '20 Shuttle — Attempt 2', unit: 's', day: 'Tuesday', step: 0.01, placeholder: '4.41' },
   { key: 'latShuttle_1', label: 'Lateral 10 Shuttle — Attempt 1', unit: 's', day: 'Tuesday', step: 0.01, placeholder: '2.80' },
@@ -41,7 +42,7 @@ export const TESTING_DAYS: RawField['day'][] = ['Monday', 'Tuesday', 'Wednesday'
 
 export const DAY_TITLE: Record<RawField['day'], string> = {
   Monday: 'Monday — Speed + Bench',
-  Tuesday: 'Tuesday — Power Endurance + Change of Direction',
+  Tuesday: 'Tuesday — Power Clean + Change of Direction',
   Wednesday: 'Wednesday — Lower Body + Jumps',
   Optional: 'Optional — Conditioning',
 }

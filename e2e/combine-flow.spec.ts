@@ -98,9 +98,9 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Second partial entry: clean endurance and change of direction.
+  // Second partial entry: Power Clean and change of direction.
   await page.locator('input[type="date"]').fill('2026-07-07')
-  await fillPlaceholder(page, '8', '10')
+  await fillPlaceholder(page, '235', '245')
   await fillPlaceholder(page, '4.35', '4.35')
   await fillPlaceholder(page, '4.41', '4.31')
   await fillPlaceholder(page, '2.80', '2.85')
@@ -143,8 +143,8 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: /TV Mode/ }).click()
   await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
   await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
-  await page.getByRole('button', { name: '✕ Exit' }).click()
 
+  await page.goBack()
   await page.getByRole('link', { name: 'Data', exact: true }).click()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export All Data (CSV)' }).click()

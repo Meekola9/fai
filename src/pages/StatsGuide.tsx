@@ -6,11 +6,11 @@ import {
   SPEED_SKILL_CATEGORY_WEIGHTS,
 } from '../data/scoring'
 import {
-  STAT_GUIDE,
   STAT_GUIDE_SECTIONS,
   type StatDirection,
   type StatGuideSection,
 } from '../data/statGuide'
+import { ACTIVE_STAT_GUIDE } from '../data/activeStatGuide'
 import { CATEGORIES } from '../data/constants'
 
 const SECTION_ORDER: StatGuideSection[] = ['profile', 'test', 'category', 'indicator']
@@ -24,7 +24,7 @@ const DIRECTION_LABEL: Record<StatDirection, string> = {
 }
 
 function sectionCount(section: StatGuideSection): number {
-  return STAT_GUIDE.filter((entry) => entry.section === section).length
+  return ACTIVE_STAT_GUIDE.filter((entry) => entry.section === section).length
 }
 
 export default function StatsGuide() {
@@ -33,7 +33,7 @@ export default function StatsGuide() {
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase()
-    return STAT_GUIDE.filter((entry) => {
+    return ACTIVE_STAT_GUIDE.filter((entry) => {
       if (section !== 'all' && entry.section !== section) return false
       if (!term) return true
       return [
@@ -84,7 +84,7 @@ export default function StatsGuide() {
         />
         <RuleCard
           title="Distance, reps, and load"
-          text="Higher results are better, provided every athlete follows the same technique, range-of-motion, and counting standard."
+          text="Higher results are better when technique and counting stay consistent. Direct Power Clean maxes override estimates from the retired body-weight repetition test."
         />
         <RuleCard
           title="0–100 scores"
@@ -142,7 +142,7 @@ export default function StatsGuide() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search 40, top speed, strength, rank, conditioning…"
+              placeholder="Search 40, top speed, power clean, rank, conditioning…"
               className="w-full rounded-xl border border-line bg-panel px-4 py-2.5 text-sm text-chalk outline-none placeholder:text-muted focus:border-fai"
             />
           </label>
@@ -151,7 +151,7 @@ export default function StatsGuide() {
 
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           <FilterChip active={section === 'all'} onClick={() => setSection('all')}>
-            All · {STAT_GUIDE.length}
+            All · {ACTIVE_STAT_GUIDE.length}
           </FilterChip>
           {SECTION_ORDER.map((item) => (
             <FilterChip key={item} active={section === item} onClick={() => setSection(item)}>
@@ -280,7 +280,7 @@ function categorySource(category: (typeof CATEGORIES)[number]): string {
     case 'Speed': return '10-yard fly'
     case 'Acceleration': return '40-yard dash; 10-yard dash for OL/DL'
     case 'Jump': return 'Vertical jump'
-    case 'Power': return 'Broad jump + hang-clean reps at body weight'
+    case 'Power': return 'Broad jump + direct or estimated Power Clean max'
     case 'Pursuit': return 'Illinois agility test'
     case 'Change of Direction': return '20-yard shuttle + lateral 10-yard shuttle'
     case 'Conditioning': return '5-10-15 shuttle yards in 30 seconds'

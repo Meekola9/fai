@@ -5,12 +5,12 @@ import {
   SCORED_METRICS,
   SPEED_SKILL_CATEGORY_WEIGHTS,
 } from './scoring'
-import { STAT_GUIDE } from './statGuide'
+import { ACTIVE_STAT_GUIDE } from './activeStatGuide'
 
 describe('FAI stat guide', () => {
   it('documents every scored metric exposed by the scoring engine', () => {
     const documentedMetricKeys = new Set(
-      STAT_GUIDE.flatMap((entry) => entry.metricKey ? [entry.metricKey] : []),
+      ACTIVE_STAT_GUIDE.flatMap((entry) => entry.metricKey ? [entry.metricKey] : []),
     )
 
     for (const metric of SCORED_METRICS) {
@@ -20,7 +20,7 @@ describe('FAI stat guide', () => {
 
   it('documents every derived FAI category', () => {
     for (const category of CATEGORIES) {
-      const entry = STAT_GUIDE.find(
+      const entry = ACTIVE_STAT_GUIDE.find(
         (candidate) => candidate.section === 'category' && candidate.category === category,
       )
       expect(entry, `${category} category is missing from the stat guide`).toBeDefined()
@@ -28,7 +28,7 @@ describe('FAI stat guide', () => {
   })
 
   it('provides substantive meaning, football interpretation, and caution language', () => {
-    for (const entry of STAT_GUIDE) {
+    for (const entry of ACTIVE_STAT_GUIDE) {
       expect(entry.meaning.length, `${entry.name} needs a measurement explanation`).toBeGreaterThan(45)
       expect(entry.footballMeaning.length, `${entry.name} needs football meaning`).toBeGreaterThan(45)
       expect(entry.interpretation.length, `${entry.name} needs interpretation guidance`).toBeGreaterThan(10)
