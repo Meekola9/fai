@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Athlete, PlayEvent } from '../types'
-import { buildImpact, levelForPoints, levelThreshold, playPoints } from './impact'
+import { boostForLevel, buildImpact, levelForPoints, levelThreshold, playPoints } from './impact'
 
 function athlete(id: string, name: string): Athlete {
   return { id, name, grade: 11, position: 'DB', positionGroup: 'DB', heightIn: 70, weightLbs: 180 }
@@ -47,6 +47,32 @@ describe('impact scoring', () => {
     const mid = levelForPoints(10) // between 5 and 15
     expect(mid.level).toBe(2)
     expect(mid.progress).toBeCloseTo(0.5, 5)
+  })
+
+  it('subtracts negative plays and tracks the penalty, keeping team meters positive-only', () => {
+    const athletes = [athlete('a', 'A')]
+    const plays = [
+      play('a', 'interception'), // +5 havoc
+      play('a', 'missed_tackle'), // -2 havoc
+      play('a', 'td_allowed'), // -3 havoc
+    ]
+    const summary = buildImpact(plays, athletes)
+    const a = summary.athletes[0]
+    expect(a.havocPoints).toBe(0) // 5 - 2 - 3
+    expect(a.negativePoints).toBe(5)
+    expect(summary.teamHavoc).toBe(5) // meter shows chaos created (positives only)
+  })
+
+  it('grants a capped FAI boost that grows with level and never goes negative', () => {
+    expect(boostForLevel(1)).toBe(0)
+    expect(boostForLevel(2)).toBe(1)
+    expect(boostForLevel(4)).toBe(3)
+    expect(boostForLevel(50)).toBe(10) // capped
+    // an athlete with only mistakes stays level 1 with no boost
+    const summary = buildImpact([play('a', 'missed_tackle')], [athlete('a', 'A')])
+    expect(summary.athletes[0].level.level).toBe(1)
+    expect(summary.athletes[0].boostPct).toBe(0)
+    expect(summary.boostByAthlete.size).toBe(0)
   })
 
   it('ignores unknown play types for points but still counts them', () => {

@@ -17,6 +17,8 @@ export interface PlayType {
   category: PlayCategory
   points: number
   emoji: string
+  /** Negative plays (mistakes) subtract points. */
+  negative?: boolean
 }
 
 /** Defensive & special-teams chaos. Point values are a sensible default — edit freely. */
@@ -32,6 +34,14 @@ export const HAVOC_TYPES: PlayType[] = [
   { key: 'safety', label: 'Safety', category: 'havoc', points: 4, emoji: '🔒' },
 ]
 
+/** Defensive mistakes — subtract from the athlete's Havoc total. */
+export const HAVOC_NEGATIVES: PlayType[] = [
+  { key: 'missed_tackle', label: 'Missed Tackle', category: 'havoc', points: -2, emoji: '🚷', negative: true },
+  { key: 'blown_coverage', label: 'Blown Coverage', category: 'havoc', points: -2, emoji: '🕳️', negative: true },
+  { key: 'blown_assignment', label: 'Blown Assignment', category: 'havoc', points: -2, emoji: '❓', negative: true },
+  { key: 'td_allowed', label: 'Touchdown Allowed', category: 'havoc', points: -3, emoji: '🔥', negative: true },
+]
+
 /** Offensive & special-teams explosions and field-position wins. */
 export const PLAYMAKER_TYPES: PlayType[] = [
   { key: 'touchdown', label: 'Touchdown', category: 'playmaker', points: 5, emoji: '🏈' },
@@ -43,11 +53,34 @@ export const PLAYMAKER_TYPES: PlayType[] = [
   { key: 'touchback', label: 'Touchback', category: 'playmaker', points: 1, emoji: '🥅' },
 ]
 
-export const PLAY_TYPES: PlayType[] = [...HAVOC_TYPES, ...PLAYMAKER_TYPES]
+/** Offensive mistakes — subtract from the athlete's Playmaker total. */
+export const PLAYMAKER_NEGATIVES: PlayType[] = [
+  { key: 'interception_thrown', label: 'Interception Thrown', category: 'playmaker', points: -3, emoji: '🎁', negative: true },
+  { key: 'fumble_lost', label: 'Fumble Lost', category: 'playmaker', points: -3, emoji: '🤲', negative: true },
+  { key: 'dropped_pass', label: 'Dropped Pass', category: 'playmaker', points: -2, emoji: '🧤', negative: true },
+  { key: 'missed_block', label: 'Missed Block', category: 'playmaker', points: -2, emoji: '🧱', negative: true },
+]
+
+export const PLAY_TYPES: PlayType[] = [
+  ...HAVOC_TYPES,
+  ...HAVOC_NEGATIVES,
+  ...PLAYMAKER_TYPES,
+  ...PLAYMAKER_NEGATIVES,
+]
 export const PLAY_TYPE_BY_KEY = new Map(PLAY_TYPES.map((play) => [play.key, play]))
 
 export function playPoints(type: string): number {
   return PLAY_TYPE_BY_KEY.get(type)?.points ?? 0
+}
+
+/**
+ * FAI boost an athlete earns from their impact level: +1% per level above 1,
+ * capped at +10%. Making plays lifts your overall; mistakes (which lower your
+ * level) give it back.
+ */
+export const MAX_IMPACT_BOOST_PCT = 10
+export function boostForLevel(level: number): number {
+  return Math.max(0, Math.min(MAX_IMPACT_BOOST_PCT, level - 1))
 }
 
 /**
@@ -70,21 +103,28 @@ export interface LevelInfo {
 }
 
 export function levelForPoints(points: number): LevelInfo {
+  const banked = Math.max(0, points)
   let level = 1
-  while (levelThreshold(level + 1) <= points) level += 1
+  while (levelThreshold(level + 1) <= banked) level += 1
   const floor = levelThreshold(level)
   const next = levelThreshold(level + 1)
   const span = next - floor
-  return { level, floor, next, progress: span > 0 ? (points - floor) / span : 1 }
+  return { level, floor, next, progress: span > 0 ? (banked - floor) / span : 1 }
 }
 
 export interface AthleteImpact {
   athlete: Athlete
+  /** Net havoc points (positives minus defensive mistakes). */
   havocPoints: number
+  /** Net playmaker points (positives minus offensive mistakes). */
   playmakerPoints: number
   totalPoints: number
+  /** Points lost to mistakes (as a positive number). */
+  negativePoints: number
   playCount: number
   level: LevelInfo
+  /** FAI boost this athlete's level grants, in percent. */
+  boostPct: number
   /** Count per play-type key, for the breakdown. */
   counts: Record<string, number>
 }
@@ -93,6 +133,8 @@ export interface ImpactSummary {
   athletes: AthleteImpact[]
   teamHavoc: number
   teamPlaymaker: number
+  /** athleteId -> FAI boost percent, for the results pipeline. */
+  boostByAthlete: Map<string, number>
 }
 
 export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSummary {
@@ -102,11 +144,13 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
   }
 
   const results: AthleteImpact[] = []
+  const boostByAthlete = new Map<string, number>()
   for (const athlete of athletes) {
     const own = byAthlete.get(athlete.id) ?? []
     if (own.length === 0) continue
     let havocPoints = 0
     let playmakerPoints = 0
+    let negativePoints = 0
     const counts: Record<string, number> = {}
     for (const play of own) {
       const type = PLAY_TYPE_BY_KEY.get(play.type)
@@ -114,15 +158,21 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
       if (!type) continue
       if (type.category === 'havoc') havocPoints += type.points
       else playmakerPoints += type.points
+      if (type.points < 0) negativePoints += -type.points
     }
     const totalPoints = havocPoints + playmakerPoints
+    const level = levelForPoints(totalPoints)
+    const boostPct = boostForLevel(level.level)
+    if (boostPct > 0) boostByAthlete.set(athlete.id, boostPct)
     results.push({
       athlete,
       havocPoints,
       playmakerPoints,
       totalPoints,
+      negativePoints,
       playCount: own.length,
-      level: levelForPoints(totalPoints),
+      level,
+      boostPct,
       counts,
     })
   }
@@ -130,7 +180,13 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
   results.sort((a, b) => b.totalPoints - a.totalPoints || a.athlete.name.localeCompare(b.athlete.name))
   return {
     athletes: results,
-    teamHavoc: results.reduce((sum, item) => sum + item.havocPoints, 0),
-    teamPlaymaker: results.reduce((sum, item) => sum + item.playmakerPoints, 0),
+    // Team meters show chaos/explosions created — positives only.
+    teamHavoc: plays
+      .filter((p) => PLAY_TYPE_BY_KEY.get(p.type)?.category === 'havoc' && (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0) > 0)
+      .reduce((sum, p) => sum + (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0), 0),
+    teamPlaymaker: plays
+      .filter((p) => PLAY_TYPE_BY_KEY.get(p.type)?.category === 'playmaker' && (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0) > 0)
+      .reduce((sum, p) => sum + (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0), 0),
+    boostByAthlete,
   }
 }

@@ -9,7 +9,7 @@ import type {
 } from '../types'
 import { METRICS_BY_CATEGORY, SCORED_METRICS } from '../data/scoring'
 import { CATEGORIES } from '../data/constants'
-import { athleteTimeline, round1 } from './compute'
+import { athleteTimeline, clamp, round1 } from './compute'
 
 export type Trend = 'improved' | 'same' | 'regressed'
 
@@ -173,6 +173,7 @@ export function weaknesses(current: ComputedSession, threshold = 45): Category[]
 export function buildResults(
   computed: ComputedSession[],
   eventId?: string,
+  boostByAthlete?: Map<string, number>,
 ): AthleteResult[] {
   const athleteIds = new Set(computed.map((result) => result.session.athleteId))
   const results: AthleteResult[] = []
@@ -185,9 +186,20 @@ export function buildResults(
       : timeline.length - 1
     if (currentIndex < 0) continue
 
-    const current = timeline[currentIndex]
+    const baseCurrent = timeline[currentIndex]
     const previous = currentIndex > 0 ? timeline[currentIndex - 1] : undefined
-    const faiImprovement = previous ? round1(current.fai - previous.fai) : 0
+
+    // A Playmaker/Havoc level lifts the athlete's overall FAI. Bake it into
+    // current.fai so every ranking and display picks it up, but keep the base.
+    const impactBoostPct = boostByAthlete?.get(athleteId) ?? 0
+    const baseFai = baseCurrent.fai
+    const current =
+      impactBoostPct > 0
+        ? { ...baseCurrent, fai: round1(clamp(baseFai * (1 + impactBoostPct / 100), 0, 100)) }
+        : baseCurrent
+
+    // Improvement stays measured on base FAI so it reflects testing, not the boost.
+    const faiImprovement = previous ? round1(baseFai - previous.fai) : 0
     const faiImprovementPct =
       previous && previous.fai > 0
         ? round1((faiImprovement / previous.fai) * 100)
@@ -205,6 +217,8 @@ export function buildResults(
       groupRank: 0,
       groupCount: 0,
       rankEligible,
+      baseFai,
+      impactBoostPct,
     })
   }
 

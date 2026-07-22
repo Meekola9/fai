@@ -150,6 +150,11 @@ export default function AthleteProfile() {
               {rankEligible && <Pill tone="gold">Team Rank #{result.teamRank} / {result.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{result.groupRank} / {result.groupCount}</Pill>}
               <Pill>{current.event.name} season</Pill>
+              {result.impactBoostPct > 0 && (
+                <Pill tone="fai">
+                  ⚡ +{result.impactBoostPct}% Playmaker boost ({result.baseFai.toFixed(1)} → {current.fai.toFixed(1)})
+                </Pill>
+              )}
               {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
                 <Pill tone="gold">
                   Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph

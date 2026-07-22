@@ -4,7 +4,9 @@ import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
 import {
   HAVOC_TYPES,
+  HAVOC_NEGATIVES,
   PLAYMAKER_TYPES,
+  PLAYMAKER_NEGATIVES,
   PLAY_TYPE_BY_KEY,
   buildImpact,
   type AthleteImpact,
@@ -14,94 +16,219 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function Meter({
-  label,
-  emoji,
-  tone,
-  total,
-  leaders,
-  pointsOf,
+const clamp = (value: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, value))
+
+// Jagged lightning-bolt shapes drawn in a 0–100 box.
+const BOLT_PATHS = [
+  '50,0 43,24 57,28 38,52 58,56 44,80 52,100',
+  '52,0 60,22 46,26 62,50 44,54 58,78 48,100',
+  '48,0 42,20 56,24 40,46 60,52 46,74 54,100',
+  '50,0 58,26 44,30 60,54 42,58 56,82 50,100',
+]
+
+function Bolt({
+  leftPct,
+  color,
+  delay,
+  scale,
 }: {
-  label: string
-  emoji: string
-  tone: 'down' | 'up'
-  total: number
-  leaders: AthleteImpact[]
-  pointsOf: (item: AthleteImpact) => number
+  leftPct: number
+  color: string
+  delay: number
+  scale: number
 }) {
-  const max = Math.max(1, ...leaders.map(pointsOf))
-  const accent = tone === 'down' ? 'text-down' : 'text-up'
-  const bar = tone === 'down' ? 'bg-down' : 'bg-up'
+  const path = BOLT_PATHS[Math.floor(leftPct) % BOLT_PATHS.length]
   return (
-    <Card className="p-5">
-      <div className="flex items-baseline justify-between">
-        <SectionTitle>{emoji} {label}</SectionTitle>
-        <div className={`text-3xl font-black nums ${accent}`}>{total}</div>
-      </div>
-      <div className="mt-3 space-y-2">
-        {leaders.length === 0 && (
-          <div className="text-sm text-muted">No plays logged yet.</div>
-        )}
-        {leaders.slice(0, 5).map((item, index) => {
-          const points = pointsOf(item)
-          return (
-            <Link
-              key={item.athlete.id}
-              to={`/athletes/${item.athlete.id}`}
-              className="flex items-center gap-3 rounded-xl bg-panel-2/40 px-3 py-2 transition hover:bg-panel-2"
-            >
-              <span className="w-4 text-center text-xs font-black text-muted">{index + 1}</span>
-              <Avatar name={item.athlete.name} photoUrl={item.athlete.photoUrl} size={32} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-chalk">{item.athlete.name}</div>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-panel-2">
-                  <div className={`h-full rounded-full ${bar}`} style={{ width: `${(points / max) * 100}%` }} />
-                </div>
-              </div>
-              <div className={`w-8 text-right text-sm font-black nums ${accent}`}>{points}</div>
-            </Link>
-          )
-        })}
-      </div>
-    </Card>
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden
+      className="animate-bolt pointer-events-none absolute top-0 h-full"
+      style={{
+        left: `${leftPct}%`,
+        width: `${18 * scale}%`,
+        transform: 'translateX(-50%)',
+        animationDelay: `${delay}s`,
+        filter: `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 14px ${color})`,
+      }}
+    >
+      <polyline points={path} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" />
+      <polyline points={path} fill="none" stroke="#ffffff" strokeWidth={0.9} strokeLinejoin="round" />
+    </svg>
   )
 }
 
-function LevelCard({ item }: { item: AthleteImpact }) {
+const BOLT_COLORS = ['#38bdf8', '#a855f7', '#22d3ee', '#818cf8', '#60a5fa']
+
+function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays: number }) {
+  const boltCount = 3 + Math.min(5, Math.floor(total / 8))
+  const bolts = Array.from({ length: boltCount }, (_, index) => ({
+    leftPct: 8 + (index * 84) / Math.max(1, boltCount - 1),
+    color: BOLT_COLORS[index % BOLT_COLORS.length],
+    delay: (index * 0.27) % 1.6,
+    scale: 0.75 + ((index * 37) % 60) / 100,
+  }))
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-down/30 bg-gradient-to-b from-[#160a12] to-[#0a0710] p-5">
+      <div className="field-grid absolute inset-0 opacity-60" aria-hidden />
+      <div className="absolute inset-0" aria-hidden>
+        {total > 0 && bolts.map((bolt, index) => <Bolt key={index} {...bolt} />)}
+      </div>
+      <div className="pointer-events-none absolute -inset-8 animate-volt bg-[radial-gradient(circle_at_50%_45%,rgba(239,68,68,0.22),transparent_62%)]" aria-hidden />
+
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-black uppercase tracking-[0.22em] text-down">⚡ Havoc Meter</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Defense · Chaos</span>
+        </div>
+        <div className="mt-6 text-center">
+          <div className="relative inline-block">
+            <div className="animate-volt absolute inset-0 -z-0 blur-2xl" style={{ background: 'radial-gradient(circle,#38bdf8,transparent 70%)', opacity: 0.5 }} aria-hidden />
+            <div className="nums relative text-7xl font-black leading-none text-chalk drop-shadow-[0_0_18px_rgba(56,189,248,0.55)]">
+              {total}
+            </div>
+          </div>
+          <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-muted">Chaos Created</div>
+        </div>
+
+        <div className="relative mt-6 h-3 w-full overflow-hidden rounded-full border border-line bg-black/50">
+          <div
+            className="relative h-full rounded-full bg-gradient-to-r from-down/70 via-[#38bdf8] to-[#a855f7]"
+            style={{ width: `${clamp(fill, 0.04, 1) * 100}%` }}
+          >
+            <div className="animate-charge absolute inset-0 text-white/70" />
+            <div className="absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_4px_rgba(56,189,248,0.9)]" />
+          </div>
+        </div>
+        <div className="mt-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted">
+          {plays} disruptive {plays === 1 ? 'play' : 'plays'} logged
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlaymakerMeter({ total, fill, plays }: { total: number; fill: number; plays: number }) {
+  const streaks = Array.from({ length: 7 }, (_, index) => index)
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-up/30 bg-gradient-to-b from-[#07140c] to-[#050b09] p-5">
+      <div className="field-grid absolute inset-0 opacity-60" aria-hidden />
+      <div className="absolute inset-0 overflow-hidden" aria-hidden>
+        {total > 0 &&
+          streaks.map((index) => (
+            <span
+              key={index}
+              className="animate-surge absolute bottom-0 h-24 w-[3px] rounded-full bg-gradient-to-t from-transparent via-up to-white"
+              style={{
+                left: `${6 + index * 13}%`,
+                animationDelay: `${(index * 0.35) % 2.6}s`,
+                opacity: 0.7,
+                filter: 'drop-shadow(0 0 6px #22c55e)',
+              }}
+            />
+          ))}
+      </div>
+      <div className="pointer-events-none absolute -inset-8 animate-volt bg-[radial-gradient(circle_at_50%_45%,rgba(34,197,94,0.2),transparent_62%)]" aria-hidden />
+
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-black uppercase tracking-[0.22em] text-up">🚀 Playmaker Meter</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Offense · ST</span>
+        </div>
+        <div className="mt-6 text-center">
+          <div className="relative inline-block">
+            <div className="animate-volt absolute inset-0 -z-0 blur-2xl" style={{ background: 'radial-gradient(circle,#22c55e,transparent 70%)', opacity: 0.5 }} aria-hidden />
+            <div className="nums relative text-7xl font-black leading-none text-chalk drop-shadow-[0_0_18px_rgba(34,197,94,0.55)]">
+              {total}
+            </div>
+          </div>
+          <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-muted">Explosive Plays</div>
+        </div>
+
+        <div className="relative mt-6 h-3 w-full overflow-hidden rounded-full border border-line bg-black/50">
+          <div
+            className="relative h-full rounded-full bg-gradient-to-r from-up/70 via-up to-[#a3e635]"
+            style={{ width: `${clamp(fill, 0.04, 1) * 100}%` }}
+          >
+            <div className="animate-charge absolute inset-0 text-white/70" />
+            <div className="absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_4px_rgba(34,197,94,0.9)]" />
+          </div>
+        </div>
+        <div className="mt-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted">
+          {plays} explosive {plays === 1 ? 'play' : 'plays'} logged
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HeroStat({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="text-center">
+      <div className={`nums text-4xl font-black leading-none ${tone}`}>{value}</div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted">{label}</div>
+    </div>
+  )
+}
+
+function ContributorChips({ items, pointsOf, tone }: { items: AthleteImpact[]; pointsOf: (i: AthleteImpact) => number; tone: string }) {
+  if (items.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.slice(0, 4).map((item, index) => (
+        <Link
+          key={item.athlete.id}
+          to={`/athletes/${item.athlete.id}`}
+          className="flex items-center gap-2 rounded-full border border-line bg-panel-2/60 py-1 pl-1 pr-3 transition hover:border-fai/40"
+        >
+          <span className={`grid h-6 w-6 place-items-center rounded-full bg-black/50 text-[11px] font-black ${tone}`}>{index + 1}</span>
+          <Avatar name={item.athlete.name} photoUrl={item.athlete.photoUrl} size={22} />
+          <span className="text-xs font-bold text-chalk">{item.athlete.name.split(' ').slice(-1)[0]}</span>
+          <span className={`text-xs font-black nums ${tone}`}>{pointsOf(item)}</span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+function LevelCard({ item, rank }: { item: AthleteImpact; rank: number }) {
   const { level } = item
   return (
-    <Card className="p-4">
+    <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-b from-panel-2/70 to-panel p-4">
       <div className="flex items-center gap-3">
-        <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-gold/40 bg-gold/10 text-gold">
-          <span className="text-[9px] font-bold uppercase leading-none tracking-wider">Lvl</span>
-          <span className="text-lg font-black leading-none">{level.level}</span>
+        <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-xl border border-gold/50 bg-gradient-to-b from-gold/25 to-gold/5 text-gold">
+          <span className="text-[8px] font-bold uppercase leading-none tracking-wider">Lvl</span>
+          <span className="text-2xl font-black leading-none">{level.level}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <Link to={`/athletes/${item.athlete.id}`} className="block truncate text-sm font-bold text-chalk hover:text-fai">
-            {item.athlete.name}
-          </Link>
-          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-black text-muted">#{rank}</span>
+            <Link to={`/athletes/${item.athlete.id}`} className="truncate text-sm font-black text-chalk hover:text-fai">
+              {item.athlete.name}
+            </Link>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
             {item.havocPoints > 0 && <Pill tone="down">💥 {item.havocPoints}</Pill>}
             {item.playmakerPoints > 0 && <Pill tone="up">⚡ {item.playmakerPoints}</Pill>}
-            <span>· {item.playCount} play{item.playCount === 1 ? '' : 's'}</span>
+            {item.boostPct > 0 && <Pill tone="gold">📈 +{item.boostPct}% overall</Pill>}
+            {item.negativePoints > 0 && <Pill tone="down">⚠️ −{item.negativePoints}</Pill>}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-lg font-black nums text-fai">{item.totalPoints}</div>
-          <div className="text-[10px] uppercase tracking-wider text-muted">points</div>
+          <div className="nums text-2xl font-black text-fai">{item.totalPoints}</div>
+          <div className="text-[9px] uppercase tracking-wider text-muted">pts</div>
         </div>
       </div>
-      <div className="mt-3">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-panel-2">
-          <div className="h-full rounded-full bg-gradient-to-r from-fai to-gold" style={{ width: `${Math.round(level.progress * 100)}%` }} />
-        </div>
-        <div className="mt-1 text-right text-[10px] text-muted">
-          {level.next > level.floor
-            ? `${item.totalPoints - level.floor}/${level.next - level.floor} to Level ${level.level + 1}`
-            : 'Max level'}
-        </div>
+      <div className="relative mt-3 h-2 w-full overflow-hidden rounded-full bg-black/50">
+        <div className="h-full rounded-full bg-gradient-to-r from-fai to-gold" style={{ width: `${Math.round(level.progress * 100)}%` }} />
+        <div className="animate-shine absolute inset-y-0 w-8 skew-x-12 bg-white/25" />
       </div>
-    </Card>
+      <div className="mt-1 text-right text-[10px] text-muted">
+        {level.next > level.floor
+          ? `${item.totalPoints - level.floor}/${level.next - level.floor} to Lvl ${level.level + 1}`
+          : 'Max level'}
+      </div>
+    </div>
   )
 }
 
@@ -114,14 +241,8 @@ export default function Playmakers() {
   const [date, setDate] = useState(todayIso())
   const [opponent, setOpponent] = useState('')
 
-  const roster = useMemo(
-    () => [...data.athletes].sort((a, b) => a.name.localeCompare(b.name)),
-    [data.athletes],
-  )
-  const athleteById = useMemo(
-    () => new Map(data.athletes.map((a) => [a.id, a])),
-    [data.athletes],
-  )
+  const roster = useMemo(() => [...data.athletes].sort((a, b) => a.name.localeCompare(b.name)), [data.athletes])
+  const athleteById = useMemo(() => new Map(data.athletes.map((a) => [a.id, a])), [data.athletes])
   const recentPlays = useMemo(
     () =>
       [...data.plays]
@@ -135,6 +256,10 @@ export default function Playmakers() {
     .filter((item) => item.playmakerPoints > 0)
     .sort((a, b) => b.playmakerPoints - a.playmakerPoints)
 
+  const scale = Math.max(summary.teamHavoc, summary.teamPlaymaker, 20)
+  const havocPlays = data.plays.filter((play) => PLAY_TYPE_BY_KEY.get(play.type)?.category === 'havoc').length
+  const playmakerPlays = data.plays.length - havocPlays
+
   function logPlay() {
     if (!athleteId) return
     addPlay({ athleteId, type: playType, date, opponent: opponent.trim() || undefined })
@@ -144,29 +269,27 @@ export default function Playmakers() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-black tracking-tight">Playmakers &amp; Havoc</h1>
-        <div className="mt-1 text-xs text-muted">
-          Players earn points and level up by making plays. Havoc is defensive chaos; Playmakers are offensive &amp; special-teams explosions.
-        </div>
+        <h1 className="text-3xl font-black uppercase tracking-tight text-chalk">
+          Playmakers <span className="text-down">&amp;</span> Havoc
+        </h1>
+        <div className="mt-1 text-xs text-muted">Make plays. Create chaos. Level up.</div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Meter
-          label="Havoc Meter"
-          emoji="💥"
-          tone="down"
-          total={summary.teamHavoc}
-          leaders={havocLeaders}
-          pointsOf={(item) => item.havocPoints}
-        />
-        <Meter
-          label="Playmaker Meter"
-          emoji="⚡"
-          tone="up"
-          total={summary.teamPlaymaker}
-          leaders={playLeaders}
-          pointsOf={(item) => item.playmakerPoints}
-        />
+      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-line bg-panel/70 px-4 py-4">
+        <HeroStat label="Havoc Pts" value={summary.teamHavoc} tone="text-down" />
+        <HeroStat label="Playmaker Pts" value={summary.teamPlaymaker} tone="text-up" />
+        <HeroStat label="Plays Logged" value={data.plays.length} tone="text-fai" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-3">
+          <HavocMeter total={summary.teamHavoc} fill={summary.teamHavoc / scale} plays={havocPlays} />
+          <ContributorChips items={havocLeaders} pointsOf={(item) => item.havocPoints} tone="text-down" />
+        </div>
+        <div className="space-y-3">
+          <PlaymakerMeter total={summary.teamPlaymaker} fill={summary.teamPlaymaker / scale} plays={playmakerPlays} />
+          <ContributorChips items={playLeaders} pointsOf={(item) => item.playmakerPoints} tone="text-up" />
+        </div>
       </div>
 
       {canEdit && (
@@ -193,9 +316,19 @@ export default function Playmakers() {
                   <option key={play.key} value={play.key}>{play.emoji} {play.label} (+{play.points})</option>
                 ))}
               </optgroup>
+              <optgroup label="Defensive mistakes">
+                {HAVOC_NEGATIVES.map((play) => (
+                  <option key={play.key} value={play.key}>{play.emoji} {play.label} ({play.points})</option>
+                ))}
+              </optgroup>
               <optgroup label="Playmaker (offense / ST)">
                 {PLAYMAKER_TYPES.map((play) => (
                   <option key={play.key} value={play.key}>{play.emoji} {play.label} (+{play.points})</option>
+                ))}
+              </optgroup>
+              <optgroup label="Offensive mistakes">
+                {PLAYMAKER_NEGATIVES.map((play) => (
+                  <option key={play.key} value={play.key}>{play.emoji} {play.label} ({play.points})</option>
                 ))}
               </optgroup>
             </select>
@@ -228,12 +361,12 @@ export default function Playmakers() {
         <div className="mb-3 text-xs text-muted">Every athlete ranked by total impact points earned.</div>
         {summary.athletes.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center text-sm text-muted">
-            No plays logged yet.{canEdit ? ' Use “Log a Play” above to start building the meters.' : ''}
+            No plays logged yet.{canEdit ? ' Use “Log a Play” above to charge up the meters.' : ''}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.athletes.map((item) => (
-              <LevelCard key={item.athlete.id} item={item} />
+            {summary.athletes.map((item, index) => (
+              <LevelCard key={item.athlete.id} item={item} rank={index + 1} />
             ))}
           </div>
         )}
@@ -246,13 +379,21 @@ export default function Playmakers() {
             {recentPlays.map((play) => {
               const type = PLAY_TYPE_BY_KEY.get(play.type)
               const athlete = athleteById.get(play.athleteId)
+              const points = type?.points ?? 0
+              const isNegative = points < 0
               return (
-                <div key={play.id} className="flex items-center gap-3 rounded-lg bg-panel-2/40 px-3 py-2 text-sm">
+                <div
+                  key={play.id}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${isNegative ? 'bg-down/10 ring-1 ring-inset ring-down/20' : 'bg-panel-2/40'}`}
+                >
                   <span className="text-base">{type?.emoji ?? '•'}</span>
                   <span className="font-bold text-chalk">{athlete?.name ?? 'Unknown'}</span>
                   <span className="text-muted">{type?.label ?? play.type}</span>
                   <span className="text-xs text-muted">
-                    +{type?.points ?? 0} · {play.date}{play.opponent ? ` · vs ${play.opponent}` : ''}
+                    <span className={`font-bold ${isNegative ? 'text-down' : 'text-up'}`}>
+                      {points >= 0 ? `+${points}` : points}
+                    </span>{' '}
+                    · {play.date}{play.opponent ? ` · vs ${play.opponent}` : ''}
                   </span>
                   <button
                     type="button"

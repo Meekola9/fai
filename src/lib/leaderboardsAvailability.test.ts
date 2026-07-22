@@ -71,6 +71,8 @@ function result(id: string, rankEligible: boolean, dash40: number): AthleteResul
     groupRank: rankEligible ? 1 : 0,
     groupCount: rankEligible ? 1 : 0,
     rankEligible,
+    baseFai: current.fai,
+    impactBoostPct: 0,
   }
 }
 
