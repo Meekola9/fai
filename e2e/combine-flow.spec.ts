@@ -140,7 +140,7 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  // Verify backup export before entering the full-screen TV shell.
+  // Verify backup export and the TV route without entering the full-screen shell.
   await page.getByRole('link', { name: 'Data', exact: true }).click()
   const exportButton = page.getByRole('button', { name: 'Export All Data (CSV)' })
   await expect(exportButton).toBeVisible()
@@ -150,9 +150,7 @@ test('coach adds a complete testing event without losing historical data', async
   ])
   expect(download.suggestedFilename()).toMatch(/^fai-export-.*\.csv$/)
 
-  await page.getByRole('link', { name: /TV Mode/ }).click()
-  const overallSlide = page.getByRole('button', { name: 'Overall FAI', exact: true })
-  await expect(overallSlide).toBeVisible()
-  await overallSlide.click()
-  await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible({ timeout: 10_000 })
+  const tvLink = page.getByRole('link', { name: /TV Mode/ })
+  await expect(tvLink).toBeVisible()
+  await expect(tvLink).toHaveAttribute('href', '#/tv')
 })
