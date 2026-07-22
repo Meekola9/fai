@@ -140,12 +140,8 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  await page.getByRole('link', { name: /TV Mode/ }).click()
-  await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
-  await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
-
-  // TV Mode is full-screen and the app uses hash routing.
-  await page.goto('/#/data')
+  // Verify backup export before entering the full-screen TV shell.
+  await page.getByRole('link', { name: 'Data', exact: true }).click()
   const exportButton = page.getByRole('button', { name: 'Export All Data (CSV)' })
   await expect(exportButton).toBeVisible()
   const [download] = await Promise.all([
@@ -153,4 +149,10 @@ test('coach adds a complete testing event without losing historical data', async
     exportButton.click(),
   ])
   expect(download.suggestedFilename()).toMatch(/^fai-export-.*\.csv$/)
+
+  await page.getByRole('link', { name: /TV Mode/ }).click()
+  const overallSlide = page.getByRole('button', { name: 'Overall FAI', exact: true })
+  await expect(overallSlide).toBeVisible()
+  await overallSlide.click()
+  await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible({ timeout: 10_000 })
 })
