@@ -1,5 +1,5 @@
 import { CATEGORIES } from '../data/constants'
-import { METRICS_BY_CATEGORY } from '../data/scoring'
+import { isSpeedSkillGroup, METRICS_BY_CATEGORY } from '../data/scoring'
 import type { Category, ComputedSession, PositionGroup } from '../types'
 
 export type ArchetypeConfidence = 'high' | 'medium' | 'low'
@@ -141,6 +141,11 @@ function sizeClass(result: ComputedSession, group: PositionGroup): Exclude<SizeP
   return 'middle'
 }
 
+/** Relative strength has half influence when matching RB/WR/DB/ATH profiles. */
+function categoryInfluence(group: PositionGroup, category: Category): number {
+  return category === 'Strength' && isSpeedSkillGroup(group) ? 0.5 : 1
+}
+
 function fitScore(
   definition: ArchetypeDefinition,
   result: ComputedSession,
@@ -161,7 +166,7 @@ function fitScore(
   definition.primary.forEach((category, index) => {
     if (!availableSet.has(category)) return
     const weight = weights[index] ?? 0.25
-    weighted += result.categories[category] * weight
+    weighted += result.categories[category] * weight * categoryInfluence(definition.group, category)
     denominator += weight
   })
 
@@ -172,8 +177,12 @@ function fitScore(
   const primary = definition.primary[0]
   const secondary = definition.primary[1]
   let specialization = 0
-  if (primary && availableSet.has(primary)) specialization += (result.categories[primary] - mean) * 0.24
-  if (secondary && availableSet.has(secondary)) specialization += (result.categories[secondary] - mean) * 0.12
+  if (primary && availableSet.has(primary)) {
+    specialization += (result.categories[primary] - mean) * 0.24 * categoryInfluence(definition.group, primary)
+  }
+  if (secondary && availableSet.has(secondary)) {
+    specialization += (result.categories[secondary] - mean) * 0.12 * categoryInfluence(definition.group, secondary)
+  }
 
   const preference = definition.size ?? 'any'
   const measuredSize = sizeClass(result, definition.group)
@@ -204,7 +213,10 @@ export function archetypeFor(result: ComputedSession): PlayerArchetype | undefin
   if (!winner) return undefined
 
   const evidence = [...available]
-    .sort((a, b) => result.categories[b] - result.categories[a])
+    .sort((a, b) =>
+      result.categories[b] * categoryInfluence(group, b)
+      - result.categories[a] * categoryInfluence(group, a),
+    )
     .slice(0, 3)
     .map((category) => `${category} ${Math.round(result.categories[category])}`)
 
