@@ -12,7 +12,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 762
+    return data.athletes?.length === 159 && data.events?.length === 20 && data.sessions?.length === 762
   })
 }
 
@@ -35,7 +35,7 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
     }
   })
 
-  expect(seeded.athletes).toHaveLength(158)
+  expect(seeded.athletes).toHaveLength(159)
   expect(seeded.events).toHaveLength(20)
   expect(seeded.sessions).toHaveLength(762)
   expect(
@@ -127,7 +127,7 @@ test('coach adds a complete testing event without losing historical data', async
       sessions: unknown[]
     }
   })
-  expect(persisted.athletes).toHaveLength(159)
+  expect(persisted.athletes).toHaveLength(160)
   expect(persisted.events).toHaveLength(21)
   expect(persisted.sessions).toHaveLength(765)
 
