@@ -44,14 +44,16 @@ describe('historicalSeedData', () => {
     const orphanSessions = data.sessions
       .filter(
         (session) =>
-          !athleteIds.has(session.athleteId) || !eventIds.has(session.eventId),
+          !athleteIds.has(session.athleteId)
+          || !session.eventId
+          || !eventIds.has(session.eventId),
       )
       .map((session) => ({
         id: session.id,
         athleteId: session.athleteId,
         eventId: session.eventId,
         missingAthlete: !athleteIds.has(session.athleteId),
-        missingEvent: !eventIds.has(session.eventId),
+        missingEvent: !session.eventId || !eventIds.has(session.eventId),
       }))
 
     expect(orphanSessions).toEqual([])
