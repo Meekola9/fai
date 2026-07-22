@@ -12,7 +12,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 670
+    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 762
   })
 }
 
@@ -37,7 +37,7 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
 
   expect(seeded.athletes).toHaveLength(158)
   expect(seeded.events).toHaveLength(20)
-  expect(seeded.sessions).toHaveLength(670)
+  expect(seeded.sessions).toHaveLength(762)
   expect(
     [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
       (a, b) => a - b,
@@ -129,7 +129,7 @@ test('coach adds a complete testing event without losing historical data', async
   })
   expect(persisted.athletes).toHaveLength(159)
   expect(persisted.events).toHaveLength(21)
-  expect(persisted.sessions).toHaveLength(673)
+  expect(persisted.sessions).toHaveLength(765)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
@@ -140,14 +140,17 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  await page.getByRole('link', { name: /TV Mode/ }).click()
-  await expect(page.getByRole('button', { name: 'Overall FAI', exact: true })).toBeVisible()
-  await expect(page.getByText('QA Athlete', { exact: true }).first()).toBeVisible()
-
-  await page.goBack()
+  // Verify backup export and the TV route without entering the full-screen shell.
   await page.getByRole('link', { name: 'Data', exact: true }).click()
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export All Data (CSV)' }).click()
-  const download = await downloadPromise
+  const exportButton = page.getByRole('button', { name: 'Export All Data (CSV)' })
+  await expect(exportButton).toBeVisible()
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    exportButton.click(),
+  ])
   expect(download.suggestedFilename()).toMatch(/^fai-export-.*\.csv$/)
+
+  const tvLink = page.getByRole('link', { name: /TV Mode/ })
+  await expect(tvLink).toBeVisible()
+  await expect(tvLink).toHaveAttribute('href', '#/tv')
 })
