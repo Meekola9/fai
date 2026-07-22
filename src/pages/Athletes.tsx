@@ -108,8 +108,9 @@ export default function Athletes() {
                       {result?.rankEligible ? ` · Rank #${result.teamRank}` : ''}
                     </div>
                     {archetype && (
-                      <div
-                        className="mt-2 rounded-lg border border-fai/20 bg-fai/5 px-2.5 py-2"
+                      <Link
+                        to={`/archetypes#${archetype.id}`}
+                        className="mt-2 block rounded-lg border border-fai/20 bg-fai/5 px-2.5 py-2 transition hover:border-fai/50 hover:bg-fai/10"
                         title={`${archetype.description} Based on: ${archetype.evidence.join(', ')}.`}
                       >
                         <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">
@@ -117,7 +118,8 @@ export default function Athletes() {
                         </div>
                         <div className="mt-0.5 truncate text-xs font-black text-fai">{archetype.name}</div>
                         <div className="mt-0.5 truncate text-[10px] text-muted">{archetype.evidence.join(' · ')}</div>
-                      </div>
+                        <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-fai/80">View meaning →</div>
+                      </Link>
                     )}
                   </div>
                 </div>
