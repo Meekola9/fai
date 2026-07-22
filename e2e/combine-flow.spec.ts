@@ -56,6 +56,8 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
   await page.getByRole('link', { name: 'Enter Testing', exact: true }).click()
   await expect(page.getByText('Testing Exercises', { exact: true })).toBeVisible()
   await expect(page.getByText('Exercises are no longer tied to a weekday.')).toBeVisible()
+  await expect(page.getByLabel('Power Clean Max (lbs)')).toBeVisible()
+  await expect(page.getByLabel('Legacy Hang-Clean Reps at Body Weight (reps)')).toBeVisible()
   await expect(page.getByText('Monday', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Tuesday', { exact: true })).toHaveCount(0)
   await expect(page.getByText('Wednesday', { exact: true })).toHaveCount(0)
@@ -98,9 +100,9 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Second partial entry: clean endurance and change of direction.
+  // Second partial entry: Power Clean and change of direction.
   await page.locator('input[type="date"]').fill('2026-07-07')
-  await fillPlaceholder(page, '8', '10')
+  await fillPlaceholder(page, '235', '245')
   await fillPlaceholder(page, '4.35', '4.35')
   await fillPlaceholder(page, '4.41', '4.31')
   await fillPlaceholder(page, '2.80', '2.85')
