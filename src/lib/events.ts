@@ -1,4 +1,5 @@
 import type { AppData, Athlete, TestSession, TestingEvent, TestingPhase } from '../types'
+import { estimatePowerClean1RM } from './powerClean'
 
 export const SESSION_METRIC_KEYS = [
   'benchMax',
@@ -8,6 +9,7 @@ export const SESSION_METRIC_KEYS = [
   'dash10_2',
   'fly10_1',
   'fly10_2',
+  'powerCleanMax',
   'hangCleanReps',
   'shuttle20_1',
   'shuttle20_2',
@@ -99,6 +101,22 @@ function overlayBest(target: TestSession, source: TestSession): void {
   for (const key of SESSION_METRIC_KEYS) {
     const value = source[key]
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue
+
+    // The old clean test used body weight as the load. Compare converted maxes,
+    // not rep totals, because an athlete's testing weight can change by season.
+    if (key === 'hangCleanReps') {
+      const bodyWeight = source.hangCleanWeightLbsSnapshot ?? source.weightLbsSnapshot
+      const estimated = estimatePowerClean1RM(bodyWeight, value)
+      if (!estimated) continue
+      const currentEstimate = target.estimatedPowerCleanMax
+      if (typeof currentEstimate !== 'number' || estimated > currentEstimate) {
+        target.hangCleanReps = value
+        target.hangCleanWeightLbsSnapshot = bodyWeight
+        target.estimatedPowerCleanMax = estimated
+      }
+      continue
+    }
+
     const current = (target as unknown as Record<string, number | undefined>)[key]
     const next =
       typeof current !== 'number'
@@ -217,6 +235,7 @@ const LIMITS: Partial<Record<SessionMetricKey, [number, number]>> = {
   dash10_2: [1.2, 3],
   fly10_1: [0.8, 3],
   fly10_2: [0.8, 3],
+  powerCleanMax: [25, 700],
   hangCleanReps: [1, 50],
   shuttle20_1: [3.2, 8],
   shuttle20_2: [3.2, 8],
