@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { Avatar, Card, DeltaBadge, Pill } from '../components/ui'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
 import { seasonEvents } from '../lib/events'
+import { archetypeFor } from '../lib/archetypes'
 import { formatHeight } from '../data/constants'
 import type { Athlete, AthleteResult } from '../types'
 
@@ -89,58 +90,73 @@ export default function Athletes() {
         <Card className="p-10 text-center text-muted">No athletes match these filters.</Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map(({ athlete, result }) => (
-            <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
-              <div className="flex items-start gap-3">
-                <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={52} />
-                <div className="min-w-0 flex-1">
-                  <Link to={`/athletes/${athlete.id}`} className="block truncate text-base font-bold text-chalk hover:text-fai">{athlete.name}</Link>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                    <Pill tone="fai">{athlete.positionGroup}</Pill>
-                    <span>{athlete.position}</span>
-                    <span>· {gradeLabelFor(athlete)}</span>
-                  </div>
-                  <div className="mt-1 text-xs text-muted">
-                    {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
-                    {result?.rankEligible ? ` · Rank #${result.teamRank}` : ''}
+          {list.map(({ athlete, result }) => {
+            const archetype = result ? archetypeFor(result.current) : undefined
+            return (
+              <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
+                <div className="flex items-start gap-3">
+                  <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={52} />
+                  <div className="min-w-0 flex-1">
+                    <Link to={`/athletes/${athlete.id}`} className="block truncate text-base font-bold text-chalk hover:text-fai">{athlete.name}</Link>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                      <Pill tone="fai">{athlete.positionGroup}</Pill>
+                      <span>{athlete.position}</span>
+                      <span>· {gradeLabelFor(athlete)}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-muted">
+                      {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
+                      {result?.rankEligible ? ` · Rank #${result.teamRank}` : ''}
+                    </div>
+                    {archetype && (
+                      <div
+                        className="mt-2 rounded-lg border border-fai/20 bg-fai/5 px-2.5 py-2"
+                        title={`${archetype.description} Based on: ${archetype.evidence.join(', ')}.`}
+                      >
+                        <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">
+                          Player archetype · {archetype.confidence} confidence
+                        </div>
+                        <div className="mt-0.5 truncate text-xs font-black text-fai">{archetype.name}</div>
+                        <div className="mt-0.5 truncate text-[10px] text-muted">{archetype.evidence.join(' · ')}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-                {result ? (
-                  <>
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        {result.current.scoreStatus === 'complete' ? 'Official FAI' : 'Provisional FAI'}
+                <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                  {result ? (
+                    <>
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+                          {result.current.scoreStatus === 'complete' ? 'Official FAI' : 'Provisional FAI'}
+                        </div>
+                        <div className={`text-3xl font-black nums ${result.rankEligible ? 'text-fai' : 'text-flame'}`}>
+                          {result.current.fai.toFixed(1)}
+                        </div>
+                        {!result.rankEligible && (
+                          <div className="text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
+                        )}
                       </div>
-                      <div className={`text-3xl font-black nums ${result.rankEligible ? 'text-fai' : 'text-flame'}`}>
-                        {result.current.fai.toFixed(1)}
+                      <div className="text-right">
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">Since prior event</div>
+                        {result.previous ? (
+                          <DeltaBadge value={result.faiImprovement} trend={trendOf(result.faiImprovement)} size="lg" />
+                        ) : (
+                          <div className="text-sm text-muted">First event</div>
+                        )}
                       </div>
-                      {!result.rankEligible && (
-                        <div className="text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm text-muted">No testing data yet</div>
+                      {canEdit && (
+                        <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add testing</Link>
                       )}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">Since prior event</div>
-                      {result.previous ? (
-                        <DeltaBadge value={result.faiImprovement} trend={trendOf(result.faiImprovement)} size="lg" />
-                      ) : (
-                        <div className="text-sm text-muted">First event</div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-sm text-muted">No testing data yet</div>
-                    {canEdit && (
-                      <Link to={`/entry?athlete=${athlete.id}`} className="rounded-lg border border-fai/40 px-3 py-1 text-xs font-bold text-fai hover:bg-fai/10">+ Add testing</Link>
-                    )}
-                  </>
-                )}
-              </div>
-            </Card>
-          ))}
+                    </>
+                  )}
+                </div>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
