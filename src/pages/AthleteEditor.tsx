@@ -22,6 +22,7 @@ export default function AthleteEditor() {
   const [height, setHeight] = useState(existing ? formatHeight(existing.heightIn) : '')
   const [weight, setWeight] = useState(existing?.weightLbs ? String(existing.weightLbs) : '')
   const [photoUrl, setPhotoUrl] = useState(existing?.photoUrl ?? '')
+  const [hudlUrl, setHudlUrl] = useState(existing?.hudlUrl ?? '')
 
   function save() {
     if (!name.trim()) return
@@ -33,6 +34,7 @@ export default function AthleteEditor() {
       heightIn: parseHeight(height),
       weightLbs: Number(weight) || 0,
       photoUrl: photoUrl.trim() || undefined,
+      hudlUrl: hudlUrl.trim() || undefined,
     }
     if (existing) {
       updateAthlete({ ...payload, id: existing.id })
@@ -109,6 +111,14 @@ export default function AthleteEditor() {
         <div>
           <label className={labelCls}>Photo URL (optional)</label>
           <input className={inputCls} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
+        </div>
+
+        <div>
+          <label className={labelCls}>Hudl / film link (optional)</label>
+          <input className={inputCls} value={hudlUrl} onChange={(e) => setHudlUrl(e.target.value)} placeholder="https://www.hudl.com/…" />
+          <p className="mt-1 text-xs text-muted">
+            Paste a Hudl highlight <strong>embed</strong> link (or YouTube/Vimeo) to play inline on the profile; any other Hudl link shows a “Watch film” button.
+          </p>
         </div>
 
         <div className="flex items-center justify-between pt-2">

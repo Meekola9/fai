@@ -90,6 +90,7 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
     heightIn: requiredNumber(row.height_in),
     weightLbs: requiredNumber(row.weight_lbs),
     photoUrl: optionalText(row.photo_url),
+    hudlUrl: optionalText(row.hudl_url),
   }))
 
   const events: TestingEvent[] = (eventResult.data ?? []).map((row) => ({
@@ -191,6 +192,7 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     height_in: athlete.heightIn,
     weight_lbs: athlete.weightLbs,
     photo_url: nullable(athlete.photoUrl),
+    hudl_url: nullable(athlete.hudlUrl),
   }))
 
   const eventRows = data.events.map((event) => ({

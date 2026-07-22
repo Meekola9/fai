@@ -15,10 +15,44 @@ import {
   TrendArrow,
 } from '../components/ui'
 import { RadarChart, LineChart, ScoreMeter } from '../components/charts'
+import { resolveFilm } from '../lib/film'
 import type { Category } from '../types'
 
 function trendOf(value: number) {
   return value > 0.05 ? 'improved' : value < -0.05 ? 'regressed' : ('same' as const)
+}
+
+function FilmCard({ hudlUrl }: { hudlUrl?: string }) {
+  const film = resolveFilm(hudlUrl)
+  if (!film) return null
+  return (
+    <Card className="p-5">
+      <SectionTitle>Film</SectionTitle>
+      {film.kind === 'embed' ? (
+        <div className="mt-1 overflow-hidden rounded-xl border border-line bg-black">
+          <div className="relative w-full" style={{ aspectRatio: '16 / 9' }}>
+            <iframe
+              src={film.src}
+              title="Athlete film"
+              className="absolute inset-0 h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+        </div>
+      ) : (
+        <a
+          href={film.href}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-1 inline-flex items-center gap-2 rounded-lg bg-flame/15 px-5 py-2.5 text-sm font-bold text-flame transition hover:bg-flame/25"
+        >
+          ▶ Watch film on {film.provider}
+        </a>
+      )}
+    </Card>
+  )
 }
 
 const CATEGORY_COLOR: Record<Category, string> = {
@@ -137,6 +171,8 @@ export default function AthleteProfile() {
           </div>
         )}
       </Card>
+
+      <FilmCard hudlUrl={athlete.hudlUrl} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">

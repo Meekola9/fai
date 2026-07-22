@@ -44,6 +44,8 @@ export interface Athlete {
   heightIn: number
   weightLbs: number
   photoUrl?: string
+  /** Hudl (or other) film link shown on the athlete profile. */
+  hudlUrl?: string
 }
 
 /** Parent record for one combine or testing window. */
