@@ -246,6 +246,34 @@ describe('player archetypes', () => {
     expect(powerBack?.evidence[0]).toContain('Power')
   })
 
+  it('spreads same-position players across archetypes by their standout trait', () => {
+    // Two receivers with similar overall level but different shapes: one is
+    // speed/vertical-led, the other change-of-direction-led. They should not
+    // collapse onto the same archetype.
+    const deepThreat = archetypeFor(resultFor('WR', {
+      Speed: 90,
+      Acceleration: 84,
+      Jump: 82,
+      Power: 62,
+      'Change of Direction': 70,
+      Conditioning: 68,
+      Strength: 55,
+    }, { weight: 175, position: 'WR' }))
+    const separator = archetypeFor(resultFor('WR', {
+      Speed: 72,
+      Acceleration: 80,
+      Jump: 62,
+      Power: 60,
+      'Change of Direction': 92,
+      Conditioning: 74,
+      Strength: 55,
+    }, { weight: 175, position: 'WR' }))
+
+    expect(deepThreat?.name).not.toBe(separator?.name)
+    expect(deepThreat?.evidence[0]).toContain('Speed')
+    expect(separator?.evidence[0]).toContain('Change of Direction')
+  })
+
   it('does not let a light speed-skill athlete’s relative strength dominate the evidence', () => {
     const receiver = archetypeFor(resultFor('WR', {
       Speed: 82,

@@ -11,9 +11,15 @@ import type {
   PositionGroup,
 } from '../types'
 import { computeProgress } from './progress'
+import {
+  ARCHETYPE_CATALOG,
+  archetypeFor,
+  type ArchetypeConfidence,
+  type PlayerArchetype,
+} from './archetypes'
 
 export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'elite' | 'legend'
-export type BadgeGroup = 'testing' | 'performance' | 'club' | 'progress' | 'ranking'
+export type BadgeGroup = 'testing' | 'performance' | 'club' | 'progress' | 'ranking' | 'signature'
 
 export interface PlayerBadgeDefinition {
   id: string
@@ -243,6 +249,51 @@ function definition(id: string): PlayerBadgeDefinition {
   return item
 }
 
+// ---------------------------------------------------------------------------
+// Signature archetype badges.
+//
+// Unlike the shared threshold badges above, a signature badge is unique to the
+// athlete's assigned archetype — so a Field Stretcher and a Route Technician
+// carry different marks even when they share the same generic Speed Demon badge.
+// The tier reflects how confident the archetype match is.
+// ---------------------------------------------------------------------------
+
+export const SIGNATURE_BADGE_PREFIX = 'signature-'
+
+function signatureTier(confidence: ArchetypeConfidence): BadgeTier {
+  return confidence === 'high' ? 'gold' : confidence === 'medium' ? 'silver' : 'bronze'
+}
+
+/** The reference definition for one archetype's signature badge. */
+export function signatureBadgeDefinition(
+  archetype: Pick<PlayerArchetype, 'id' | 'name' | 'role' | 'description'>,
+): PlayerBadgeDefinition {
+  return {
+    id: `${SIGNATURE_BADGE_PREFIX}${archetype.id}`,
+    name: archetype.name,
+    icon: '',
+    tier: 'gold',
+    group: 'signature',
+    description: archetype.description,
+    earnedBy: `Awarded when ${archetype.name} is the athlete's best-matching ${archetype.role} testing archetype.`,
+    priority: 99,
+  }
+}
+
+/** Every archetype's signature badge, for the reference guide. */
+export const SIGNATURE_BADGE_CATALOG: readonly PlayerBadgeDefinition[] =
+  ARCHETYPE_CATALOG.map((archetype) => signatureBadgeDefinition(archetype))
+
+/** The earned signature badge for an assigned archetype, tiered by confidence. */
+export function signatureBadgeFor(archetype: PlayerArchetype): EarnedPlayerBadge {
+  const lead = archetype.evidence[0]
+  return {
+    ...signatureBadgeDefinition(archetype),
+    tier: signatureTier(archetype.confidence),
+    evidence: `${archetype.role} archetype · ${archetype.confidence} confidence${lead ? ` · ${lead}` : ''}`,
+  }
+}
+
 function categoryAvailable(current: ComputedSession, category: Category): boolean {
   return METRICS_BY_CATEGORY(category).some(
     (metric) => typeof current.normalized[metric.key] === 'number',
@@ -275,6 +326,10 @@ export function playerBadgesFor({
   const group = positionGroup(result)
   const categories = measuredCategories(current)
   const values = categories.map((category) => current.categories[category])
+
+  // Signature archetype badge — unique to this athlete's assigned identity.
+  const archetype = archetypeFor(current)
+  if (archetype) earned.push(signatureBadgeFor(archetype))
 
   add(earned, 'first-mark', `${current.event.name}: ${current.completionPct}% testing coverage`)
 

@@ -5,6 +5,7 @@ import { GameDayBadgeArtwork } from '../components/GameDayBadges'
 import { Card, Pill } from '../components/ui'
 import {
   PLAYER_BADGE_CATALOG,
+  SIGNATURE_BADGE_CATALOG,
   type BadgeGroup,
   type BadgeTier,
 } from '../lib/badges'
@@ -21,6 +22,7 @@ const GROUP_LABEL: Record<BadgeGroup, string> = {
   club: 'Performance Clubs',
   progress: 'Progress',
   ranking: 'Score & Ranking',
+  signature: 'Signature Archetype',
 }
 
 const TIER_ORDER: BadgeTier[] = ['bronze', 'silver', 'gold', 'elite', 'legend']
@@ -101,6 +103,38 @@ export default function Badges() {
 
         <GameBadgeGroup title="Positive badges" tone="positive" badges={POSITIVE_GAME_DAY_BADGES} />
         <GameBadgeGroup title="Negative badges" tone="negative" badges={NEGATIVE_GAME_DAY_BADGES} />
+      </section>
+
+      <section className="space-y-4" id="signature-badges">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300">Unique per player</div>
+            <h2 className="text-2xl font-black text-chalk">Signature Archetype Badges</h2>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted">
+              Every athlete earns exactly one signature badge — the mark of their best-matching testing archetype.
+              Two players who share a generic badge (say, Speed Demon) still carry different signatures, so a badge wall
+              reflects who the player is. The tier shows how confident the match is: gold (high), silver (medium), bronze (low).
+            </p>
+          </div>
+          <Pill tone="gold">{SIGNATURE_BADGE_CATALOG.length} archetypes</Pill>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {SIGNATURE_BADGE_CATALOG.map((badge) => (
+            <div key={badge.id} id={badge.id} className="scroll-mt-32">
+              <Card className="flex h-full items-start gap-3 p-4">
+                <BadgeMedallion badge={badge} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300">
+                    Signature
+                  </div>
+                  <h3 className="mt-0.5 truncate text-base font-black text-chalk">{badge.name}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">{badge.description}</p>
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="space-y-4">
