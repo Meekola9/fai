@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AppData, Athlete, TestSession, TestingEvent } from '../types'
-import { computeAll, positionScoreBreakdown } from './compute'
+import { computeAll, positionScoreBreakdown, round1 } from './compute'
 import { playerUsageDefinition } from './playerUsage'
 
 const event: TestingEvent = {
@@ -63,22 +63,23 @@ describe('player usage scoring', () => {
     const athlete = { ...baseAthlete, usage: 'two-way' as const }
     const result = computeAll(dataFor(athlete))[0]
     const breakdown = positionScoreBreakdown(result.session, athlete, result.event)
+    const expected = round1((breakdown.primaryScore + breakdown.secondaryScore!) / 2)
 
     expect(breakdown.secondaryGroup).toBe('LB')
     expect(breakdown.primaryPct).toBe(50)
     expect(breakdown.secondaryPct).toBe(50)
-    expect(result.fai).toBeCloseTo((breakdown.primaryScore + breakdown.secondaryScore!) / 2, 1)
+    expect(result.fai).toBe(expected)
   })
 
   it('weights an Iron Man athlete 70 percent primary and 30 percent secondary', () => {
     const athlete = { ...baseAthlete, usage: 'iron-man' as const }
     const result = computeAll(dataFor(athlete))[0]
     const breakdown = positionScoreBreakdown(result.session, athlete, result.event)
-    const expected = breakdown.primaryScore * 0.7 + breakdown.secondaryScore! * 0.3
+    const expected = round1(breakdown.primaryScore * 0.7 + breakdown.secondaryScore! * 0.3)
 
     expect(breakdown.primaryPct).toBe(70)
     expect(breakdown.secondaryPct).toBe(30)
-    expect(result.fai).toBeCloseTo(expected, 1)
+    expect(result.fai).toBe(expected)
   })
 
   it('keeps One Way athletes on the primary-position score only', () => {
