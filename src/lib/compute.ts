@@ -14,6 +14,7 @@ import type {
 import {
   categoryWeightsFor,
   METRICS_BY_CATEGORY,
+  metricWeightFor,
   REQUIRED_METRICS,
   SCORED_METRICS,
   scoreMetric,
@@ -44,14 +45,23 @@ export function computeSession(
     normalized[metric.key] = typeof score === 'number' ? round1(score) : undefined
   }
 
+  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
   const categories = emptyCategories()
   const categoryHasData = new Map<Category, boolean>()
   for (const category of CATEGORIES) {
-    const scores = METRICS_BY_CATEGORY(category)
-      .map((metric) => normalized[metric.key])
-      .filter((value): value is number => typeof value === 'number')
-    categoryHasData.set(category, scores.length > 0)
-    if (scores.length > 0) categories[category] = round1(avg(scores))
+    const scoredMetrics = METRICS_BY_CATEGORY(category)
+      .map((metric) => ({
+        score: normalized[metric.key],
+        weight: metricWeightFor(metric.key, positionGroup),
+      }))
+      .filter((item): item is { score: number; weight: number } => typeof item.score === 'number')
+
+    categoryHasData.set(category, scoredMetrics.length > 0)
+    if (scoredMetrics.length > 0) {
+      const weightedTotal = scoredMetrics.reduce((sum, item) => sum + item.score * item.weight, 0)
+      const weightTotal = scoredMetrics.reduce((sum, item) => sum + item.weight, 0)
+      categories[category] = round1(weightTotal > 0 ? weightedTotal / weightTotal : 0)
+    }
   }
 
   const requiredPresent = REQUIRED_METRICS.filter(
@@ -61,7 +71,6 @@ export function computeSession(
   const scoreStatus =
     completionPct >= 100 ? 'complete' : completionPct >= 60 ? 'provisional' : 'insufficient'
 
-  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
   const categoryWeights = categoryWeightsFor(positionGroup)
 
   // Conditioning is optional. When absent, remove only its position-specific
