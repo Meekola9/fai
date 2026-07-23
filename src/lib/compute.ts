@@ -21,6 +21,7 @@ import {
 } from '../data/scoring'
 import { CATEGORIES } from '../data/constants'
 import { mergeEventSessions } from './events'
+import { verticalFaiScore } from './verticalBenchmarks'
 
 export function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value))
@@ -37,15 +38,17 @@ export function computeSession(
 ): ComputedSession {
   const metrics: Record<string, number | undefined> = {}
   const normalized: Record<string, number | undefined> = {}
+  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
 
   for (const metric of SCORED_METRICS) {
     const raw = metric.value(session)
     metrics[metric.key] = raw
-    const score = scoreMetric(metric, session)
+    const score = metric.key === 'verticalJump' && typeof raw === 'number'
+      ? verticalFaiScore(raw, positionGroup)
+      : scoreMetric(metric, session)
     normalized[metric.key] = typeof score === 'number' ? round1(score) : undefined
   }
 
-  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
   const categories = emptyCategories()
   const categoryHasData = new Map<Category, boolean>()
   for (const category of CATEGORIES) {
