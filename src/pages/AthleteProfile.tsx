@@ -16,6 +16,7 @@ import {
 } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
+import { awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 import { OverallRatingName } from '../components/OverallRatingName'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
@@ -115,6 +116,33 @@ function GameDayBadgeSection({ summary }: { summary: AthleteGameDayBadgeSummary 
           </div>
         </div>
       )}
+    </Card>
+  )
+}
+
+const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
+  'Elite IQ': 'up',
+  Sharp: 'fai',
+  Developing: 'gold',
+  'Needs Study': 'down',
+}
+
+function AwarenessCard({ athleteId }: { athleteId: string }) {
+  const { data } = useStore()
+  const latest = latestAwarenessFor(data.awarenessResults, athleteId)
+  if (!latest) return null
+  return (
+    <Card className="p-5">
+      <SectionTitle>Football Awareness</SectionTitle>
+      <div className="flex items-center gap-4">
+        <div className="nums text-5xl font-black leading-none text-chalk">{latest.score}</div>
+        <div>
+          <Pill tone={AWARENESS_TONE[awarenessLevel(latest.score)]}>{awarenessLevel(latest.score)}</Pill>
+          <div className="mt-1 text-xs text-muted nums">
+            {latest.correct}/{latest.total} correct · {new Date(latest.takenAt).toLocaleDateString()}
+          </div>
+        </div>
+      </div>
     </Card>
   )
 }
@@ -244,6 +272,8 @@ export default function AthleteProfile() {
       </Card>
 
       <GameDayBadgeSection summary={gameBadges} />
+
+      <AwarenessCard athleteId={athlete.id} />
 
       <FilmCard hudlUrl={athlete.hudlUrl} />
 

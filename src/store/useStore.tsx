@@ -10,6 +10,7 @@ import type {
   AppData,
   Athlete,
   AthleteResult,
+  AwarenessResult,
   ComputedSession,
   FilmPlay,
   PlayEvent,
@@ -30,6 +31,7 @@ import {
   loadCloudData,
   loadPublicTeamData,
   loadTeamAccess,
+  saveAwarenessResult,
   saveCloudData,
 } from './cloud'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -98,13 +100,24 @@ interface StoreContextValue {
   addFilmPlay: (film: Omit<FilmPlay, 'id' | 'createdAt'>) => string
   updateFilmPlay: (film: FilmPlay) => void
   deleteFilmPlay: (id: string) => void
+  /** Record an awareness-quiz result for the given athlete (athlete self-service). */
+  submitAwarenessResult: (
+    result: Omit<AwarenessResult, 'id' | 'createdAt'>,
+  ) => Promise<void>
   resetSample: () => void
   replaceAll: (data: AppData) => void
   importCsvText: (text: string, mode: 'merge' | 'replace') => void
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null)
-const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [], plays: [], filmPlays: [] }
+const EMPTY: Required<AppData> = {
+  athletes: [],
+  sessions: [],
+  events: [],
+  plays: [],
+  filmPlays: [],
+  awarenessResults: [],
+}
 
 interface AuthUserLike {
   id: string
@@ -517,6 +530,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             annotation.athleteId === id ? { ...annotation, athleteId: undefined } : annotation,
           ),
         })),
+        awarenessResults: current.awarenessResults.filter((result) => result.athleteId !== id),
       }))
     },
 
@@ -615,6 +629,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }))
     },
 
+    async submitAwarenessResult(result) {
+      const record: AwarenessResult = {
+        ...result,
+        id: newId('awareness'),
+        createdAt: new Date().toISOString(),
+      }
+      // Reflect the result locally right away.
+      setData((current) => ({
+        ...current,
+        awarenessResults: [...current.awarenessResults, record],
+      }))
+      // Athletes may write only their own quiz row (RLS) — not the whole dataset.
+      if (team) await saveAwarenessResult(team.id, record)
+    },
+
     resetSample() {
       if (viewerMode) return
       setSaveStatus('saving')
@@ -708,9 +737,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           athletes: existingAthletes,
           events: existingEvents,
           sessions: [...current.sessions, ...incomingSessions],
-          // CSV import never carries plays or film, so keep what's on device.
+          // CSV import never carries plays, film, or quiz results — keep them.
           plays: current.plays,
           filmPlays: current.filmPlays,
+          awarenessResults: current.awarenessResults,
         })
       })
     },

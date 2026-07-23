@@ -9,6 +9,7 @@ import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
+import AwarenessQuiz from './pages/AwarenessQuiz'
 import Archetypes from './pages/Archetypes'
 import StatsGuide from './pages/StatsGuide'
 import Badges from './pages/Badges'
@@ -44,14 +45,6 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/data', label: 'Data' },
 ]
 
-const MOBILE_NAV = [
-  { to: '/', label: 'Dashboard', icon: '⌂', end: true },
-  { to: '/athletes', label: 'Athletes', icon: '◉' },
-  { to: '/entry', label: 'Test', icon: '+' },
-  { to: '/leaderboards', label: 'Rankings', icon: '★' },
-  { to: '/data', label: 'More', icon: '•••' },
-]
-
 function Brand() {
   const { teamName, publicTeamName, viewerMode, storageMode, teamRole } = useStore()
   const subtitle = viewerMode
@@ -81,6 +74,7 @@ function navForAccount(
   if (role === 'athlete') {
     return [
       { to: '/account/profile', label: 'My Profile', end: true },
+      { to: '/quiz', label: 'Awareness Quiz' },
       { to: '/leaderboards', label: 'Rankings' },
       { to: '/badges', label: 'Badges' },
       { to: '/stats', label: 'Stats Guide' },
@@ -301,6 +295,8 @@ export default function App() {
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
           <Route path="/film" element={viewerMode ? <FilmRoom /> : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')} />
           <Route path="/archetypes" element={<Archetypes />} />
+          <Route path="/quiz" element={<AwarenessQuiz />} />
+          <Route path="/vertical" element={<VerticalBenchmarks />} />
           <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />
           <Route path="/athletes/new" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />

@@ -1,6 +1,7 @@
 import type {
   AppData,
   Athlete,
+  AwarenessResult,
   FilmAnnotation,
   FilmPlay,
   PlayCall,
@@ -78,13 +79,15 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult, playResult, filmResult] = await Promise.all([
-    db.from('athletes').select('*').eq('team_id', teamId),
-    db.from('testing_events').select('*').eq('team_id', teamId),
-    db.from('test_sessions').select('*').eq('team_id', teamId),
-    db.from('play_events').select('*').eq('team_id', teamId),
-    db.from('film_plays').select('*').eq('team_id', teamId),
-  ])
+  const [athleteResult, eventResult, sessionResult, playResult, filmResult, awarenessResult] =
+    await Promise.all([
+      db.from('athletes').select('*').eq('team_id', teamId),
+      db.from('testing_events').select('*').eq('team_id', teamId),
+      db.from('test_sessions').select('*').eq('team_id', teamId),
+      db.from('play_events').select('*').eq('team_id', teamId),
+      db.from('film_plays').select('*').eq('team_id', teamId),
+      db.from('awareness_results').select('*').eq('team_id', teamId),
+    ])
 
   throwIfError(athleteResult.error, 'Could not load athletes')
   throwIfError(eventResult.error, 'Could not load testing events')
@@ -194,8 +197,21 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         createdAt: optionalText(row.created_at),
       }))
 
+  const awarenessResults: AwarenessResult[] = awarenessResult.error
+    ? []
+    : (awarenessResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        athleteId: String(row.athlete_id),
+        quizId: String(row.quiz_id),
+        score: requiredNumber(row.score),
+        correct: requiredNumber(row.correct),
+        total: requiredNumber(row.total),
+        takenAt: String(row.taken_at),
+        createdAt: optionalText(row.created_at),
+      }))
+
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions, plays, filmPlays }),
+    normalizeAppData({ athletes, events, sessions, plays, filmPlays, awarenessResults }),
   )
 }
 
@@ -414,6 +430,63 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
   } catch {
     // film_plays table not provisioned yet — skip film sync this save.
   }
+
+  // Awareness quiz results sync separately and non-fatally. A coach save upserts
+  // the whole set; athletes write their own single row via saveAwarenessResult.
+  try {
+    const awarenessRows = (data.awarenessResults ?? []).map((result) => ({
+      team_id: teamId,
+      id: result.id,
+      athlete_id: result.athleteId,
+      quiz_id: result.quizId,
+      score: result.score,
+      correct: result.correct,
+      total: result.total,
+      taken_at: result.takenAt,
+      created_at: result.createdAt ?? now,
+    }))
+    const oldAwareness = await existingIds('awareness_results', teamId)
+    if (awarenessRows.length > 0) {
+      const { error } = await db
+        .from('awareness_results')
+        .upsert(awarenessRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save awareness results')
+    }
+    await deleteMissing(
+      'awareness_results',
+      teamId,
+      oldAwareness,
+      new Set((data.awarenessResults ?? []).map((result) => result.id)),
+    )
+  } catch {
+    // awareness_results table not provisioned yet — skip this save.
+  }
+}
+
+/**
+ * Insert a single awareness result. Used by an athlete account, which may write
+ * only its own quiz row (RLS) — never the whole dataset like saveCloudData.
+ */
+export async function saveAwarenessResult(
+  teamId: string,
+  result: AwarenessResult,
+): Promise<void> {
+  const db = client()
+  const { error } = await db.from('awareness_results').upsert(
+    {
+      team_id: teamId,
+      id: result.id,
+      athlete_id: result.athleteId,
+      quiz_id: result.quizId,
+      score: result.score,
+      correct: result.correct,
+      total: result.total,
+      taken_at: result.takenAt,
+      created_at: result.createdAt ?? new Date().toISOString(),
+    },
+    { onConflict: 'team_id,id' },
+  )
+  throwIfError(error, 'Could not save your quiz result')
 }
 
 export interface PublicTeamData {

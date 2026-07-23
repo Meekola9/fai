@@ -197,11 +197,17 @@ export function consolidateAthleteAliases(input: AppData): Required<AppData> {
     })),
   }))
 
+  const awarenessResults = (data.awarenessResults ?? []).map((result) => ({
+    ...result,
+    athleteId: idMap.get(result.athleteId) ?? result.athleteId,
+  }))
+
   return normalizeAppData({
     athletes: athletes.sort((a, b) => a.name.localeCompare(b.name)),
     events: data.events,
     sessions: [...sessionById.values()],
     plays,
     filmPlays,
+    awarenessResults,
   })
 }
