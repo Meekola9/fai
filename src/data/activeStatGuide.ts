@@ -34,8 +34,26 @@ const POWER_CLEAN_GUIDE: readonly StatGuideEntry[] = [
   },
 ]
 
-/** Current public guide with the retired clean-repetition entry replaced. */
+const ILLINOIS_GUIDE: StatGuideEntry = {
+  id: 'test-illinois',
+  name: 'Illinois Agility Test',
+  section: 'test',
+  metricKey: 'illinois',
+  unit: 'seconds',
+  direction: 'lower',
+  required: true,
+  category: 'Pursuit',
+  meaning: 'Time required to complete the Illinois course with straight-line acceleration, weaving, turning, and reacceleration.',
+  footballMeaning: 'Provides a broad pursuit-style movement test combining speed, body control, curved running, and repeated direction changes. Pursuit carries 15% of overall FAI for defensive linemen and linebackers.',
+  interpretation: 'Lower is better. For males age 16–19: under 15.2 seconds is Excellent; 15.2–16.1 is Above Average; 16.2–18.1 is Average; 18.2–19.3 is Below Average; and over 19.3 is Poor.',
+  caution: 'The drill is preplanned and technique-dependent. Course dimensions, cone spacing, start position, surface, footwear, and timing method must remain identical. It does not directly measure reaction, tackling angles, or football instincts.',
+  scoringNote: 'FAI uses one universal 16–19 male Illinois time standard for every position and interpolates within the ranges. Position demands are handled through the category weight: Pursuit is weighted more heavily for DL and LB rather than giving them an easier raw-time standard.',
+  searchTerms: ['illinois', 'agility', 'weave', 'pursuit', '16-19', 'above average'],
+}
+
+/** Current public guide with retired or superseded test entries replaced. */
 export const ACTIVE_STAT_GUIDE: readonly StatGuideEntry[] = [
-  ...STAT_GUIDE.filter((entry) => entry.id !== 'test-hang-clean'),
+  ...STAT_GUIDE.filter((entry) => entry.id !== 'test-hang-clean' && entry.id !== 'test-illinois'),
   ...POWER_CLEAN_GUIDE,
+  ILLINOIS_GUIDE,
 ]
