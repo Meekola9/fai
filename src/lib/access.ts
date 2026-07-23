@@ -31,12 +31,16 @@ export interface AccessCapabilities {
   canEditAnything: boolean
 }
 
-const ALL_STAFF: TeamPermissions = {
+export const COACH_OPERATIONAL_PERMISSIONS: TeamPermissions = {
   roster: true,
   testing: true,
   film: true,
   awards: true,
   reports: true,
+}
+
+const ALL_STAFF: TeamPermissions = {
+  ...COACH_OPERATIONAL_PERMISSIONS,
   staff: true,
   data: true,
 }
@@ -59,9 +63,15 @@ export function normalizePermissions(value: unknown): TeamPermissions {
   return result
 }
 
-export function permissionsFor(role: TeamRole, assigned: TeamPermissions = {}): TeamPermissions {
+/**
+ * FAI's current cloud sync writes the operational team snapshot together.
+ * Coaches therefore receive the complete operating package, while staff/data
+ * administration remains owner/admin only. This avoids misleading partial
+ * access until cloud persistence is split into table-scoped writes.
+ */
+export function permissionsFor(role: TeamRole, _assigned: TeamPermissions = {}): TeamPermissions {
   if (role === 'owner' || role === 'admin') return ALL_STAFF
-  if (role === 'coach') return assigned
+  if (role === 'coach') return COACH_OPERATIONAL_PERMISSIONS
   return {}
 }
 
@@ -100,7 +110,7 @@ export function capabilitiesFor(
   }
 }
 
-export const COACH_PERMISSION_OPTIONS: ReadonlyArray<{
+export const COACH_DUTIES: ReadonlyArray<{
   key: TeamPermission
   label: string
   description: string
@@ -110,7 +120,6 @@ export const COACH_PERMISSION_OPTIONS: ReadonlyArray<{
   { key: 'film', label: 'Film grading', description: 'Chart plays, grade assignments, and build tendency reports.' },
   { key: 'awards', label: 'Awards', description: 'Log impact plays and award weekly or season achievement badges.' },
   { key: 'reports', label: 'Reports', description: 'View staff-only reports and detailed player evaluations.' },
-  { key: 'data', label: 'Data tools', description: 'Import, export, synchronize, and manage team backups.' },
 ]
 
 export function roleLabel(role: TeamRole): string {
