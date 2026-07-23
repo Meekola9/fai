@@ -1,0 +1,50 @@
+name: Fix lineup memoization
+
+on:
+  push:
+    branches: [feature/visual-lineup-builder]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/visual-lineup-builder
+          fetch-depth: 0
+      - name: Replace unstable lineup memoization
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/pages/Lineup.tsx')
+          text = path.read_text()
+          old = """  const overrides = storedLineups[scheme.id] ?? {}\n  const assignments = useMemo(\n    () => generateBestLineup(data.athletes, ratings, scheme, overrides),\n    [data.athletes, overrides, ratings, scheme],\n  )\n"""
+          new = """  const overrides = useMemo(\n    () => storedLineups[scheme.id] ?? {},\n    [scheme.id, storedLineups],\n  )\n  const assignments = generateBestLineup(data.athletes, ratings, scheme, overrides)\n"""
+          if text.count(old) != 1:
+              raise SystemExit('Could not locate the lineup memoization block exactly once.')
+          path.write_text(text.replace(old, new, 1))
+          Path('lineup-lint.log').unlink(missing_ok=True)
+          Path('.github/workflows/fix-lineup-memo.yml').unlink()
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix lineup memoization for React Compiler"
+          git push origin HEAD:feature/visual-lineup-builder
