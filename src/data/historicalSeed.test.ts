@@ -32,9 +32,10 @@ describe('historicalSeedData', () => {
     expect(data.athletes).toHaveLength(159)
   })
 
-  it('contains all 864 historical testing sessions', async () => {
+  it('enriches the existing 762 sessions instead of creating duplicate 2026 cards', async () => {
     const data = await historicalSeedData()
-    expect(data.sessions).toHaveLength(864)
+    expect(data.sessions).toHaveLength(762)
+    expect(data.sessions.some((session) => session.id.startsWith('session-sheet26-'))).toBe(false)
   })
 
   it('contains no sessions whose athlete or event is missing', async () => {
@@ -69,17 +70,25 @@ describe('historicalSeedData', () => {
     expect(easton?.id).toBe('athlete-31f3ca620f838f')
     expect(eastonSummer).toMatchObject({
       athleteId: 'athlete-31f3ca620f838f',
+      benchMax: 135,
+      dash40_1: 5.79,
+      fly10_1: 1.34,
+      powerCleanMax: 125,
+      shuttle20_1: 4.87,
+      illinois: 17.31,
       squatMax: 240,
-      broadJump: 82,
+      broadJump: 81.6,
       verticalJump: 17,
     })
   })
 
   it('contains the complete updated 2026 measurements', async () => {
     const data = await historicalSeedData()
+    const summerEvent = 'event-7badc8422c3808'
 
+    const aj = data.athletes.find((athlete) => athlete.name === 'AJ Bailey')
     const ajSummer = data.sessions.find(
-      (session) => session.id === 'session-sheet26-aj-bailey-2027-summer',
+      (session) => session.athleteId === aj?.id && session.eventId === summerEvent,
     )
     expect(ajSummer).toMatchObject({
       date: '2026-06-15',
@@ -96,9 +105,11 @@ describe('historicalSeedData', () => {
       verticalJump: 36,
     })
 
+    const knCrump = data.athletes.find((athlete) => athlete.name === 'Kn. Crump')
     const crump2030 = data.sessions.find(
-      (session) => session.id === 'session-sheet26-kn-crump-2030-summer',
+      (session) => session.athleteId === knCrump?.id && session.eventId === summerEvent,
     )
+    expect(knCrump).toMatchObject({ grade: 9, heightIn: 73, weightLbs: 172 })
     expect(crump2030).toMatchObject({
       weightLbsSnapshot: 172,
       benchMax: 160,
@@ -113,12 +124,11 @@ describe('historicalSeedData', () => {
       verticalJump: 24,
     })
 
-    const knCrump = data.athletes.find((athlete) => athlete.name === 'Kn. Crump')
-    expect(knCrump).toMatchObject({ grade: 9, heightIn: 73, weightLbs: 172 })
-
+    const kuCrump = data.athletes.find((athlete) => athlete.name === 'Ku. Crump')
     const crump2028Summer = data.sessions.find(
-      (session) => session.id === 'session-sheet26-ku-crump-2028-summer',
+      (session) => session.athleteId === kuCrump?.id && session.eventId === summerEvent,
     )
+    expect(kuCrump).toMatchObject({ grade: 10, heightIn: 75, weightLbs: 191 })
     expect(crump2028Summer).toMatchObject({
       weightLbsSnapshot: 191,
       benchMax: 200,
@@ -127,6 +137,7 @@ describe('historicalSeedData', () => {
       broadJump: 117.6,
       verticalJump: 27,
     })
+    expect(knCrump?.id).not.toBe(kuCrump?.id)
   })
 
   it('contains canonical full-name athletes instead of known duplicate aliases', async () => {
