@@ -31,6 +31,7 @@ describe('FAI account access', () => {
       canManageStaff: false,
       canManageData: false,
       canEditOwnProfile: false,
+      canEditAnything: true,
     })
   })
 

@@ -54,6 +54,7 @@ function Brand() {
       : storageMode === 'cloud'
         ? 'Cloud account'
         : 'On-device mode'
+
   return (
     <div className="flex items-center gap-2">
       <div className="grid h-9 w-9 place-items-center rounded-lg border border-fai/40 bg-fai/10 text-sm font-black tracking-tight text-fai">FAI</div>
@@ -78,8 +79,10 @@ function navForAccount(
       { to: '/leaderboards', label: 'Rankings' },
       { to: '/badges', label: 'Badges' },
       { to: '/stats', label: 'Stats Guide' },
+      { to: '/vertical', label: 'Vertical Standards' },
     ]
   }
+
   const nav: NavItem[] = [
     { to: '/', label: 'Coach Dashboard', end: true },
     { to: '/leaderboards', label: 'Leaderboards' },
@@ -87,7 +90,12 @@ function navForAccount(
   ]
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
-  nav.push({ to: '/archetypes', label: 'Archetypes' }, { to: '/badges', label: 'Badges' }, { to: '/stats', label: 'Stats Guide' })
+  nav.push(
+    { to: '/archetypes', label: 'Archetypes' },
+    { to: '/badges', label: 'Badges' },
+    { to: '/stats', label: 'Stats Guide' },
+    { to: '/vertical', label: 'Vertical Standards' },
+  )
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
   if (capabilities.canManageData) nav.push({ to: '/data', label: 'Data' })
   if (capabilities.canManageStaff) nav.push({ to: '/staff', label: 'Staff' })
@@ -98,11 +106,11 @@ function Header() {
   const { storageMode, viewerMode, signOut } = useStore()
   const access = useAccountAccess()
   const nav = navForAccount(viewerMode, access.role, access.capabilities)
+
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4">
         <NavLink to={access.role === 'athlete' ? '/account/profile' : '/'} aria-label="FAI home"><Brand /></NavLink>
-
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (
             <NavLink
@@ -115,19 +123,14 @@ function Header() {
             </NavLink>
           ))}
           <ConnectivityBadge />
-          {access.role !== 'athlete' && (
-            <NavLink to="/tv" className="ml-1 rounded-lg border border-flame/40 bg-flame/10 px-3 py-1.5 text-sm font-bold text-flame transition hover:bg-flame/20">TV Mode</NavLink>
-          )}
-          {storageMode === 'cloud' && (
-            <button type="button" onClick={() => void signOut()} className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted hover:bg-panel-2 hover:text-chalk">Sign out</button>
-          )}
-          {viewerMode && (
-            <NavLink to="/login" className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted hover:bg-panel-2 hover:text-chalk">Sign In</NavLink>
-          )}
+          {access.role !== 'athlete' && <NavLink to="/tv" className="ml-1 rounded-lg border border-flame/40 bg-flame/10 px-3 py-1.5 text-sm font-bold text-flame">TV Mode</NavLink>}
+          {storageMode === 'cloud' && <button type="button" onClick={() => void signOut()} className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted">Sign out</button>}
+          {viewerMode && <NavLink to="/login" className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted">Sign In</NavLink>}
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
-          <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open account or guides">
+          <NavLink to="/vertical" className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open vertical standards">VERT</NavLink>
+          <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted">
             {access.role === 'athlete' ? 'ME' : 'GUIDES'}
           </NavLink>
           {access.role !== 'athlete' && <NavLink to="/tv" className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame">TV</NavLink>}
@@ -160,6 +163,7 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
           { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: '•••' },
         ]
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Mobile navigation">
       <div className={`mx-auto grid max-w-lg ${items.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
@@ -198,9 +202,7 @@ function LoginScreen() {
         setMessage('Account created. Check your email if confirmation is required, then sign in to claim your athlete profile or accept a staff invitation.')
         setMode('sign-in')
         setBusy(false)
-      } else {
-        await signIn(email, password)
-      }
+      } else await signIn(email, password)
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : 'Account request failed.')
       setBusy(false)
@@ -212,37 +214,19 @@ function LoginScreen() {
       <div className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl">
         <div className="mb-5 flex items-center gap-3">
           <div className="grid h-12 w-12 place-items-center rounded-xl border border-fai/40 bg-fai/10 text-lg font-black text-fai">FAI</div>
-          <div>
-            <h1 className="text-xl font-black text-chalk">{mode === 'create' ? 'Create FAI Account' : 'Sign In to FAI'}</h1>
-            <p className="text-sm text-muted">Athletes and staff use their own login</p>
-          </div>
+          <div><h1 className="text-xl font-black text-chalk">{mode === 'create' ? 'Create FAI Account' : 'Sign In to FAI'}</h1><p className="text-sm text-muted">Athletes and staff use their own login</p></div>
         </div>
-
         <div className="mb-4 grid grid-cols-2 rounded-xl border border-line bg-ink p-1">
           <button type="button" onClick={() => setMode('sign-in')} className={`rounded-lg px-3 py-2 text-xs font-black ${mode === 'sign-in' ? 'bg-fai text-ink' : 'text-muted'}`}>Sign in</button>
           <button type="button" onClick={() => setMode('create')} className={`rounded-lg px-3 py-2 text-xs font-black ${mode === 'create' ? 'bg-fai text-ink' : 'text-muted'}`}>Create account</button>
         </div>
-
-        {(formError || authError || message) && (
-          <div className={`mb-4 rounded-xl border p-3 text-sm ${formError || authError ? 'border-down/40 bg-down/5 text-down' : 'border-fai/30 bg-fai/5 text-fai'}`}>{formError || authError || message}</div>
-        )}
-
+        {(formError || authError || message) && <div className={`mb-4 rounded-xl border p-3 text-sm ${formError || authError ? 'border-down/40 bg-down/5 text-down' : 'border-fai/30 bg-fai/5 text-fai'}`}>{formError || authError || message}</div>}
         <form onSubmit={submit} className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted">Email</span>
-            <input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-line bg-ink px-4 py-3 text-chalk outline-none focus:border-fai" />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted">Password</span>
-            <input type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'} minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-xl border border-line bg-ink px-4 py-3 text-chalk outline-none focus:border-fai" />
-          </label>
-          <button type="submit" disabled={busy} className="w-full rounded-xl bg-fai px-5 py-3 font-black text-ink disabled:cursor-wait disabled:opacity-60">
-            {busy ? 'Working…' : mode === 'create' ? 'Create my account' : 'Sign in to FAI'}
-          </button>
+          <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted">Email</span><input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border border-line bg-ink px-4 py-3 text-chalk outline-none focus:border-fai" /></label>
+          <label className="block"><span className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted">Password</span><input type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'} minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-xl border border-line bg-ink px-4 py-3 text-chalk outline-none focus:border-fai" /></label>
+          <button type="submit" disabled={busy} className="w-full rounded-xl bg-fai px-5 py-3 font-black text-ink disabled:cursor-wait disabled:opacity-60">{busy ? 'Working…' : mode === 'create' ? 'Create my account' : 'Sign in to FAI'}</button>
         </form>
-        <p className="mt-4 text-xs leading-relaxed text-muted">
-          Athletes claim an existing roster profile after signing in. Coaches accept an invitation sent by an owner or administrator.
-        </p>
+        <p className="mt-4 text-xs leading-relaxed text-muted">Athletes claim an existing roster profile after signing in. Coaches accept an invitation sent by an owner or administrator.</p>
         {viewerMode && <NavLink to="/" className="mt-4 inline-block text-sm font-semibold text-fai hover:underline">← Back to team view</NavLink>}
       </div>
     </div>
@@ -250,13 +234,7 @@ function LoginScreen() {
 }
 
 function PermissionDenied({ message = 'Your FAI account does not have permission to open this section.' }: { message?: string }) {
-  return (
-    <div className="mx-auto max-w-xl rounded-2xl border border-down/30 bg-panel p-6 text-center">
-      <h1 className="text-xl font-black text-chalk">Permission required</h1>
-      <p className="mt-2 text-sm text-muted">{message}</p>
-      <NavLink to="/" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk">Return to FAI</NavLink>
-    </div>
-  )
+  return <div className="mx-auto max-w-xl rounded-2xl border border-down/30 bg-panel p-6 text-center"><h1 className="text-xl font-black text-chalk">Permission required</h1><p className="mt-2 text-sm text-muted">{message}</p><NavLink to="/" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk">Return to FAI</NavLink></div>
 }
 
 export default function App() {
@@ -269,10 +247,7 @@ export default function App() {
   const signedOut = cloudConfigured && !signedIn
   if (signedOut && !viewerMode) return <LoginScreen />
   if (signedOut && location.pathname === '/login') return <LoginScreen />
-
-  // A valid account with no membership is allowed into the claim/invite workflow.
   if (cloudConfigured && signedIn && !teamName) return <AccountSetup />
-
   if (isTv) {
     if (access.role === 'athlete') return <Navigate to="/account/profile" replace />
     return <Routes><Route path="/tv" element={<TVMode />} /></Routes>
@@ -299,6 +274,7 @@ export default function App() {
           <Route path="/vertical" element={<VerticalBenchmarks />} />
           <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />
+          <Route path="/vertical" element={<VerticalBenchmarks />} />
           <Route path="/athletes/new" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />
           <Route path="/athletes/:id" element={isAthlete ? <Navigate to="/account/profile" replace /> : <AthleteProfile />} />
           <Route path="/athletes/:id/edit" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />
@@ -310,9 +286,7 @@ export default function App() {
           <Route path="/login" element={<Navigate to={isAthlete ? '/account/profile' : '/'} replace />} />
         </Routes>
       </main>
-      <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">
-        FAI — Football Athlete Index · {viewerMode ? 'Live team view · read only' : storageMode === 'cloud' ? 'Secure role-based cloud access with on-device backup' : 'Local-first with on-device backup'}
-      </footer>
+      <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">FAI — Football Athlete Index · {viewerMode ? 'Live team view · read only' : storageMode === 'cloud' ? 'Secure role-based cloud access with on-device backup' : 'Local-first with on-device backup'}</footer>
       <PwaControls />
       <MobileNavigation viewerMode={viewerMode} />
     </div>

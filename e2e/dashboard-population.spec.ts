@@ -5,7 +5,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 158 && data.events?.length === 20 && data.sessions?.length === 670
+    return data.athletes?.length === 164 && data.events?.length === 20 && data.sessions?.length === 770
   })
 }
 
@@ -27,9 +27,9 @@ test.beforeEach(async ({ page }) => {
 
 test('dashboard is populated from verified historical and partial testing records', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Historical Data Coverage' })).toBeVisible()
-  await expect(page.getByText('158', { exact: true })).toBeVisible()
+  await expect(page.getByText('164', { exact: true })).toBeVisible()
   await expect(page.getByText('20', { exact: true })).toBeVisible()
-  await expect(page.getByText('670', { exact: true })).toBeVisible()
+  await expect(page.getByText('770', { exact: true })).toBeVisible()
   await expect(page.getByText('Summer 2026 Max Test', { exact: true })).toBeVisible()
 
   await expect(
