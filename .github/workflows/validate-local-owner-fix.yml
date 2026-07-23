@@ -1,0 +1,71 @@
+name: Validate local owner repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser regression flows
+        id: browser
+        shell: bash
+        run: |
+          set +e
+          npx playwright test --grep "fresh browser automatically loads" > /tmp/archive.txt 2>&1
+          a=$?
+          npx playwright test --grep "coach adds a complete testing event" > /tmp/coach.txt 2>&1
+          c=$?
+          if [[ $a -eq 0 && $c -eq 0 ]]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            rm -f browser-qa-failure.txt
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "=== Archive and exercise-list QA (exit $a) ==="
+              cat /tmp/archive.txt
+              echo
+              echo "=== Coach Power Clean entry flow (exit $c) ==="
+              cat /tmp/coach.txt
+            } > browser-qa-failure.txt
+          fi
+      - name: Record validation and clean temporary files
+        shell: bash
+        run: |
+          rm .github/workflows/validate-local-owner-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if [[ "${{ steps.browser.outputs.passed }}" == "true" ]]; then
+            git commit -m "Validate Claude repair: all checks passed"
+          else
+            git add -f browser-qa-failure.txt
+            git commit -m "Claude repair browser QA still failing"
+          fi
+          git push origin HEAD:main
+      - name: Fail if browser QA failed
+        if: steps.browser.outputs.passed != 'true'
+        run: exit 1
