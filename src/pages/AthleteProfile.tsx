@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { athleteTimeline } from '../lib/compute'
 import { strengths, weaknesses } from '../lib/progress'
 import { playerBadgesFor } from '../lib/badges'
+import { athleteGameDayBadgeSummary, type AthleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
 import {
@@ -14,6 +15,8 @@ import {
   SectionTitle,
 } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
+import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
+import { OverallRatingName } from '../components/OverallRatingName'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
 import type { AthleteResult, Category } from '../types'
@@ -73,6 +76,49 @@ function currentSeasonResult(result: AthleteResult): AthleteResult {
   }
 }
 
+function GameDayBadgeSection({ summary }: { summary: AthleteGameDayBadgeSummary }) {
+  return (
+    <Card className="p-5">
+      <SectionTitle
+        right={(
+          <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider">
+            <span className="text-fai">{summary.positiveTotal} positive</span>
+            <span className="text-down">{summary.negativeTotal} negative</span>
+          </div>
+        )}
+      >
+        2026 Game-Day Badges · {summary.seasonTotal}
+      </SectionTitle>
+      <div className="mb-4 text-xs leading-relaxed text-muted">
+        A game-day badge stays active on the player page for seven days. Every award remains in the 2026 season total.
+      </div>
+
+      {summary.activeAwards.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {summary.activeAwards.map((award) => (
+            <GameDayBadgeAwardCard key={award.play.id} award={award} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-line bg-panel-2/25 p-4 text-sm text-muted">
+          No game-day badges are active this week.
+        </div>
+      )}
+
+      {summary.seasonCounts.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">2026 season count</div>
+          <div className="flex flex-wrap gap-2">
+            {summary.seasonCounts.map((item) => (
+              <GameDayBadgeCountChip key={item.badge.key} item={item} />
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function AthleteProfile() {
   const { id } = useParams()
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
@@ -86,6 +132,9 @@ export default function AthleteProfile() {
       : []),
     [computed, id],
   )
+  const gameBadges = id
+    ? athleteGameDayBadgeSummary(data.plays, id, 2026)
+    : { activeAwards: [], seasonCounts: [], seasonTotal: 0, positiveTotal: 0, negativeTotal: 0 }
 
   if (!athlete) {
     return (
@@ -125,6 +174,7 @@ export default function AthleteProfile() {
             </div>
           </div>
         </Card>
+        <GameDayBadgeSection summary={gameBadges} />
       </div>
     )
   }
@@ -158,6 +208,7 @@ export default function AthleteProfile() {
               <Pill tone={rankEligible ? 'up' : 'gold'}>
                 {rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
               </Pill>
+              <OverallRatingName score={current.fai} />
               {rankEligible && <Pill tone="gold">2026 Team Rank #{displayResult.teamRank} / {displayResult.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{displayResult.groupRank} / {displayResult.groupCount}</Pill>}
               {displayResult.impactBoostPct > 0 && (
@@ -174,7 +225,7 @@ export default function AthleteProfile() {
           </div>
           <div className="text-center">
             <FaiRing score={current.fai} size={130} label={rankEligible ? 'FAI' : 'PROV'} />
-            <div className="mt-2 text-xs font-bold uppercase tracking-wider text-fai">2026</div>
+            <div className="mt-2"><OverallRatingName score={current.fai} compact /></div>
           </div>
         </div>
 
@@ -187,10 +238,12 @@ export default function AthleteProfile() {
 
       <Card className="p-5">
         <SectionTitle right={<Link to="/badges" className="text-xs font-bold text-gold hover:underline">Badge guide →</Link>}>
-          2026 Earned Badges · {badges.length}
+          2026 Testing Badges · {badges.length}
         </SectionTitle>
         <PlayerBadgeGallery badges={badges} />
       </Card>
+
+      <GameDayBadgeSection summary={gameBadges} />
 
       <FilmCard hudlUrl={athlete.hudlUrl} />
 

@@ -10,8 +10,10 @@ import {
   type LeaderboardDef,
 } from '../lib/leaderboards'
 import { Avatar, Card, DeltaBadge, Pill, RankBadge, SectionTitle } from '../components/ui'
+import { OverallRatingName } from '../components/OverallRatingName'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
 import { seasonEvents } from '../lib/events'
+import { OVERALL_RATING_BANDS } from '../lib/overallRatings'
 import type { AthleteResult } from '../types'
 
 function trendOf(value: number) {
@@ -54,7 +56,12 @@ function BoardRows({ definition, results }: { definition: LeaderboardDef; result
             {definition.scope === 'official' && definition.id !== 'improved' && row.result.previous && (
               <DeltaBadge value={row.result.faiImprovement} trend={trendOf(row.result.faiImprovement)} />
             )}
-            <div className="w-20 text-right text-xl font-black nums text-fai">{row.display}</div>
+            <div className="w-28 text-right">
+              <div className="text-xl font-black nums text-fai">{row.display}</div>
+              {definition.id === 'fai' && (
+                <div className="mt-1 flex justify-end"><OverallRatingName score={row.result.current.fai} compact /></div>
+              )}
+            </div>
           </Link>
         )
       })}
@@ -114,6 +121,18 @@ export default function Leaderboards() {
         </div>
         <FilterBar events={seasons} value={filters} onChange={setFilters} />
       </div>
+
+      <Card className="p-4">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">Overall FAI names</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {OVERALL_RATING_BANDS.map((band) => (
+            <div key={band.id} className="flex items-center gap-1.5 rounded-lg border border-line bg-panel-2/40 px-2.5 py-1.5">
+              <span className="text-[10px] font-black text-chalk">{band.rangeLabel}</span>
+              <span className="text-[10px] text-muted">{band.label}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {provisional > 0 && (
         <div className="rounded-lg border border-flame/30 bg-flame/5 px-4 py-3 text-sm text-muted">
@@ -182,7 +201,10 @@ export default function Leaderboards() {
                     >
                       <span className="w-4 text-center font-black nums text-muted">{row.rank}</span>
                       <span className="flex-1 truncate font-semibold text-chalk">{row.result.athlete.name}</span>
-                      <span className="font-black nums text-fai">{row.display}</span>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="font-black nums text-fai">{row.display}</span>
+                        <OverallRatingName score={row.result.current.fai} compact />
+                      </div>
                     </Link>
                   ))}
                 </div>

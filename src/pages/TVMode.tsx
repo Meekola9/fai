@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { ALL_LEADERBOARDS, positionGroupBoards, type LeaderRow } from '../lib/leaderboards'
 import type { AthleteResult } from '../types'
 import { Avatar } from '../components/ui'
+import { OverallRatingName } from '../components/OverallRatingName'
 
 const ROTATE_MS = 9000
 
@@ -305,7 +306,8 @@ function BigCard({
         <div className="hidden text-right sm:block">
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted">FAI</div>
           <div className="text-2xl font-black nums text-fai">{result.current.fai.toFixed(1)}</div>
-          <div className={`text-sm font-black nums ${trend.c}`}>
+          <div className="mt-1 flex justify-end"><OverallRatingName score={result.current.fai} compact /></div>
+          <div className={`mt-1 text-sm font-black nums ${trend.c}`}>
             {trend.g} {result.previous ? `${result.faiImprovement >= 0 ? '+' : ''}${result.faiImprovement.toFixed(1)}` : ''}
           </div>
         </div>
@@ -366,6 +368,7 @@ function GroupGrid({ results }: { results: AthleteResult[] }) {
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">FAI</div>
                 <div className="text-4xl font-black nums text-fai">{leader.result.current.fai.toFixed(1)}</div>
+                <div className="mt-1"><OverallRatingName score={leader.result.current.fai} compact /></div>
               </div>
               <div className={`text-lg font-black nums ${trend.c}`}>
                 {trend.g} {leader.result.previous ? `${leader.result.faiImprovement >= 0 ? '+' : ''}${leader.result.faiImprovement.toFixed(1)}` : ''}

@@ -82,4 +82,35 @@ describe('impact scoring', () => {
     expect(summary.athletes[0].totalPoints).toBe(0)
     expect(summary.athletes[0].playCount).toBe(1)
   })
+
+  it('keeps game-day badge awards out of impact points, counts, and FAI boosts', () => {
+    const plays = [
+      play('a', 'interception'),
+      play('a', 'badge_robber'),
+      play('a', 'badge_butter_fingers'),
+    ]
+    const summary = buildImpact(plays, [athlete('a', 'A')])
+    expect(summary.athletes).toHaveLength(1)
+    expect(summary.athletes[0]).toMatchObject({
+      havocPoints: 5,
+      playmakerPoints: 0,
+      totalPoints: 5,
+      playCount: 1,
+      counts: { interception: 1 },
+    })
+    expect(summary.teamHavoc).toBe(5)
+    expect(summary.teamPlaymaker).toBe(0)
+    expect(summary.boostByAthlete.get('a')).toBe(1)
+  })
+
+  it('does not create an impact athlete from badge awards alone', () => {
+    const summary = buildImpact(
+      [play('a', 'badge_menace'), play('a', 'badge_traffic_cone')],
+      [athlete('a', 'A')],
+    )
+    expect(summary.athletes).toEqual([])
+    expect(summary.teamHavoc).toBe(0)
+    expect(summary.teamPlaymaker).toBe(0)
+    expect(summary.boostByAthlete.size).toBe(0)
+  })
 })
