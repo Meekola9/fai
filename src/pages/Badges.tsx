@@ -210,22 +210,24 @@ function GameBadgeGroup({
       <div className={`mb-2 text-[11px] font-black uppercase tracking-[0.16em] ${tone === 'positive' ? 'text-fai' : 'text-down'}`}>{title}</div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {badges.map((badge) => (
-          <Card key={badge.key} id={badge.id} className={`scroll-mt-32 p-4 ${tone === 'positive' ? 'border-fai/20' : 'border-down/25'}`}>
-            <div className="flex items-start gap-4">
-              <GameDayBadgeArtwork badge={badge} size={70} />
-              <div className="min-w-0 flex-1">
-                <div className={`text-[10px] font-bold uppercase tracking-[0.16em] ${tone === 'positive' ? 'text-fai' : 'text-down'}`}>
-                  {tone} game-day badge
+          <div key={badge.key} id={badge.id} className="scroll-mt-32">
+            <Card className={`p-4 ${tone === 'positive' ? 'border-fai/20' : 'border-down/25'}`}>
+              <div className="flex items-start gap-4">
+                <GameDayBadgeArtwork badge={badge} size={70} />
+                <div className="min-w-0 flex-1">
+                  <div className={`text-[10px] font-bold uppercase tracking-[0.16em] ${tone === 'positive' ? 'text-fai' : 'text-down'}`}>
+                    {tone} game-day badge
+                  </div>
+                  <h3 className="mt-1 text-lg font-black text-chalk">{badge.name}</h3>
                 </div>
-                <h3 className="mt-1 text-lg font-black text-chalk">{badge.name}</h3>
               </div>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-muted">{badge.description}</p>
-            <div className={`mt-3 rounded-xl border p-3 ${tone === 'positive' ? 'border-fai/20 bg-fai/5' : 'border-down/25 bg-down/5'}`}>
-              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Award when</div>
-              <div className="mt-1 text-xs font-semibold leading-relaxed text-chalk">{badge.earnedBy}</div>
-            </div>
-          </Card>
+              <p className="mt-3 text-sm leading-relaxed text-muted">{badge.description}</p>
+              <div className={`mt-3 rounded-xl border p-3 ${tone === 'positive' ? 'border-fai/20 bg-fai/5' : 'border-down/25 bg-down/5'}`}>
+                <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted">Award when</div>
+                <div className="mt-1 text-xs font-semibold leading-relaxed text-chalk">{badge.earnedBy}</div>
+              </div>
+            </Card>
+          </div>
         ))}
       </div>
     </div>
