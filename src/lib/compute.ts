@@ -23,6 +23,7 @@ import {
 import { CATEGORIES } from '../data/constants'
 import { mergeEventSessions } from './events'
 import { verticalFaiScore } from './verticalBenchmarks'
+import { illinoisAgilityScore } from './illinoisAgility'
 import { playerUsageDefinition } from './playerUsage'
 
 export function clamp(value: number, low: number, high: number): number {
@@ -48,7 +49,9 @@ function computeForGroup(
     metrics[metric.key] = raw
     const score = metric.key === 'verticalJump' && typeof raw === 'number'
       ? verticalFaiScore(raw, positionGroup)
-      : scoreMetric(metric, scoringSession)
+      : metric.key === 'illinois' && typeof raw === 'number'
+        ? illinoisAgilityScore(raw)
+        : scoreMetric(metric, scoringSession)
     normalized[metric.key] = typeof score === 'number' ? round1(score) : undefined
   }
 
