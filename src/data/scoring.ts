@@ -127,11 +127,38 @@ const squatBenchmark = (developmental: number): Benchmark => ({
 })
 
 /**
- * Power Clean is graded as an absolute max on position-specific standards.
- * Legacy body-weight hang-clean repetitions are first converted to an estimated
- * max, which prevents a very light athlete from receiving an inflated relative
- * power score solely because the original bar matched body weight.
+ * FAI Power Clean standards use the athlete's clean-to-body-weight ratio.
+ * The raw max remains stored and displayed in pounds; only normalization uses
+ * these anchors. This makes a 225-lb clean meaningful for both a smaller skill
+ * player and a larger lineman without treating the same absolute load equally.
  */
+export const POWER_CLEAN_RATIO_ANCHORS = [
+  { ratio: 0.6, score: 45, label: 'Beginner' },
+  { ratio: 0.75, score: 65, label: 'Developing' },
+  { ratio: 0.8, score: 70, label: 'Varsity Entry' },
+  { ratio: 1, score: 80, label: 'Good Varsity' },
+  { ratio: 1.2, score: 90, label: 'Advanced' },
+  { ratio: 1.5, score: 100, label: 'Elite Varsity' },
+] as const
+
+export function powerCleanRatioScore(cleanMax: number, bodyWeight: number): number | undefined {
+  const cleanRatio = ratio(cleanMax, bodyWeight)
+  if (typeof cleanRatio !== 'number') return undefined
+  const anchors = POWER_CLEAN_RATIO_ANCHORS
+  if (cleanRatio <= anchors[0].ratio) return cleanRatio <= 0 ? 0 : anchors[0].score * (cleanRatio / anchors[0].ratio)
+  if (cleanRatio >= anchors.at(-1)!.ratio) return 100
+
+  for (let index = 1; index < anchors.length; index += 1) {
+    const upper = anchors[index]
+    const lower = anchors[index - 1]
+    if (cleanRatio <= upper.ratio) {
+      const progress = (cleanRatio - lower.ratio) / (upper.ratio - lower.ratio)
+      return lower.score + progress * (upper.score - lower.score)
+    }
+  }
+  return 100
+}
+
 const SPEED_SKILL: BenchmarkProfile = {
   best40: { elite: 4.4, developmental: 5.25 },
   // Top speed is absolute, so the 10-yard fly is the pure Speed rating on one
@@ -139,7 +166,7 @@ const SPEED_SKILL: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 124, developmental: 90 },
   verticalJump: { elite: 38, developmental: 20 },
-  powerCleanMax: { elite: 275, developmental: 135 },
+  powerCleanMax: { elite: 1.5, developmental: 0.6 },
   best20Shuttle: { elite: 4.1, developmental: 5.1 },
   bestLatShuttle: { elite: 2.55, developmental: 3.35 },
   illinois: { elite: 15, developmental: 18.5 },
@@ -153,7 +180,7 @@ const QUARTERBACK: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 120, developmental: 88 },
   verticalJump: { elite: 35, developmental: 18 },
-  powerCleanMax: { elite: 285, developmental: 155 },
+  powerCleanMax: { elite: 1.5, developmental: 0.6 },
   best20Shuttle: { elite: 4.2, developmental: 5.2 },
   bestLatShuttle: { elite: 2.65, developmental: 3.45 },
   illinois: { elite: 15.4, developmental: 19 },
@@ -167,7 +194,7 @@ const HYBRID: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 118, developmental: 84 },
   verticalJump: { elite: 34, developmental: 18 },
-  powerCleanMax: { elite: 325, developmental: 175 },
+  powerCleanMax: { elite: 1.5, developmental: 0.6 },
   best20Shuttle: { elite: 4.25, developmental: 5.35 },
   bestLatShuttle: { elite: 2.7, developmental: 3.55 },
   illinois: { elite: 15.6, developmental: 19.5 },
@@ -182,7 +209,7 @@ const BIG: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 110, developmental: 70 },
   verticalJump: { elite: 30, developmental: 12 },
-  powerCleanMax: { elite: 385, developmental: 205 },
+  powerCleanMax: { elite: 1.5, developmental: 0.6 },
   best20Shuttle: { elite: 4.5, developmental: 6 },
   bestLatShuttle: { elite: 2.9, developmental: 4 },
   illinois: { elite: 16.5, developmental: 22 },
@@ -196,7 +223,7 @@ const SPECIALIST: BenchmarkProfile = {
   bestFly: { elite: 0.95, developmental: 1.6 },
   broadJump: { elite: 115, developmental: 80 },
   verticalJump: { elite: 32, developmental: 15 },
-  powerCleanMax: { elite: 225, developmental: 95 },
+  powerCleanMax: { elite: 1.5, developmental: 0.6 },
   best20Shuttle: { elite: 4.35, developmental: 5.5 },
   bestLatShuttle: { elite: 2.75, developmental: 3.65 },
   illinois: { elite: 16, developmental: 20 },
@@ -333,6 +360,9 @@ export function scoreMetric(metric: ScoredMetric, session: TestSession): number 
   if (!metricAppliesTo(metric, session)) return undefined
   const raw = metric.value(session)
   if (typeof raw !== 'number' || !Number.isFinite(raw) || raw <= 0) return undefined
+  if (metric.key === 'powerCleanMax') {
+    return powerCleanRatioScore(raw, Number(session.weightLbsSnapshot))
+  }
   const group = session.positionGroupSnapshot ?? 'ATH'
   return benchmarkScore(raw, benchmarkFor(metric.key, group), metric.higherBetter)
 }

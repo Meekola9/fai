@@ -12,6 +12,7 @@ import FilmRoom from './pages/FilmRoom'
 import Archetypes from './pages/Archetypes'
 import StatsGuide from './pages/StatsGuide'
 import Badges from './pages/Badges'
+import VerticalBenchmarks from './pages/VerticalBenchmarks'
 import AthleteProfile from './pages/AthleteProfile'
 import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
@@ -38,6 +39,17 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/archetypes', label: 'Archetypes' },
   { to: '/badges', label: 'Badges' },
   { to: '/stats', label: 'Stats Guide' },
+  { to: '/vertical', label: 'Vertical Standards' },
+  { to: '/entry', label: 'Enter Testing' },
+  { to: '/data', label: 'Data' },
+]
+
+const MOBILE_NAV = [
+  { to: '/', label: 'Dashboard', icon: '⌂', end: true },
+  { to: '/athletes', label: 'Athletes', icon: '◉' },
+  { to: '/entry', label: 'Test', icon: '+' },
+  { to: '/leaderboards', label: 'Rankings', icon: '★' },
+  { to: '/data', label: 'More', icon: '•••' },
 ]
 
 function Brand() {
@@ -119,7 +131,6 @@ function Header() {
             <NavLink to="/login" className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted hover:bg-panel-2 hover:text-chalk">Sign In</NavLink>
           )}
         </nav>
-
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
           <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open account or guides">
