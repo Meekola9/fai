@@ -64,10 +64,10 @@ export function normalizePermissions(value: unknown): TeamPermissions {
 }
 
 /**
- * FAI's current cloud sync writes the operational team snapshot together.
- * Coaches therefore receive the complete operating package, while staff/data
- * administration remains owner/admin only. This avoids misleading partial
- * access until cloud persistence is split into table-scoped writes.
+ * Current release: FAI's cloud sync writes the operational team snapshot
+ * together. Coaches therefore receive the complete operating package, while
+ * staff/data administration remains owner/admin only. This avoids misleading
+ * partial access until cloud persistence is split into table-scoped writes.
  *
  * `assigned` remains accepted for backward compatibility with invitations and
  * existing tests, but the current fixed coach package intentionally overrides it.
