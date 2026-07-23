@@ -248,14 +248,14 @@ function rolesFromPosition(position: string): ArchetypeRole[] {
   )
   if (edge) roles.push('EDGE')
   if (
-    hasPosition(position, /\bMLB\b|\bILB\b|\bLB\b|INSIDE LINEBACKER|MIDDLE LINEBACKER/)
+    hasPosition(position, /\bMLB\b|\bILB\b|\bLB\b|\bSTAR\b|INSIDE LINEBACKER|MIDDLE LINEBACKER/)
     || (hasPosition(position, /LINEBACKER/) && !edge)
   ) {
     roles.push('LB')
   }
 
   if (hasPosition(position, /\bCB\b|CORNER/)) roles.push('CB')
-  if (hasPosition(position, /\bFS\b|\bSS\b|\bS\b|\bSTAR\b|\bNICKEL\b|SAFETY/)) roles.push('S')
+  if (hasPosition(position, /\bFS\b|\bSS\b|\bS\b|\bROVER\b|\bNICKEL\b|SAFETY/)) roles.push('S')
   if (hasPosition(position, /\bK\b|\bP\b|KICKER|PUNTER/)) roles.push('K/P')
   return uniqueRoles(roles)
 }
