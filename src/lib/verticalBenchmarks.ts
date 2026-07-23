@@ -123,7 +123,7 @@ export function verticalFaiScore(inches: number, group: PositionGroup): number {
   const current = bands[index]
   const higher = index > 0 ? bands[index - 1] : undefined
 
-  if (!higher || current.id === 'elite') return current.score
+  if (!higher || current.id === 'elite' || current.id === 'developing') return current.score
   if (higher.min <= current.min) return current.score
 
   const progress = (safe - current.min) / (higher.min - current.min)
