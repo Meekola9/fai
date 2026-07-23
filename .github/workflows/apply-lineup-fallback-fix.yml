@@ -1,0 +1,46 @@
+name: Apply lineup fallback fix
+
+on:
+  push:
+    branches: [feature/visual-lineup-builder]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/visual-lineup-builder
+          fetch-depth: 0
+      - name: Remove compiler-managed override memo
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/pages/Lineup.tsx')
+          text = path.read_text()
+          text = text.replace(
+              "type StoredLineups = Record<string, LineupOverrides>\n",
+              "type StoredLineups = Record<string, LineupOverrides>\n\nconst EMPTY_LINEUP_OVERRIDES: LineupOverrides = {}\n",
+              1,
+          )
+          old = """  const overrides = useMemo(\n    () => storedLineups[scheme.id] ?? {},\n    [scheme.id, storedLineups],\n  )\n  const assignments = generateBestLineup(data.athletes, ratings, scheme, overrides)\n"""
+          new = """  const overrides = storedLineups[scheme.id] ?? EMPTY_LINEUP_OVERRIDES\n  const assignments = generateBestLineup(data.athletes, ratings, scheme, overrides)\n"""
+          if old not in text:
+              raise SystemExit('Expected override memo block was not found.')
+          path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/apply-lineup-fallback-fix.yml').unlink()
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Remove lineup override memoization"
+          git push origin HEAD:feature/visual-lineup-builder
