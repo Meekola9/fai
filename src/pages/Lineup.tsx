@@ -21,6 +21,8 @@ const SEASON_EVENT_ID = 'season-2026'
 
 type StoredLineups = Record<string, LineupOverrides>
 
+const EMPTY_LINEUP_OVERRIDES: LineupOverrides = {}
+
 function readStoredLineups(): StoredLineups {
   if (typeof window === 'undefined') return {}
   try {
@@ -89,10 +91,7 @@ export default function Lineup() {
 
   const availableSchemes = schemesForUnit(unit)
   const scheme = availableSchemes.find((item) => item.id === selectedSchemeIds[unit]) ?? availableSchemes[0]
-  const overrides = useMemo(
-    () => storedLineups[scheme.id] ?? {},
-    [scheme.id, storedLineups],
-  )
+  const overrides = storedLineups[scheme.id] ?? EMPTY_LINEUP_OVERRIDES
   const assignments = generateBestLineup(data.athletes, ratings, scheme, overrides)
   const editingSlot = editingSlotId
     ? flatSlots(scheme).find((lineupSlot) => lineupSlot.id === editingSlotId)
