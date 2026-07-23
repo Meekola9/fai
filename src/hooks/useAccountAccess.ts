@@ -29,39 +29,15 @@ export interface AccountAccessState {
 
 export function useAccountAccess(): AccountAccessState {
   const { signedIn, teamRole, cloudConfigured } = useStore()
-  const initialRole: TeamRole | undefined = !cloudConfigured
-    ? 'owner'
-    : teamRole
-      ? normalizeRole(teamRole)
-      : undefined
   const [loading, setLoading] = useState(cloudConfigured && signedIn)
-  const [role, setRole] = useState<TeamRole | undefined>(initialRole)
-  const [permissions, setPermissions] = useState<TeamPermissions>({})
-  const [athleteId, setAthleteId] = useState<string>()
+  const [accountRole, setAccountRole] = useState<TeamRole | undefined>(teamRole ? normalizeRole(teamRole) : undefined)
+  const [accountPermissions, setAccountPermissions] = useState<TeamPermissions>({})
+  const [accountAthleteId, setAccountAthleteId] = useState<string>()
 
   useEffect(() => {
     let active = true
+    if (!signedIn || !supabase) return () => { active = false }
 
-    // Local-only installs have no remote identity or membership table. Preserve
-    // the original full on-device coach experience by treating the device owner
-    // as the owner. Cloud-configured signed-out visitors never enter this path.
-    if (!cloudConfigured) {
-      setLoading(false)
-      setRole('owner')
-      setPermissions({})
-      setAthleteId(undefined)
-      return () => { active = false }
-    }
-
-    if (!signedIn || !supabase) {
-      setLoading(false)
-      setRole(teamRole ? normalizeRole(teamRole) : undefined)
-      setPermissions({})
-      setAthleteId(undefined)
-      return () => { active = false }
-    }
-
-    setLoading(true)
     void (async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession()
@@ -81,30 +57,42 @@ export function useAccountAccess(): AccountAccessState {
         if (nextRole === 'coach' && Object.keys(nextPermissions).length === 0) {
           nextPermissions = LEGACY_COACH_DEFAULTS
         }
-        setRole(nextRole)
-        setPermissions(nextPermissions)
+        setAccountRole(nextRole)
+        setAccountPermissions(nextPermissions)
 
         if (nextRole === 'athlete' || !membership) {
           const claim = await loadMyAthleteClaim()
-          if (active && claim?.status === 'approved') setAthleteId(claim.athleteId)
+          if (active && claim?.status === 'approved') setAccountAthleteId(claim.athleteId)
         }
       } catch {
         // Older databases fall back to the role already loaded by the main store.
         const fallbackRole = teamRole ? normalizeRole(teamRole) : undefined
-        setRole(fallbackRole)
-        setPermissions(fallbackRole === 'coach' ? LEGACY_COACH_DEFAULTS : {})
+        setAccountRole(fallbackRole)
+        setAccountPermissions(fallbackRole === 'coach' ? LEGACY_COACH_DEFAULTS : {})
       } finally {
         if (active) setLoading(false)
       }
     })()
 
     return () => { active = false }
-  }, [cloudConfigured, signedIn, teamRole])
+  }, [signedIn, teamRole])
+
+  // Local-only installs have no remote identity or membership table. Preserve
+  // the original full on-device coach experience by treating the device owner
+  // as the owner. Cloud-configured signed-out visitors remain read-only.
+  const role: TeamRole | undefined = !cloudConfigured
+    ? 'owner'
+    : signedIn
+      ? accountRole
+      : undefined
+  const permissions = cloudConfigured && signedIn ? accountPermissions : {}
+  const athleteId = cloudConfigured && signedIn ? accountAthleteId : undefined
+  const accessLoading = cloudConfigured && signedIn ? loading : false
 
   const capabilities = useMemo(
     () => capabilitiesFor(role, permissions, athleteId),
     [athleteId, permissions, role],
   )
 
-  return { loading, role, permissions, athleteId, capabilities }
+  return { loading: accessLoading, role, permissions, athleteId, capabilities }
 }
