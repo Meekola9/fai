@@ -8,6 +8,7 @@ import type {
   Category,
   CategoryScores,
   ComputedSession,
+  PositionGroup,
   TestSession,
   TestingEvent,
 } from '../types'
@@ -22,6 +23,7 @@ import {
 import { CATEGORIES } from '../data/constants'
 import { mergeEventSessions } from './events'
 import { verticalFaiScore } from './verticalBenchmarks'
+import { playerUsageDefinition } from './playerUsage'
 
 export function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value))
@@ -31,21 +33,22 @@ function emptyCategories(): CategoryScores {
   return Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as CategoryScores
 }
 
-export function computeSession(
+function computeForGroup(
   session: TestSession,
   athlete: Athlete,
   event: TestingEvent,
+  positionGroup: PositionGroup,
 ): ComputedSession {
   const metrics: Record<string, number | undefined> = {}
   const normalized: Record<string, number | undefined> = {}
-  const positionGroup = session.positionGroupSnapshot ?? athlete.positionGroup
+  const scoringSession: TestSession = { ...session, positionGroupSnapshot: positionGroup }
 
   for (const metric of SCORED_METRICS) {
-    const raw = metric.value(session)
+    const raw = metric.value(scoringSession)
     metrics[metric.key] = raw
     const score = metric.key === 'verticalJump' && typeof raw === 'number'
       ? verticalFaiScore(raw, positionGroup)
-      : scoreMetric(metric, session)
+      : scoreMetric(metric, scoringSession)
     normalized[metric.key] = typeof score === 'number' ? round1(score) : undefined
   }
 
@@ -75,10 +78,6 @@ export function computeSession(
     completionPct >= 100 ? 'complete' : completionPct >= 60 ? 'provisional' : 'insufficient'
 
   const categoryWeights = categoryWeightsFor(positionGroup)
-
-  // Conditioning is optional. When absent, remove only its position-specific
-  // weight from the denominator. Missing required categories keep their weight
-  // and therefore lower the provisional FAI.
   const conditioningPresent = categoryHasData.get('Conditioning') === true
   const denominator = conditioningPresent ? 1 : 1 - categoryWeights.Conditioning
   let weighted = 0
@@ -99,6 +98,66 @@ export function computeSession(
     completionPct,
     scoreStatus,
   }
+}
+
+export interface PositionScoreBreakdown {
+  primaryGroup: PositionGroup
+  primaryScore: number
+  secondaryGroup?: PositionGroup
+  secondaryScore?: number
+  primaryPct: number
+  secondaryPct: number
+  blendedScore: number
+}
+
+export function positionScoreBreakdown(
+  session: TestSession,
+  athlete: Athlete,
+  event: TestingEvent,
+): PositionScoreBreakdown {
+  const primaryGroup = session.positionGroupSnapshot ?? athlete.positionGroup
+  const primary = computeForGroup(session, athlete, event, primaryGroup)
+  const usage = playerUsageDefinition(athlete.usage)
+  const secondaryGroup = athlete.secondaryPositionGroup
+
+  if (!secondaryGroup || usage.secondaryPct === 0) {
+    return {
+      primaryGroup,
+      primaryScore: primary.fai,
+      primaryPct: 100,
+      secondaryPct: 0,
+      blendedScore: primary.fai,
+    }
+  }
+
+  const secondary = computeForGroup(session, athlete, event, secondaryGroup)
+  const blendedScore = round1(
+    primary.fai * (usage.primaryPct / 100)
+    + secondary.fai * (usage.secondaryPct / 100),
+  )
+
+  return {
+    primaryGroup,
+    primaryScore: primary.fai,
+    secondaryGroup,
+    secondaryScore: secondary.fai,
+    primaryPct: usage.primaryPct,
+    secondaryPct: usage.secondaryPct,
+    blendedScore,
+  }
+}
+
+export function computeSession(
+  session: TestSession,
+  athlete: Athlete,
+  event: TestingEvent,
+): ComputedSession {
+  const primaryGroup = session.positionGroupSnapshot ?? athlete.positionGroup
+  const primary = computeForGroup(session, athlete, event, primaryGroup)
+  const breakdown = positionScoreBreakdown(session, athlete, event)
+  return breakdown.secondaryGroup
+    ? { ...primary, fai: breakdown.blendedScore }
+    : primary
 }
 
 /** One computed result per athlete per testing event. */
