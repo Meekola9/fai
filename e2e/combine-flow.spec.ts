@@ -83,6 +83,52 @@ test('athlete pages show 2026 only while Rankings retains historical seasons', a
   await expect(page.getByRole('option', { name: '2025 season' })).toBeVisible()
 })
 
+test('coach awards a weekly game-day badge and the overall-name scale is documented', async ({ page }) => {
+  await page.goto('/')
+  await waitForHistoricalSeed(page)
+
+  await page.getByRole('link', { name: 'Stats Guide', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Overall FAI names', exact: true })).toBeVisible()
+  await expect(page.getByText('One of a Kind', { exact: true })).toBeVisible()
+  await expect(page.getByText('DAWG', { exact: true })).toBeVisible()
+  await expect(page.getByText('Difference Maker', { exact: true })).toBeVisible()
+  await expect(page.getByText('Developing Talent', { exact: true })).toBeVisible()
+  await expect(page.getByText('Building Block', { exact: true })).toBeVisible()
+  await expect(page.getByText('Needs Work', { exact: true })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Playmakers', exact: true }).click()
+  await expect(page.getByText('Log a Play or Award a Badge', { exact: true })).toBeVisible()
+
+  const selects = page.locator('select')
+  await selects.nth(0).selectOption({ label: 'AJ Bailey' })
+  await selects.nth(1).selectOption('badge_journeyman')
+  const today = await page.evaluate(() => new Date().toISOString().slice(0, 10))
+  await page.locator('input[type="date"]').fill(today)
+  await page.getByPlaceholder('Opponent (optional)').fill('Central')
+  await page.getByRole('button', { name: '+ Award Game-Day Badge', exact: true }).click()
+
+  await expect(page.getByText('Active Game-Day Badges · This Week', { exact: true })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Journeyman game-day badge' }).first()).toBeVisible()
+  await expect(page.getByText('2026 Game-Day Badge Totals', { exact: true })).toBeVisible()
+
+  const savedBadge = await page.evaluate(() => {
+    const raw = localStorage.getItem('fai:data:v2')
+    if (!raw) return null
+    const data = JSON.parse(raw) as {
+      athletes: Array<{ id: string; name: string }>
+      plays: Array<{ athleteId: string; type: string; date: string; opponent?: string }>
+    }
+    const athlete = data.athletes.find((item) => item.name === 'AJ Bailey')
+    return data.plays.find((play) => play.athleteId === athlete?.id && play.type === 'badge_journeyman') ?? null
+  })
+  expect(savedBadge).toMatchObject({ type: 'badge_journeyman', date: today, opponent: 'Central' })
+
+  await page.getByRole('link', { name: 'Athletes', exact: true }).click()
+  await page.getByRole('link', { name: 'AJ Bailey', exact: true }).click()
+  await expect(page.getByText('2026 Game-Day Badges · 1', { exact: true })).toBeVisible()
+  await expect(page.getByText('Season × 1', { exact: true })).toBeVisible()
+})
+
 test('coach adds a complete testing event without losing historical data', async ({ page }) => {
   await page.goto('/')
   await waitForHistoricalSeed(page)
