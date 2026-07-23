@@ -36,13 +36,7 @@ export function useAccountAccess(): AccountAccessState {
 
   useEffect(() => {
     let active = true
-    if (!signedIn || !supabase) {
-      setLoading(false)
-      setRole(undefined)
-      setPermissions({})
-      setAthleteId(undefined)
-      return () => { active = false }
-    }
+    if (!signedIn || !supabase) return () => { active = false }
 
     void (async () => {
       try {
