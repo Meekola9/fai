@@ -98,4 +98,15 @@ describe('lineup engine', () => {
     expect(lineupRating(assignments)).toBe(70)
     expect(lineupFit(assignments)).toBe(100)
   })
+
+  it('leaves positions empty when the roster has no eligible athlete', () => {
+    const offense = LINEUP_SCHEMES.find((scheme) => scheme.id === 'offense-spread-11')!
+    const assignments = generateBestLineup(
+      [athlete('only-qb', 'QB', 'QB')],
+      new Map([['only-qb', 88]]),
+      offense,
+    )
+    expect(Object.keys(assignments)).toEqual(['qb'])
+    expect(assignments.qb.rating).toBe(88)
+  })
 })
