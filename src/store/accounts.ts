@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase'
 import {
+  COACH_OPERATIONAL_PERMISSIONS,
   normalizePermissions,
   normalizeRole,
-  type TeamPermission,
   type TeamPermissions,
   type TeamRole,
 } from '../lib/access'
@@ -138,14 +138,13 @@ export async function createTeamInvite(input: {
   teamId: string
   email: string
   role: 'admin' | 'coach' | 'viewer'
-  permissions: TeamPermissions
   invitedBy: string
 }): Promise<void> {
   const { error } = await db().from('team_invites').upsert({
     team_id: input.teamId,
     email: input.email.trim().toLowerCase(),
     role: input.role,
-    permissions: input.role === 'coach' ? input.permissions : {},
+    permissions: input.role === 'coach' ? COACH_OPERATIONAL_PERMISSIONS : {},
     status: 'pending',
     invited_by: input.invitedBy,
     created_at: new Date().toISOString(),
@@ -181,24 +180,4 @@ export async function loadTeamInvites(teamId: string): Promise<TeamInvite[]> {
 export async function revokeTeamInvite(inviteId: string): Promise<void> {
   const { error } = await db().from('team_invites').update({ status: 'revoked' }).eq('id', inviteId)
   throwIfError(error, 'Could not revoke staff invitation')
-}
-
-export async function updateMemberPermissions(input: {
-  teamId: string
-  userId: string
-  role: 'admin' | 'coach' | 'viewer'
-  permissions: TeamPermissions
-}): Promise<void> {
-  const { error } = await db().from('team_members').update({
-    role: input.role,
-    permissions: input.role === 'coach' ? input.permissions : {},
-  }).eq('team_id', input.teamId).eq('user_id', input.userId)
-  throwIfError(error, 'Could not update staff permissions')
-}
-
-export function selectedPermissions(values: Iterable<TeamPermission>): TeamPermissions {
-  return [...values].reduce<TeamPermissions>((result, permission) => {
-    result[permission] = true
-    return result
-  }, {})
 }
