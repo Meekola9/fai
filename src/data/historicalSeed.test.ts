@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { RequiredAppData } from '../types'
+import type { AppData } from '../types'
 import { historicalSeedData, mergeHistoricalData } from './historicalSeed'
+
+type RequiredAppData = Required<AppData>
 
 function mergedEventRecord(data: RequiredAppData, athleteId: string | undefined, eventId: string): Record<string, unknown> {
   const merged: Record<string, unknown> = {}

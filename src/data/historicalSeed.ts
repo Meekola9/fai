@@ -170,10 +170,10 @@ export async function historicalSeedData(): Promise<Required<AppData>> {
     const consolidated = consolidateAthleteAliases(
       repairHistoricalReferences({
         athletes: [...base.athletes, ...supplement.athletes],
-        events: [...base.events, ...supplement.events],
+        events: [...(base.events ?? []), ...(supplement.events ?? [])],
         sessions: [...base.sessions, ...supplement.sessions],
-        plays: [...base.plays, ...supplement.plays],
-        filmPlays: [...base.filmPlays, ...supplement.filmPlays],
+        plays: [...(base.plays ?? []), ...(supplement.plays ?? [])],
+        filmPlays: [...(base.filmPlays ?? []), ...(supplement.filmPlays ?? [])],
       }),
     )
     seedCache = mergeSheetSessions(consolidated)
