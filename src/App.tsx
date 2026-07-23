@@ -36,7 +36,7 @@ const MOBILE_NAV = [
   { to: '/athletes', label: 'Athletes', icon: '◉' },
   { to: '/entry', label: 'Test', icon: '+' },
   { to: '/leaderboards', label: 'Rankings', icon: '★' },
-  { to: '/vertical', label: 'Standards', icon: '↥' },
+  { to: '/data', label: 'More', icon: '•••' },
 ]
 
 function Brand() {
@@ -96,7 +96,8 @@ function Header() {
 function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
   const items = viewerMode
     ? [
-        ...MOBILE_NAV.filter((item) => item.to !== '/entry'),
+        ...MOBILE_NAV.filter((item) => item.to !== '/entry' && item.to !== '/data'),
+        { to: '/vertical', label: 'Standards', icon: '↥', end: false },
         { to: '/login', label: 'Sign In', icon: '→', end: false },
       ]
     : MOBILE_NAV
