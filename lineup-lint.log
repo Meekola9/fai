@@ -1,0 +1,25 @@
+
+> fai-athlete-index@0.3.0 lint
+> eslint .
+
+
+/home/runner/work/fai/fai/src/hooks/useAccountAccess.ts
+  88:9  warning  The 'permissions' conditional could make the dependencies of useMemo Hook (at line 94) change on every render. To fix this, wrap the initialization of 'permissions' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/home/runner/work/fai/fai/src/pages/Lineup.tsx
+  92:9   warning  The 'overrides' logical expression could make the dependencies of useMemo Hook (at line 95) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'overrides' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  95:41  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This dependency may be mutated later, which could cause the value to change unexpectedly.
+
+/home/runner/work/fai/fai/src/pages/Lineup.tsx:95:41
+  93 |   const assignments = useMemo(
+  94 |     () => generateBestLineup(data.athletes, ratings, scheme, overrides),
+> 95 |     [data.athletes, overrides, ratings, scheme],
+     |                                         ^^^^^^ This dependency may be modified later
+  96 |   )
+  97 |   const editingSlot = editingSlotId
+  98 |     ? flatSlots(scheme).find((lineupSlot) => lineupSlot.id === editingSlotId)  react-hooks/preserve-manual-memoization
+
+✖ 3 problems (1 error, 2 warnings)
+
