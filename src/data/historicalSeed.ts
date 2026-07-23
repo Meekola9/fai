@@ -1,7 +1,8 @@
-import type { AppData } from '../types'
+import type { AppData, TestSession } from '../types'
 import { importCsv } from './csv'
 import { consolidateAthleteAliases } from '../lib/athleteIdentity'
-import { normalizeAppData } from '../lib/events'
+import { normalizeAppData, SESSION_METRIC_KEYS } from '../lib/events'
+import { sheet2026SupplementData } from './sheet2026Supplement'
 import chunk0 from './historicalSeedPayload/0.csv?raw'
 import chunk1 from './historicalSeedPayload/1.csv?raw'
 import chunk2 from './historicalSeedPayload/2a.csv?raw'
@@ -112,13 +113,66 @@ function repairHistoricalReferences(input: AppData): AppData {
   }
 }
 
+function sessionKey(session: TestSession): string {
+  return `${session.athleteId}|${session.eventId ?? session.phase}`
+}
+
+/**
+ * The linked sheet repeats records already represented by partial 2026 session
+ * rows. Enrich those rows instead of creating duplicate testing cards. A new
+ * session is retained only when no athlete/event shell exists in the archive.
+ */
+function mergeSheetSessions(data: Required<AppData>): Required<AppData> {
+  const baseSessions = data.sessions.filter((session) => !session.id.startsWith('session-sheet26-'))
+  const supplements = data.sessions.filter((session) => session.id.startsWith('session-sheet26-'))
+  const targetByKey = new Map<string, TestSession>()
+
+  for (const session of baseSessions) {
+    const key = sessionKey(session)
+    const current = targetByKey.get(key)
+    if (!current || `${session.date}|${session.createdAt ?? ''}` > `${current.date}|${current.createdAt ?? ''}`) {
+      targetByKey.set(key, session)
+    }
+  }
+
+  for (const supplement of supplements) {
+    const key = sessionKey(supplement)
+    const target = targetByKey.get(key)
+    if (!target) {
+      baseSessions.push(supplement)
+      targetByKey.set(key, supplement)
+      continue
+    }
+
+    target.gradeSnapshot = supplement.gradeSnapshot ?? target.gradeSnapshot
+    target.positionSnapshot = target.positionSnapshot ?? supplement.positionSnapshot
+    target.positionGroupSnapshot = target.positionGroupSnapshot ?? supplement.positionGroupSnapshot
+    target.weightLbsSnapshot = supplement.weightLbsSnapshot ?? target.weightLbsSnapshot
+    for (const metric of SESSION_METRIC_KEYS) {
+      const value = supplement[metric]
+      if (typeof value === 'number') target[metric] = value
+    }
+  }
+
+  return { ...data, sessions: baseSessions }
+}
+
 let seedCache: Required<AppData> | null = null
 
 export async function historicalSeedData(): Promise<Required<AppData>> {
   if (!seedCache) {
-    seedCache = consolidateAthleteAliases(
-      repairHistoricalReferences(importCsv(HISTORICAL_CSV)),
+    const base = importCsv(HISTORICAL_CSV)
+    const supplement = sheet2026SupplementData()
+    const consolidated = consolidateAthleteAliases(
+      repairHistoricalReferences({
+        athletes: [...base.athletes, ...supplement.athletes],
+        events: [...base.events, ...supplement.events],
+        sessions: [...base.sessions, ...supplement.sessions],
+        plays: [...base.plays, ...supplement.plays],
+        filmPlays: [...base.filmPlays, ...supplement.filmPlays],
+      }),
     )
+    seedCache = mergeSheetSessions(consolidated)
   }
   return seedCache
 }
@@ -160,4 +214,4 @@ export const HISTORICAL_SEED_SUMMARY = {
  * Bump whenever the bundled archive gains records, so signed-in teams get the
  * new baseline merged into their cloud data exactly once per version.
  */
-export const SEED_VERSION = '2026-07-sum26-roster-integrity'
+export const SEED_VERSION = '2026-07-sheet26-complete'

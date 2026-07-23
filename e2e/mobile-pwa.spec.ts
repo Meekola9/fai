@@ -11,7 +11,7 @@ async function waitForHistoricalSeed(page: import('@playwright/test').Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 159 && data.events?.length === 20 && data.sessions?.length === 762
+    return data.athletes?.length === 164 && data.events?.length === 20 && data.sessions?.length === 770
   })
 }
 
@@ -81,7 +81,7 @@ test('installs a touch-first offline shell and recovers from the IndexedDB safet
       }
     })
   })
-  expect(backup).toEqual({ athletes: 159, events: 20, sessions: 762 })
+  expect(backup).toEqual({ athletes: 164, events: 20, sessions: 770 })
 
   await page.evaluate(() => localStorage.removeItem('fai:data:v2'))
   await page.reload()
@@ -93,7 +93,7 @@ test('installs a touch-first offline shell and recovers from the IndexedDB safet
       const data = JSON.parse(raw) as { athletes: unknown[]; events: unknown[]; sessions: unknown[] }
       return [data.athletes.length, data.events.length, data.sessions.length]
     }),
-  ).toEqual([159, 20, 762])
+  ).toEqual([164, 20, 770])
 
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready

@@ -18,16 +18,17 @@ describe('FAI account access', () => {
     }
   })
 
-  it('limits a coach to the specifically assigned duties', () => {
+  it('gives coaches the fixed operating package without staff or data administration', () => {
     expect(capabilitiesFor('coach', { film: true, reports: true })).toMatchObject({
-      canManageRoster: false,
-      canManageTesting: false,
+      canManageRoster: true,
+      canManageTesting: true,
       canManageFilm: true,
-      canManageAwards: false,
+      canManageAwards: true,
       canViewReports: true,
       canManageStaff: false,
       canManageData: false,
       canEditOwnProfile: false,
+      canEditAnything: true,
     })
   })
 
