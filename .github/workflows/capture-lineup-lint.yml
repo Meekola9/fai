@@ -1,0 +1,36 @@
+name: Capture lineup lint
+
+on:
+  push:
+    branches: [feature/visual-lineup-builder]
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/visual-lineup-builder
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - name: Capture lint output
+        shell: bash
+        run: npm run lint > lineup-lint.log 2>&1 || true
+      - name: Publish diagnostics
+        shell: bash
+        run: |
+          rm .github/workflows/capture-lineup-lint.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git add -f lineup-lint.log
+          git commit -m "Capture lineup lint diagnostics"
+          git push origin HEAD:feature/visual-lineup-builder
