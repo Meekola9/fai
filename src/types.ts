@@ -196,6 +196,24 @@ export interface FilmPlay {
   createdAt?: string
 }
 
+/**
+ * One completed Football Awareness Quiz, taken by an athlete from their own
+ * account. The awareness score (0-100) is derived from the answers.
+ */
+export interface AwarenessResult {
+  id: string
+  athleteId: string
+  /** Quiz version key (see lib/awarenessQuiz.ts). */
+  quizId: string
+  /** 0-100 awareness score. */
+  score: number
+  correct: number
+  total: number
+  /** ISO timestamp the athlete completed the quiz. */
+  takenAt: string
+  createdAt?: string
+}
+
 /** Everything the app persists. `events` stays optional for legacy imports. */
 export interface AppData {
   athletes: Athlete[]
@@ -203,6 +221,7 @@ export interface AppData {
   events?: TestingEvent[]
   plays?: PlayEvent[]
   filmPlays?: FilmPlay[]
+  awarenessResults?: AwarenessResult[]
 }
 
 export type CategoryScores = Record<Category, number>
@@ -231,8 +250,10 @@ export interface AthleteResult {
   groupRank: number
   groupCount: number
   rankEligible: boolean
-  /** FAI before the Playmaker/Havoc level boost. */
+  /** FAI before any boost (Playmaker/Havoc + awareness). */
   baseFai: number
   /** Playmaker/Havoc level boost applied to current.fai, in percent. */
   impactBoostPct: number
+  /** Awareness-quiz boost applied to current.fai, in percent. */
+  awarenessBoostPct: number
 }

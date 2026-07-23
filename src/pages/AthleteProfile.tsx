@@ -16,6 +16,7 @@ import {
 } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
+import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 import { OverallRatingName } from '../components/OverallRatingName'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
@@ -119,6 +120,36 @@ function GameDayBadgeSection({ summary }: { summary: AthleteGameDayBadgeSummary 
   )
 }
 
+const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
+  'Elite IQ': 'up',
+  Sharp: 'fai',
+  Developing: 'gold',
+  'Needs Study': 'down',
+}
+
+function AwarenessCard({ athleteId }: { athleteId: string }) {
+  const { data } = useStore()
+  const latest = latestAwarenessFor(data.awarenessResults, athleteId)
+  if (!latest) return null
+  return (
+    <Card className="p-5">
+      <SectionTitle>Football Awareness</SectionTitle>
+      <div className="flex items-center gap-4">
+        <div className="nums text-5xl font-black leading-none text-chalk">{latest.score}</div>
+        <div>
+          <Pill tone={AWARENESS_TONE[awarenessLevel(latest.score)]}>{awarenessLevel(latest.score)}</Pill>
+          {awarenessBoostForScore(latest.score) > 0 && (
+            <span className="ml-2 text-xs font-black text-up">+{awarenessBoostForScore(latest.score)}% FAI</span>
+          )}
+          <div className="mt-1 text-xs text-muted nums">
+            {latest.correct}/{latest.total} correct · {new Date(latest.takenAt).toLocaleDateString()}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 export default function AthleteProfile() {
   const { id } = useParams()
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
@@ -212,9 +243,13 @@ export default function AthleteProfile() {
               {rankEligible && <Pill tone="gold">2026 Team Rank #{displayResult.teamRank} / {displayResult.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{displayResult.groupRank} / {displayResult.groupCount}</Pill>}
               {displayResult.impactBoostPct > 0 && (
-                <Pill tone="fai">
-                  ⚡ +{displayResult.impactBoostPct}% Playmaker boost ({displayResult.baseFai.toFixed(1)} → {current.fai.toFixed(1)})
-                </Pill>
+                <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>
+              )}
+              {displayResult.awarenessBoostPct > 0 && (
+                <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>
+              )}
+              {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && (
+                <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>
               )}
               {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
                 <Pill tone="gold">
@@ -244,6 +279,8 @@ export default function AthleteProfile() {
       </Card>
 
       <GameDayBadgeSection summary={gameBadges} />
+
+      <AwarenessCard athleteId={athlete.id} />
 
       <FilmCard hudlUrl={athlete.hudlUrl} />
 

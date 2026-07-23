@@ -1,10 +1,54 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { Avatar, Card } from '../components/ui'
+import { Avatar, Card, Pill } from '../components/ui'
 import { loadMyAthleteClaim, updateMyAthleteProfile, type AthleteClaim } from '../store/accounts'
+import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
+
+const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
+  'Elite IQ': 'up',
+  Sharp: 'fai',
+  Developing: 'gold',
+  'Needs Study': 'down',
+}
 
 const inputClass = 'w-full rounded-xl border border-line bg-ink px-4 py-3 text-sm text-chalk outline-none placeholder:text-muted focus:border-fai'
+
+function AwarenessQuizCard({ athleteId }: { athleteId: string }) {
+  const { data } = useStore()
+  const latest = latestAwarenessFor(data.awarenessResults, athleteId)
+  return (
+    <Card className="border-fai/25 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-fai">Football IQ</div>
+          <h2 className="mt-0.5 text-lg font-black text-chalk">Awareness Quiz</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            A 15-question football knowledge check. A high score boosts your overall FAI —
+            100% → +5%, 90%+ → +3%, 80%+ → +2%, 75%+ → +1.5%.
+          </p>
+        </div>
+        {latest ? (
+          <div className="text-right">
+            <div className="nums text-4xl font-black leading-none text-chalk">{latest.score}</div>
+            <Pill tone={AWARENESS_TONE[awarenessLevel(latest.score)]}>{awarenessLevel(latest.score)}</Pill>
+            {awarenessBoostForScore(latest.score) > 0 && (
+              <div className="mt-1 text-xs font-black text-up">+{awarenessBoostForScore(latest.score)}% FAI</div>
+            )}
+          </div>
+        ) : (
+          <Pill tone="gold">Not taken yet</Pill>
+        )}
+      </div>
+      <Link
+        to="/quiz"
+        className="mt-4 inline-block rounded-xl bg-fai px-6 py-3 text-sm font-black text-ink"
+      >
+        {latest ? 'Retake the quiz' : 'Take the quiz'}
+      </Link>
+    </Card>
+  )
+}
 
 export default function MyAthleteAccount() {
   const { data, userEmail, signOut } = useStore()
@@ -113,6 +157,8 @@ export default function MyAthleteAccount() {
           </button>
         </div>
       </Card>
+
+      <AwarenessQuizCard athleteId={athlete.id} />
 
       <Card className="border-gold/25 p-4">
         <div className="text-sm font-black text-chalk">Protected team information</div>

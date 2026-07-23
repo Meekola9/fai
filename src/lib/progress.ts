@@ -174,6 +174,7 @@ export function buildResults(
   computed: ComputedSession[],
   eventId?: string,
   boostByAthlete?: Map<string, number>,
+  awarenessBoostByAthlete?: Map<string, number>,
 ): AthleteResult[] {
   const athleteIds = new Set(computed.map((result) => result.session.athleteId))
   const results: AthleteResult[] = []
@@ -189,13 +190,16 @@ export function buildResults(
     const baseCurrent = timeline[currentIndex]
     const previous = currentIndex > 0 ? timeline[currentIndex - 1] : undefined
 
-    // A Playmaker/Havoc level lifts the athlete's overall FAI. Bake it into
-    // current.fai so every ranking and display picks it up, but keep the base.
+    // A Playmaker/Havoc level and a high awareness-quiz score each lift the
+    // athlete's overall FAI. Stack both on the tested base and bake the result
+    // into current.fai so every ranking and display picks it up, keeping the base.
     const impactBoostPct = boostByAthlete?.get(athleteId) ?? 0
+    const awarenessBoostPct = awarenessBoostByAthlete?.get(athleteId) ?? 0
+    const totalBoostPct = impactBoostPct + awarenessBoostPct
     const baseFai = baseCurrent.fai
     const current =
-      impactBoostPct > 0
-        ? { ...baseCurrent, fai: round1(clamp(baseFai * (1 + impactBoostPct / 100), 0, 100)) }
+      totalBoostPct > 0
+        ? { ...baseCurrent, fai: round1(clamp(baseFai * (1 + totalBoostPct / 100), 0, 100)) }
         : baseCurrent
 
     // Improvement stays measured on base FAI so it reflects testing, not the boost.
@@ -219,6 +223,7 @@ export function buildResults(
       rankEligible,
       baseFai,
       impactBoostPct,
+      awarenessBoostPct,
     })
   }
 

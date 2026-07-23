@@ -10,6 +10,7 @@ import type {
   AppData,
   Athlete,
   AthleteResult,
+  AwarenessResult,
   ComputedSession,
   FilmPlay,
   PlayEvent,
@@ -30,6 +31,7 @@ import {
   loadCloudData,
   loadPublicTeamData,
   loadTeamAccess,
+  saveAwarenessResult,
   saveCloudData,
 } from './cloud'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
@@ -43,6 +45,7 @@ import { gradeLabel } from '../lib/alumni'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { buildImpact } from '../lib/impact'
+import { awarenessBoostByAthlete } from '../lib/awarenessQuiz'
 import { normalizeAppData } from '../lib/events'
 import {
   consolidateAthleteAliases,
@@ -98,13 +101,24 @@ interface StoreContextValue {
   addFilmPlay: (film: Omit<FilmPlay, 'id' | 'createdAt'>) => string
   updateFilmPlay: (film: FilmPlay) => void
   deleteFilmPlay: (id: string) => void
+  /** Record an awareness-quiz result for the given athlete (athlete self-service). */
+  submitAwarenessResult: (
+    result: Omit<AwarenessResult, 'id' | 'createdAt'>,
+  ) => Promise<void>
   resetSample: () => void
   replaceAll: (data: AppData) => void
   importCsvText: (text: string, mode: 'merge' | 'replace') => void
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null)
-const EMPTY: Required<AppData> = { athletes: [], sessions: [], events: [], plays: [], filmPlays: [] }
+const EMPTY: Required<AppData> = {
+  athletes: [],
+  sessions: [],
+  events: [],
+  plays: [],
+  filmPlays: [],
+  awarenessResults: [],
+}
 
 interface AuthUserLike {
   id: string
@@ -380,7 +394,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => buildImpact(data.plays, data.athletes).boostByAthlete,
     [data.plays, data.athletes],
   )
-  const results = useMemo(() => buildResults(computed, undefined, impactBoost), [computed, impactBoost])
+  const awarenessBoost = useMemo(
+    () => awarenessBoostByAthlete(data.awarenessResults),
+    [data.awarenessResults],
+  )
+  const results = useMemo(
+    () => buildResults(computed, undefined, impactBoost, awarenessBoost),
+    [computed, impactBoost, awarenessBoost],
+  )
   const resultByAthlete = useMemo(
     () => new Map(results.map((result) => [result.athlete.id, result])),
     [results],
@@ -406,7 +427,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     computed,
     results,
     resultsForEvent(eventId) {
-      return buildResults(computed, eventId, impactBoost)
+      return buildResults(computed, eventId, impactBoost, awarenessBoost)
     },
     resultByAthlete,
     gradeLabelFor(athlete, style = 'short') {
@@ -517,6 +538,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             annotation.athleteId === id ? { ...annotation, athleteId: undefined } : annotation,
           ),
         })),
+        awarenessResults: current.awarenessResults.filter((result) => result.athleteId !== id),
       }))
     },
 
@@ -615,6 +637,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }))
     },
 
+    async submitAwarenessResult(result) {
+      const record: AwarenessResult = {
+        ...result,
+        id: newId('awareness'),
+        createdAt: new Date().toISOString(),
+      }
+      // Reflect the result locally right away.
+      setData((current) => ({
+        ...current,
+        awarenessResults: [...current.awarenessResults, record],
+      }))
+      // Athletes may write only their own quiz row (RLS) — not the whole dataset.
+      if (team) await saveAwarenessResult(team.id, record)
+    },
+
     resetSample() {
       if (viewerMode) return
       setSaveStatus('saving')
@@ -708,9 +745,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           athletes: existingAthletes,
           events: existingEvents,
           sessions: [...current.sessions, ...incomingSessions],
-          // CSV import never carries plays or film, so keep what's on device.
+          // CSV import never carries plays, film, or quiz results — keep them.
           plays: current.plays,
           filmPlays: current.filmPlays,
+          awarenessResults: current.awarenessResults,
         })
       })
     },

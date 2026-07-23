@@ -110,6 +110,10 @@ function repairHistoricalReferences(input: AppData): AppData {
         athleteId: remapHistoricalAthleteId(annotation.athleteId),
       })),
     })),
+    awarenessResults: (input.awarenessResults ?? []).map((result) => ({
+      ...result,
+      athleteId: remapHistoricalAthleteId(result.athleteId) ?? result.athleteId,
+    })),
   }
 }
 
@@ -197,6 +201,7 @@ export function mergeHistoricalData(
       sessions: upsertById(repairedSeed.sessions, normalizedCurrent.sessions),
       plays: upsertById(repairedSeed.plays, normalizedCurrent.plays),
       filmPlays: upsertById(repairedSeed.filmPlays, normalizedCurrent.filmPlays),
+      awarenessResults: upsertById(repairedSeed.awarenessResults, normalizedCurrent.awarenessResults),
     }),
   )
 }

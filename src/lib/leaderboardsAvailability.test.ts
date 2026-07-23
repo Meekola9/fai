@@ -73,6 +73,7 @@ function result(id: string, rankEligible: boolean, dash40: number): AthleteResul
     rankEligible,
     baseFai: current.fai,
     impactBoostPct: 0,
+    awarenessBoostPct: 0,
   }
 }
 

@@ -18,7 +18,10 @@ describe('FAI account access', () => {
     }
   })
 
-  it('gives coaches the fixed operating package without staff or data administration', () => {
+  it('gives a coach the full operational package but no staff/data access', () => {
+    // The current release ships coaches a fixed operating package (see access.ts
+    // and migration 007); granular `assigned` permissions are intentionally
+    // overridden. Staff and data administration stay owner/admin only.
     expect(capabilitiesFor('coach', { film: true, reports: true })).toMatchObject({
       canManageRoster: true,
       canManageTesting: true,
