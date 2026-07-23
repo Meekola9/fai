@@ -5,6 +5,8 @@ import {
   categoryWeightsFor,
   flyTimeToMph,
   metricWeightFor,
+  POWER_CLEAN_RATIO_ANCHORS,
+  powerCleanRatioScore,
 } from './scoring'
 
 describe('flyTimeToMph', () => {
@@ -46,6 +48,48 @@ describe('strength ratio scoring', () => {
     expect(benchmarkScore(1.4, squat, true)).toBeLessThan(benchmarkScore(1.9, squat, true))
     expect(benchmarkScore(1.0, bench, true)).toBeLessThan(90)
     expect(benchmarkScore(1.9, squat, true)).toBeLessThan(90)
+  })
+})
+
+describe('Power Clean body-weight scoring', () => {
+  it('uses the selected high-school body-weight anchors', () => {
+    expect(POWER_CLEAN_RATIO_ANCHORS.map(({ ratio, score }) => [ratio, score])).toEqual([
+      [0.6, 45],
+      [0.75, 65],
+      [0.8, 70],
+      [1, 80],
+      [1.2, 90],
+      [1.5, 100],
+    ])
+  })
+
+  it.each([
+    [0.6, 45],
+    [0.75, 65],
+    [0.8, 70],
+    [1, 80],
+    [1.2, 90],
+    [1.5, 100],
+  ])('scores %sx body weight as %s', (ratio, score) => {
+    expect(powerCleanRatioScore(ratio * 200, 200)).toBeCloseTo(score, 5)
+  })
+
+  it('interpolates between standards and caps elite results', () => {
+    expect(powerCleanRatioScore(180, 200)).toBeCloseTo(75, 5) // 0.90x
+    expect(powerCleanRatioScore(220, 200)).toBeCloseTo(85, 5) // 1.10x
+    expect(powerCleanRatioScore(270, 200)).toBeCloseTo(95, 5) // 1.35x
+    expect(powerCleanRatioScore(320, 200)).toBe(100)
+  })
+
+  it('grades equal ratios equally across body sizes while preserving raw pounds elsewhere', () => {
+    expect(powerCleanRatioScore(180, 180)).toBeCloseTo(powerCleanRatioScore(280, 280)!, 8)
+    expect(powerCleanRatioScore(240, 200)).toBe(90)
+    expect(powerCleanRatioScore(300, 250)).toBe(90)
+  })
+
+  it('rejects missing or invalid body weight', () => {
+    expect(powerCleanRatioScore(225, 0)).toBeUndefined()
+    expect(powerCleanRatioScore(0, 200)).toBeUndefined()
   })
 })
 
