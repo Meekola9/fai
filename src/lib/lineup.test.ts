@@ -54,8 +54,8 @@ describe('lineup engine', () => {
       athlete('generic', 'ILB', 'LB'),
     ]
     const ratings = new Map([
-      ['natural', 78],
-      ['generic', 84],
+      ['natural', 80],
+      ['generic', 82],
     ])
     const candidates = candidatesForSlot(athletes, ratings, star)
     expect(candidates[0].athlete.id).toBe('natural')
