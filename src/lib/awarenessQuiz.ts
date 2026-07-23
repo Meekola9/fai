@@ -232,3 +232,39 @@ export function latestAwarenessFor<T extends { athleteId: string; takenAt: strin
     .filter((result) => result.athleteId === athleteId)
     .sort((a, b) => b.takenAt.localeCompare(a.takenAt))[0]
 }
+
+/**
+ * FAI boost an awareness score earns: a perfect 100 adds 5%, 90+ adds 3%,
+ * 80+ adds 2%, 75+ adds 1.5%, and anything lower (or never taking it) adds
+ * nothing. The boost stacks on top of the athlete's tested FAI.
+ */
+export function awarenessBoostForScore(score: number): number {
+  if (score >= 100) return 5
+  if (score >= 90) return 3
+  if (score >= 80) return 2
+  if (score >= 75) return 1.5
+  return 0
+}
+
+/**
+ * Map of athleteId -> FAI boost percent, from each athlete's latest awareness
+ * result. Athletes with no result (or a score below the threshold) are omitted,
+ * so not taking the quiz has no effect.
+ */
+export function awarenessBoostByAthlete<
+  T extends { athleteId: string; score: number; takenAt: string },
+>(results: readonly T[]): Map<string, number> {
+  const latestByAthlete = new Map<string, T>()
+  for (const result of results) {
+    const current = latestByAthlete.get(result.athleteId)
+    if (!current || result.takenAt.localeCompare(current.takenAt) > 0) {
+      latestByAthlete.set(result.athleteId, result)
+    }
+  }
+  const boosts = new Map<string, number>()
+  for (const [athleteId, result] of latestByAthlete) {
+    const boost = awarenessBoostForScore(result.score)
+    if (boost > 0) boosts.set(athleteId, boost)
+  }
+  return boosts
+}

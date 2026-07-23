@@ -16,7 +16,7 @@ import {
 } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
-import { awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
+import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 import { OverallRatingName } from '../components/OverallRatingName'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
@@ -138,6 +138,9 @@ function AwarenessCard({ athleteId }: { athleteId: string }) {
         <div className="nums text-5xl font-black leading-none text-chalk">{latest.score}</div>
         <div>
           <Pill tone={AWARENESS_TONE[awarenessLevel(latest.score)]}>{awarenessLevel(latest.score)}</Pill>
+          {awarenessBoostForScore(latest.score) > 0 && (
+            <span className="ml-2 text-xs font-black text-up">+{awarenessBoostForScore(latest.score)}% FAI</span>
+          )}
           <div className="mt-1 text-xs text-muted nums">
             {latest.correct}/{latest.total} correct · {new Date(latest.takenAt).toLocaleDateString()}
           </div>
@@ -240,9 +243,13 @@ export default function AthleteProfile() {
               {rankEligible && <Pill tone="gold">2026 Team Rank #{displayResult.teamRank} / {displayResult.teamCount}</Pill>}
               {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{displayResult.groupRank} / {displayResult.groupCount}</Pill>}
               {displayResult.impactBoostPct > 0 && (
-                <Pill tone="fai">
-                  ⚡ +{displayResult.impactBoostPct}% Playmaker boost ({displayResult.baseFai.toFixed(1)} → {current.fai.toFixed(1)})
-                </Pill>
+                <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>
+              )}
+              {displayResult.awarenessBoostPct > 0 && (
+                <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>
+              )}
+              {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && (
+                <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>
               )}
               {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
                 <Pill tone="gold">

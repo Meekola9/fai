@@ -175,6 +175,30 @@ describe('FAI computation', () => {
     expect(results[0].teamRank).toBe(0)
   })
 
+  it('stacks the Playmaker and awareness boosts onto FAI while keeping the base', () => {
+    const computed = computeAll(completeData)
+    const id = computed[0].athlete.id
+    const base = buildResults(computed)[0]
+
+    const boosted = buildResults(
+      computed,
+      undefined,
+      new Map([[id, 2]]), // Playmaker/Havoc +2%
+      new Map([[id, 3]]), // awareness +3%
+    )[0]
+    expect(boosted.baseFai).toBe(base.current.fai)
+    expect(boosted.impactBoostPct).toBe(2)
+    expect(boosted.awarenessBoostPct).toBe(3)
+    const expected = Math.round(Math.min(100, base.current.fai * 1.05) * 10) / 10
+    expect(boosted.current.fai).toBe(expected)
+
+    // No boost maps → FAI is unchanged and both boost fields are zero.
+    const none = buildResults(computed)[0]
+    expect(none.awarenessBoostPct).toBe(0)
+    expect(none.impactBoostPct).toBe(0)
+    expect(none.current.fai).toBe(none.baseFai)
+  })
+
   it('preserves legitimate zero benchmark scores', () => {
     expect(benchmarkScore(5.25, { elite: 4.4, developmental: 5.25 }, false)).toBe(0)
     expect(benchmarkScore(4.4, { elite: 4.4, developmental: 5.25 }, false)).toBe(100)

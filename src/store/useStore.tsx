@@ -45,6 +45,7 @@ import { gradeLabel } from '../lib/alumni'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { buildImpact } from '../lib/impact'
+import { awarenessBoostByAthlete } from '../lib/awarenessQuiz'
 import { normalizeAppData } from '../lib/events'
 import {
   consolidateAthleteAliases,
@@ -393,7 +394,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => buildImpact(data.plays, data.athletes).boostByAthlete,
     [data.plays, data.athletes],
   )
-  const results = useMemo(() => buildResults(computed, undefined, impactBoost), [computed, impactBoost])
+  const awarenessBoost = useMemo(
+    () => awarenessBoostByAthlete(data.awarenessResults),
+    [data.awarenessResults],
+  )
+  const results = useMemo(
+    () => buildResults(computed, undefined, impactBoost, awarenessBoost),
+    [computed, impactBoost, awarenessBoost],
+  )
   const resultByAthlete = useMemo(
     () => new Map(results.map((result) => [result.athlete.id, result])),
     [results],
@@ -419,7 +427,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     computed,
     results,
     resultsForEvent(eventId) {
-      return buildResults(computed, eventId, impactBoost)
+      return buildResults(computed, eventId, impactBoost, awarenessBoost)
     },
     resultByAthlete,
     gradeLabelFor(athlete, style = 'short') {

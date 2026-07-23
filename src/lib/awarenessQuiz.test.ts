@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   AWARENESS_QUIZ,
   AWARENESS_QUESTION_COUNT,
+  awarenessBoostByAthlete,
+  awarenessBoostForScore,
   awarenessLevel,
   latestAwarenessFor,
   scoreAwareness,
@@ -41,6 +43,32 @@ describe('awareness quiz', () => {
     expect(awarenessLevel(80)).toBe('Sharp')
     expect(awarenessLevel(65)).toBe('Developing')
     expect(awarenessLevel(40)).toBe('Needs Study')
+  })
+
+  it('maps awareness scores to the FAI boost bands', () => {
+    expect(awarenessBoostForScore(100)).toBe(5)
+    expect(awarenessBoostForScore(93)).toBe(3)
+    expect(awarenessBoostForScore(90)).toBe(3)
+    expect(awarenessBoostForScore(85)).toBe(2)
+    expect(awarenessBoostForScore(80)).toBe(2)
+    expect(awarenessBoostForScore(77)).toBe(1.5)
+    expect(awarenessBoostForScore(75)).toBe(1.5)
+    expect(awarenessBoostForScore(74)).toBe(0)
+    expect(awarenessBoostForScore(0)).toBe(0)
+  })
+
+  it('boosts each athlete from their latest qualifying score, omitting the rest', () => {
+    const boosts = awarenessBoostByAthlete([
+      { athleteId: 'a', score: 60, takenAt: '2026-07-01T00:00:00.000Z' },
+      { athleteId: 'a', score: 100, takenAt: '2026-07-20T00:00:00.000Z' }, // latest wins → +5
+      { athleteId: 'b', score: 80, takenAt: '2026-07-10T00:00:00.000Z' }, // +2
+      { athleteId: 'c', score: 50, takenAt: '2026-07-10T00:00:00.000Z' }, // below threshold → omitted
+    ])
+    expect(boosts.get('a')).toBe(5)
+    expect(boosts.get('b')).toBe(2)
+    expect(boosts.has('c')).toBe(false)
+    // A never-tested athlete is simply absent → no effect.
+    expect(boosts.has('z')).toBe(false)
   })
 
   it('finds an athlete’s most recent result', () => {

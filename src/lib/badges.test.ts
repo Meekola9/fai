@@ -112,6 +112,7 @@ function resultFor(
     rankEligible: current.scoreStatus === 'complete',
     baseFai: current.fai,
     impactBoostPct: 0,
+    awarenessBoostPct: 0,
   }
 }
 

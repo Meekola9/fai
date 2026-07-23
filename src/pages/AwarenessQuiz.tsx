@@ -4,6 +4,7 @@ import { useAccountAccess } from '../hooks/useAccountAccess'
 import { Card, Pill, SectionTitle } from '../components/ui'
 import {
   AWARENESS_QUIZ,
+  awarenessBoostForScore,
   awarenessLevel,
   latestAwarenessFor,
   scoreAwareness,
@@ -18,6 +19,7 @@ const LEVEL_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
 
 function ScoreHero({ score, correct, total }: { score: number; correct: number; total: number }) {
   const level = awarenessLevel(score)
+  const boost = awarenessBoostForScore(score)
   return (
     <div className="relative overflow-hidden rounded-2xl border border-fai/30 bg-gradient-to-b from-[#0a1520] to-[#070c12] p-6 text-center">
       <div className="text-[11px] font-black uppercase tracking-[0.22em] text-fai">Awareness Score</div>
@@ -28,6 +30,11 @@ function ScoreHero({ score, correct, total }: { score: number; correct: number; 
         <Pill tone={LEVEL_TONE[level]}>{level}</Pill>
         <span className="text-xs text-muted nums">{correct}/{total} correct</span>
       </div>
+      {boost > 0 ? (
+        <div className="mt-3 text-sm font-black text-up">🧠 +{boost}% FAI overall boost</div>
+      ) : (
+        <div className="mt-3 text-xs text-muted">Score 75+ to earn an FAI overall boost.</div>
+      )}
     </div>
   )
 }
@@ -91,7 +98,8 @@ export default function AwarenessQuiz() {
           Football <span className="text-fai">Awareness</span> Quiz
         </h1>
         <div className="mt-1 text-xs text-muted">
-          {quiz.questions.length} questions on football knowledge. Your score becomes your awareness rating.
+          {quiz.questions.length} questions on football knowledge. Your score becomes your awareness rating and
+          boosts your overall FAI: <span className="font-bold text-chalk">100% → +5%, 90%+ → +3%, 80%+ → +2%, 75%+ → +1.5%</span>.
           {!isAthlete && ' You’re viewing this as a preview — results are only saved for approved athlete accounts.'}
         </div>
       </div>

@@ -250,8 +250,10 @@ export interface AthleteResult {
   groupRank: number
   groupCount: number
   rankEligible: boolean
-  /** FAI before the Playmaker/Havoc level boost. */
+  /** FAI before any boost (Playmaker/Havoc + awareness). */
   baseFai: number
   /** Playmaker/Havoc level boost applied to current.fai, in percent. */
   impactBoostPct: number
+  /** Awareness-quiz boost applied to current.fai, in percent. */
+  awarenessBoostPct: number
 }
