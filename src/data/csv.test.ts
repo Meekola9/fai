@@ -44,7 +44,7 @@ describe('CSV backup and restore', () => {
           positionGroup: 'WR',
           usage: 'iron-man',
           secondaryPosition: 'Star',
-          secondaryPositionGroup: 'DB',
+          secondaryPositionGroup: 'LB',
         },
       ],
       events: data.events,
@@ -56,7 +56,7 @@ describe('CSV backup and restore', () => {
       positionGroup: 'WR',
       usage: 'iron-man',
       secondaryPosition: 'Star',
-      secondaryPositionGroup: 'DB',
+      secondaryPositionGroup: 'LB',
     })
   })
 
@@ -72,9 +72,15 @@ describe('CSV backup and restore', () => {
 
   it('maps the program special positions during simple CSV imports', () => {
     const imported = importCsv(
-      'Name,Grade,Position\nJack Example,11,Jack\nBadger Example,10,Badger\nB Back Example,9,B Back',
+      'Name,Grade,Position\nJack Example,11,Jack\nBadger Example,10,Badger\nB Back Example,9,B Back\nStar Example,11,Star\nRover Example,11,Rover',
     )
-    expect(imported.athletes.map((athlete) => athlete.positionGroup)).toEqual(['DL', 'DB', 'TE'])
+    expect(imported.athletes.map((athlete) => athlete.positionGroup)).toEqual([
+      'DL',
+      'DB',
+      'TE',
+      'LB',
+      'DB',
+    ])
   })
 
   it('round-trips quoted commas safely', () => {

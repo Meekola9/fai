@@ -1,4 +1,5 @@
 import type { AppData, Athlete, TestSession, TestingEvent, TestingPhase } from '../types'
+import { positionGroupFor } from '../data/positions'
 import { estimatePowerClean1RM } from './powerClean'
 
 export const SESSION_METRIC_KEYS = [
@@ -32,9 +33,22 @@ function legacyEventId(phase: string): string {
   return `legacy-${slug(phase) || 'testing'}`
 }
 
+function normalizeAthletePositionGroups(athlete: Athlete): Athlete {
+  const secondaryPositionGroup = athlete.secondaryPosition
+    ? positionGroupFor(athlete.secondaryPosition, athlete.secondaryPositionGroup ?? 'ATH')
+    : undefined
+  return {
+    ...athlete,
+    positionGroup: positionGroupFor(athlete.position, athlete.positionGroup),
+    secondaryPositionGroup,
+  }
+}
+
 /** Upgrade legacy datasets in memory without deleting or rewriting source data. */
 export function normalizeAppData(input: AppData): Required<AppData> {
-  const athletes = Array.isArray(input.athletes) ? input.athletes : []
+  const athletes = Array.isArray(input.athletes)
+    ? input.athletes.map(normalizeAthletePositionGroups)
+    : []
   const sessions = Array.isArray(input.sessions) ? input.sessions : []
   const suppliedEvents = Array.isArray(input.events) ? input.events : []
   const events = [...suppliedEvents]
@@ -62,13 +76,18 @@ export function normalizeAppData(input: AppData): Required<AppData> {
   const athleteById = new Map(athletes.map((athlete) => [athlete.id, athlete]))
   const upgradedSessions = sessions.map((session, index) => {
     const athlete = athleteById.get(session.athleteId)
+    const positionSnapshot = session.positionSnapshot ?? athlete?.position
+    const positionGroupSnapshot = positionGroupFor(
+      positionSnapshot,
+      session.positionGroupSnapshot ?? athlete?.positionGroup ?? 'ATH',
+    )
     return {
       ...session,
       eventId: session.eventId || legacyEventId(session.phase),
       createdAt: session.createdAt || `${session.date}T12:00:${String(index % 60).padStart(2, '0')}.000Z`,
       gradeSnapshot: session.gradeSnapshot ?? athlete?.grade,
-      positionSnapshot: session.positionSnapshot ?? athlete?.position,
-      positionGroupSnapshot: session.positionGroupSnapshot ?? athlete?.positionGroup,
+      positionSnapshot,
+      positionGroupSnapshot,
       weightLbsSnapshot: session.weightLbsSnapshot ?? athlete?.weightLbs,
     }
   })
@@ -213,7 +232,10 @@ export function mergeEventSessions(data: AppData): Array<{
       createdAt: latest.createdAt,
       gradeSnapshot: latest.gradeSnapshot ?? athlete.grade,
       positionSnapshot: latest.positionSnapshot ?? athlete.position,
-      positionGroupSnapshot: latest.positionGroupSnapshot ?? athlete.positionGroup,
+      positionGroupSnapshot: positionGroupFor(
+        latest.positionSnapshot ?? athlete.position,
+        latest.positionGroupSnapshot ?? athlete.positionGroup,
+      ),
       weightLbsSnapshot: latest.weightLbsSnapshot ?? athlete.weightLbs,
     }
     for (const source of sessions) overlayBest(composite, source)
