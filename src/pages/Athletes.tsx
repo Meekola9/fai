@@ -6,10 +6,11 @@ import { PlayerBadgeStrip } from '../components/PlayerBadges'
 import { GameDayBadgeArtwork } from '../components/GameDayBadges'
 import { OverallRatingName } from '../components/OverallRatingName'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
-import { athleteTimeline } from '../lib/compute'
+import { athleteTimeline, positionScoreBreakdown } from '../lib/compute'
 import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
 import { athleteGameDayBadgeSummary } from '../lib/gameDayBadges'
+import { playerUsageDefinition } from '../lib/playerUsage'
 import { formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
 import type { Athlete, AthleteResult } from '../types'
@@ -26,8 +27,6 @@ export default function Athletes() {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [sort, setSort] = useState<'fai' | 'name'>('fai')
 
-  // Athlete-facing roster cards are intentionally current-season only.
-  // Historical seasons remain available from Rankings.
   const seasonResults = resultsForEvent(ATHLETE_SEASON_ID)
   const filteredResults = useMemo(
     () => applyFilters(seasonResults, filters),
@@ -104,6 +103,10 @@ export default function Athletes() {
               : []
             const gameBadges = athleteGameDayBadgeSummary(data.plays, athlete.id, 2026)
             const usage = athlete.usage ?? 'one-way'
+            const usageDefinition = playerUsageDefinition(usage)
+            const scoreBreakdown = result
+              ? positionScoreBreakdown(result.current.session, athlete, result.current.event)
+              : undefined
             return (
               <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
                 <div className="flex items-start gap-3">
@@ -113,7 +116,7 @@ export default function Athletes() {
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                       <Pill tone="fai">{athlete.positionGroup}</Pill>
                       {usage !== 'one-way' && (
-                        <Pill tone={usage === 'iron-man' ? 'gold' : 'up'}>{usageLabel(usage)}</Pill>
+                        <Pill tone={usage === 'iron-man' ? 'gold' : 'up'}>{usageLabel(usage)} · {usageDefinition.primaryPct}/{usageDefinition.secondaryPct}</Pill>
                       )}
                       <span>{athletePositionLine(athlete)}</span>
                       <span>· {gradeLabelFor(athlete)}</span>
@@ -122,6 +125,18 @@ export default function Athletes() {
                       {formatHeight(athlete.heightIn)} · {athlete.weightLbs} lbs
                       {result?.rankEligible ? ` · 2026 Rank #${result.teamRank}` : ''}
                     </div>
+                    {scoreBreakdown?.secondaryGroup && typeof scoreBreakdown.secondaryScore === 'number' && (
+                      <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-line bg-panel-2/35 p-2 text-center">
+                        <div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-muted">{athlete.position || scoreBreakdown.primaryGroup} · {scoreBreakdown.primaryPct}%</div>
+                          <div className="text-sm font-black nums text-fai">{scoreBreakdown.primaryScore.toFixed(1)}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-muted">{athlete.secondaryPosition || scoreBreakdown.secondaryGroup} · {scoreBreakdown.secondaryPct}%</div>
+                          <div className="text-sm font-black nums text-gold">{scoreBreakdown.secondaryScore.toFixed(1)}</div>
+                        </div>
+                      </div>
+                    )}
                     <PlayerBadgeStrip badges={badges} />
                     {gameBadges.activeAwards.length > 0 && (
                       <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-fai/20 bg-fai/5 px-2 py-1.5">
@@ -142,9 +157,7 @@ export default function Athletes() {
                         className="mt-2 block rounded-lg border border-fai/20 bg-fai/5 px-2.5 py-2 transition hover:border-fai/50 hover:bg-fai/10"
                         title={`${archetype.description} Based on: ${archetype.evidence.join(', ')}.`}
                       >
-                        <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">
-                          2026 archetype · {archetype.confidence} confidence
-                        </div>
+                        <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted">2026 archetype · {archetype.confidence} confidence</div>
                         <div className="mt-0.5 truncate text-xs font-black text-fai">{archetype.name}</div>
                         <div className="mt-0.5 truncate text-[10px] text-muted">{archetype.evidence.join(' · ')}</div>
                         <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-fai/80">View meaning →</div>
@@ -163,6 +176,9 @@ export default function Athletes() {
                         <div className={`text-3xl font-black nums ${result.rankEligible ? 'text-fai' : 'text-flame'}`}>
                           {result.current.fai.toFixed(1)}
                         </div>
+                        {scoreBreakdown?.secondaryGroup && (
+                          <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-muted">Blended {scoreBreakdown.primaryPct}/{scoreBreakdown.secondaryPct}</div>
+                        )}
                         <OverallRatingName score={result.current.fai} compact />
                         {!result.rankEligible && (
                           <div className="mt-1 text-[10px] font-bold text-flame">{result.current.completionPct}% complete</div>
