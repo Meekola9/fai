@@ -2,12 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Card } from '../components/ui'
 import {
-  COACH_PERMISSION_OPTIONS,
-  normalizePermissions,
+  COACH_DUTIES,
   normalizeRole,
   roleLabel,
-  type TeamPermission,
-  type TeamPermissions,
   type TeamRole,
 } from '../lib/access'
 import { supabase } from '../lib/supabase'
@@ -36,9 +33,6 @@ export default function StaffAccess() {
   const [invites, setInvites] = useState<TeamInvite[]>([])
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'coach' | 'viewer'>('coach')
-  const [permissions, setPermissions] = useState<Set<TeamPermission>>(
-    new Set(['roster', 'testing', 'film', 'awards', 'reports']),
-  )
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string>()
@@ -65,7 +59,7 @@ export default function StaffAccess() {
         if (!user) throw new Error('Sign in before managing staff.')
         const { data: membership, error: memberError } = await supabase
           .from('team_members')
-          .select('team_id,role,permissions')
+          .select('team_id,role')
           .eq('user_id', user.id)
           .order('created_at', { ascending: true })
           .limit(1)
@@ -86,30 +80,16 @@ export default function StaffAccess() {
     })()
   }, [])
 
-  function togglePermission(permission: TeamPermission) {
-    setPermissions((current) => {
-      const next = new Set(current)
-      if (next.has(permission)) next.delete(permission)
-      else next.add(permission)
-      return next
-    })
-  }
-
   async function invite() {
     if (!context || !email.trim()) return
     setBusy(true)
     setError(undefined)
     setMessage(undefined)
     try {
-      const permissionObject = [...permissions].reduce<TeamPermissions>((result, permission) => {
-        result[permission] = true
-        return result
-      }, {})
       await createTeamInvite({
         teamId: context.teamId,
         email,
         role,
-        permissions: role === 'coach' ? permissionObject : {},
         invitedBy: context.userId,
       })
       setEmail('')
@@ -201,7 +181,7 @@ export default function StaffAccess() {
 
       <Card className="p-5">
         <h2 className="text-xl font-black">Invite staff</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted">Invite the exact email the coach will use to create or sign into FAI.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">Invite the exact email the staff member will use to create or sign into FAI.</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label>
@@ -220,19 +200,27 @@ export default function StaffAccess() {
 
         {role === 'coach' && (
           <div className="mt-4 rounded-xl border border-fai/20 bg-fai/5 p-4">
-            <div className="text-sm font-black">Coach duties</div>
+            <div className="text-sm font-black">Coach operating duties</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted">Coaches can assist with the complete football workflow but cannot manage staff accounts or use destructive data-administration tools.</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {COACH_PERMISSION_OPTIONS.map((option) => (
-                <label key={option.key} className="flex cursor-pointer gap-3 rounded-lg border border-line bg-panel/50 p-3">
-                  <input type="checkbox" checked={permissions.has(option.key)} onChange={() => togglePermission(option.key)} className="mt-0.5 h-4 w-4 accent-lime-400" />
-                  <span>
-                    <span className="block text-sm font-black text-chalk">{option.label}</span>
-                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">{option.description}</span>
-                  </span>
-                </label>
+              {COACH_DUTIES.map((duty) => (
+                <div key={duty.key} className="rounded-lg border border-line bg-panel/50 p-3">
+                  <div className="text-sm font-black text-chalk">{duty.label}</div>
+                  <div className="mt-0.5 text-xs leading-relaxed text-muted">{duty.description}</div>
+                </div>
               ))}
             </div>
           </div>
+        )}
+
+        {role === 'admin' && (
+          <div className="mt-4 rounded-xl border border-gold/25 bg-gold/5 p-4 text-xs leading-relaxed text-muted">
+            Administrators receive every coach duty plus athlete-claim approval, staff invitations, imports, exports, backups, and team data administration.
+          </div>
+        )}
+
+        {role === 'viewer' && (
+          <div className="mt-4 rounded-xl border border-line bg-panel-2/35 p-4 text-xs leading-relaxed text-muted">Viewers can open team pages but cannot change team information.</div>
         )}
 
         <button type="button" disabled={busy || !email.trim()} onClick={() => void invite()} className="mt-4 rounded-xl bg-fai px-5 py-2.5 text-sm font-black text-ink disabled:opacity-50">Create invitation</button>
@@ -247,11 +235,7 @@ export default function StaffAccess() {
               <div>
                 <div className="text-sm font-black text-chalk">{invite.email}</div>
                 <div className="text-xs text-muted">{roleLabel(invite.role)} · {invite.status}</div>
-                {invite.role === 'coach' && (
-                  <div className="mt-1 text-[10px] uppercase tracking-wider text-fai">
-                    {Object.entries(normalizePermissions(invite.permissions)).filter(([, enabled]) => enabled).map(([permission]) => permission).join(' · ') || 'No duties assigned'}
-                  </div>
-                )}
+                {invite.role === 'coach' && <div className="mt-1 text-[10px] uppercase tracking-wider text-fai">Roster · testing · film · awards · reports</div>}
               </div>
               {invite.status === 'pending' && (
                 <button type="button" disabled={busy} onClick={() => void revoke(invite.id)} className="rounded-lg border border-down/35 px-3 py-1.5 text-xs font-black text-down">Revoke</button>
