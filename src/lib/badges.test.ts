@@ -6,7 +6,12 @@ import type {
   ComputedSession,
   PositionGroup,
 } from '../types'
-import { PLAYER_BADGE_CATALOG, playerBadgesFor } from './badges'
+import {
+  PLAYER_BADGE_CATALOG,
+  SIGNATURE_BADGE_CATALOG,
+  SIGNATURE_BADGE_PREFIX,
+  playerBadgesFor,
+} from './badges'
 
 const metricByCategory = {
   Speed: 'bestFly',
@@ -119,6 +124,27 @@ describe('player badges', () => {
     expect(PLAYER_BADGE_CATALOG.length).toBeGreaterThanOrEqual(30)
     expect(new Set(PLAYER_BADGE_CATALOG.map((badge) => badge.id)).size).toBe(PLAYER_BADGE_CATALOG.length)
     expect(new Set(PLAYER_BADGE_CATALOG.map((badge) => badge.name)).size).toBe(PLAYER_BADGE_CATALOG.length)
+  })
+
+  it('gives every archetype a unique signature badge in the reference catalog', () => {
+    expect(SIGNATURE_BADGE_CATALOG.length).toBeGreaterThanOrEqual(60)
+    const ids = SIGNATURE_BADGE_CATALOG.map((badge) => badge.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids.every((id) => id.startsWith(SIGNATURE_BADGE_PREFIX))).toBe(true)
+    expect(SIGNATURE_BADGE_CATALOG.every((badge) => badge.group === 'signature')).toBe(true)
+  })
+
+  it('awards each athlete exactly one signature badge tied to their archetype', () => {
+    const speedCurrent = computed('WR', { Speed: 92, Acceleration: 88, Jump: 84, 'Change of Direction': 70 })
+    const shiftyCurrent = computed('WR', { Speed: 70, Acceleration: 82, Jump: 62, 'Change of Direction': 92 })
+    const speedWr = playerBadgesFor({ result: resultFor(speedCurrent), timeline: [speedCurrent] })
+    const shiftyWr = playerBadgesFor({ result: resultFor(shiftyCurrent), timeline: [shiftyCurrent] })
+    const speedSig = speedWr.filter((badge) => badge.group === 'signature')
+    const shiftySig = shiftyWr.filter((badge) => badge.group === 'signature')
+    expect(speedSig).toHaveLength(1)
+    expect(shiftySig).toHaveLength(1)
+    // Two receivers with different standout traits carry different signatures.
+    expect(speedSig[0].id).not.toBe(shiftySig[0].id)
   })
 
   it('awards elite category and absolute performance badges without stacking lower clubs', () => {

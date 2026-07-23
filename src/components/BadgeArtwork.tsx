@@ -52,6 +52,14 @@ function GroupPattern({ group, color }: { group: BadgeGroup; color: string }) {
       </g>
     )
   }
+  if (group === 'signature') {
+    return (
+      <g opacity="0.2" fill="none" stroke={color} strokeWidth="1.1">
+        <path d="M14 40C10 30 18 15 32 15C46 15 54 30 50 40" />
+        <path d="M20 46C16 38 22 26 32 26C42 26 48 38 44 46" />
+      </g>
+    )
+  }
   return (
     <g opacity="0.18" fill="none" stroke={color} strokeWidth="1.2">
       <path d="M16 47C9 39 9 25 16 17M48 47C55 39 55 25 48 17M17 17L12 13M47 17L52 13" />
@@ -59,7 +67,38 @@ function GroupPattern({ group, color }: { group: BadgeGroup; color: string }) {
   )
 }
 
+/** Two-letter monogram for a signature badge, drawn from the archetype name. */
+function monogram(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  return (words[0] ?? '?').slice(0, 2).toUpperCase()
+}
+
 function BadgeGlyph({ badge, color }: { badge: PlayerBadgeDefinition; color: string }) {
+  // Signature badges are unique per archetype, so they carry a name monogram
+  // and a small star instead of a fixed vector mark.
+  if (badge.group === 'signature') {
+    return (
+      <g fill={color} stroke="none">
+        <text
+          x="32"
+          y="40"
+          textAnchor="middle"
+          fontSize="24"
+          fontWeight="950"
+          letterSpacing="-1"
+          fontFamily="ui-sans-serif, system-ui, sans-serif"
+        >
+          {monogram(badge.name)}
+        </text>
+        <path
+          d="M32 6L34 12L40 12L35 16L37 22L32 18L27 22L29 16L24 12L30 12Z"
+          stroke="none"
+        />
+      </g>
+    )
+  }
+
   const art = BADGE_ART[badge.id]
   if (!art) {
     return (

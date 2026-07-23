@@ -357,24 +357,43 @@ function fitScore(
 
   if (denominator === 0) return -1000
 
-  const primary = definition.primary[0]
-  const secondary = definition.primary[1]
+  // Specialization rewards an archetype whose primary traits are this athlete's
+  // relative peaks (value above their own mean), not just high absolute scores.
+  // Keying off the shape of the card — instead of who has the biggest overall
+  // numbers — spreads assignments across the catalog so two players at the same
+  // position with different standout traits land on different archetypes.
   let specialization = 0
-  if (primary && availableSet.has(primary)) {
+  definition.primary.forEach((category, index) => {
+    const weight = SPECIALIZATION_WEIGHTS[index]
+    if (weight === undefined || !availableSet.has(category)) return
     specialization +=
-      (result.categories[primary] - mean)
-      * 0.24
-      * categoryInfluence(group, primary)
-  }
-  if (secondary && availableSet.has(secondary)) {
-    specialization +=
-      (result.categories[secondary] - mean)
-      * 0.12
-      * categoryInfluence(group, secondary)
-  }
+      (result.categories[category] - mean) * weight * categoryInfluence(group, category)
+  })
 
   const coverageBonus = denominator >= 1.68 ? 2 : 0
   return weighted / denominator + specialization + sizeBonus + heightBonus + coverageBonus
+}
+
+/** Priority weighting for how strongly each primary trait shapes the match. */
+const SPECIALIZATION_WEIGHTS = [0.55, 0.3, 0.15]
+
+/**
+ * How distinctive an archetype's lead trait is for this athlete — the amount
+ * that trait sits above their own mean. Used only to break near-ties, so the
+ * winner keys off the athlete's biggest relative peak instead of alphabetical
+ * order (which used to funnel similar cards onto the same few archetypes).
+ */
+function primaryEdge(
+  definition: ArchetypeDefinition,
+  result: ComputedSession,
+  available: readonly Category[],
+  group: PositionGroup,
+): number {
+  if (definition.balanced || definition.developmental) return -Infinity
+  const lead = definition.primary[0]
+  if (!lead || !available.includes(lead)) return -Infinity
+  const mean = weightedMean(result, available, group)
+  return (result.categories[lead] - mean) * categoryInfluence(group, lead)
 }
 
 function confidenceFor(
@@ -400,8 +419,14 @@ export function archetypeFor(result: ComputedSession): PlayerArchetype | undefin
     .map((definition) => ({
       definition,
       score: fitScore(definition, result, available, group),
+      edge: primaryEdge(definition, result, available, group),
     }))
-    .sort((a, b) => b.score - a.score || a.definition.name.localeCompare(b.definition.name))[0]
+    .sort(
+      (a, b) =>
+        b.score - a.score
+        || b.edge - a.edge
+        || a.definition.name.localeCompare(b.definition.name),
+    )[0]
     ?.definition
 
   if (!winner) return undefined
