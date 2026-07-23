@@ -76,7 +76,7 @@ export function sheet2026SupplementData(): AppData {
         id: sessionId(name, gradYear, 'spring'),
         athleteId: id,
         eventId: 'event-ccf7166d02f737',
-        phase: 'Spring',
+        phase: 'Offseason',
         date: '2026-04-15',
         createdAt: '2026-07-23T18:25:22.935Z',
         gradeSnapshot: grade,
