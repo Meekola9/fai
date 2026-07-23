@@ -34,14 +34,44 @@ export const SPEED_SKILL_CATEGORY_WEIGHTS: Record<Category, number> = {
   Strength: 0.05,
 }
 
+/**
+ * Defensive linemen and linebackers receive a materially larger Pursuit
+ * contribution. The added eight points come from Speed and Conditioning so
+ * the full profile remains exactly 100%.
+ */
+export const FRONT_SEVEN_CATEGORY_WEIGHTS: Record<Category, number> = {
+  Speed: 0.12,
+  Acceleration: 0.15,
+  Jump: 0.08,
+  Power: 0.17,
+  Pursuit: 0.15,
+  'Change of Direction': 0.13,
+  Conditioning: 0.1,
+  Strength: 0.1,
+}
+
 const SPEED_SKILL_GROUPS: readonly PositionGroup[] = ['RB', 'WR', 'DB', 'ATH']
+const FRONT_SEVEN_GROUPS: readonly PositionGroup[] = ['DL', 'LB']
+const LATERAL_PRIORITY_GROUPS: readonly PositionGroup[] = ['OL', 'DB', 'RB']
 
 export function isSpeedSkillGroup(group: PositionGroup): boolean {
   return SPEED_SKILL_GROUPS.includes(group)
 }
 
 export function categoryWeightsFor(group: PositionGroup): Record<Category, number> {
+  if (FRONT_SEVEN_GROUPS.includes(group)) return FRONT_SEVEN_CATEGORY_WEIGHTS
   return isSpeedSkillGroup(group) ? SPEED_SKILL_CATEGORY_WEIGHTS : CATEGORY_WEIGHTS
+}
+
+/**
+ * Metric-level weighting inside a category. Most categories and positions use
+ * an even average. OL, DB, and RB place more COD emphasis on the lateral
+ * shuttle because it better reflects side-to-side movement demands.
+ */
+export function metricWeightFor(metricKey: string, group: PositionGroup): number {
+  if (metricKey === 'bestLatShuttle' && LATERAL_PRIORITY_GROUPS.includes(group)) return 0.65
+  if (metricKey === 'best20Shuttle' && LATERAL_PRIORITY_GROUPS.includes(group)) return 0.35
+  return 1
 }
 
 export const NEUTRAL_SCORE = 50
@@ -65,6 +95,9 @@ export interface Benchmark {
   elite: number
   /** Result that receives 0. */
   developmental: number
+  /** Optional result that receives a specified high score before the final elite band. */
+  high?: number
+  highScore?: number
 }
 
 type BenchmarkProfile = Record<string, Benchmark>
@@ -78,6 +111,20 @@ const ratio = (load?: number, bodyWeight?: number): number | undefined => {
   if (!load || !bodyWeight || load <= 0 || bodyWeight <= 0) return undefined
   return load / bodyWeight
 }
+
+const benchBenchmark = (developmental: number): Benchmark => ({
+  developmental,
+  high: 1.1,
+  highScore: 90,
+  elite: 1.4,
+})
+
+const squatBenchmark = (developmental: number): Benchmark => ({
+  developmental,
+  high: 2.15,
+  highScore: 90,
+  elite: 2.6,
+})
 
 /**
  * Power Clean is graded as an absolute max on position-specific standards.
@@ -97,8 +144,8 @@ const SPEED_SKILL: BenchmarkProfile = {
   bestLatShuttle: { elite: 2.55, developmental: 3.35 },
   illinois: { elite: 15, developmental: 18.5 },
   cond51015: { elite: 175, developmental: 105 },
-  benchRatio: { elite: 1.45, developmental: 0.55 },
-  squatRatio: { elite: 2.25, developmental: 1 },
+  benchRatio: benchBenchmark(0.55),
+  squatRatio: squatBenchmark(1),
 }
 
 const QUARTERBACK: BenchmarkProfile = {
@@ -111,8 +158,8 @@ const QUARTERBACK: BenchmarkProfile = {
   bestLatShuttle: { elite: 2.65, developmental: 3.45 },
   illinois: { elite: 15.4, developmental: 19 },
   cond51015: { elite: 165, developmental: 95 },
-  benchRatio: { elite: 1.35, developmental: 0.5 },
-  squatRatio: { elite: 2, developmental: 0.9 },
+  benchRatio: benchBenchmark(0.5),
+  squatRatio: squatBenchmark(0.9),
 }
 
 const HYBRID: BenchmarkProfile = {
@@ -125,8 +172,8 @@ const HYBRID: BenchmarkProfile = {
   bestLatShuttle: { elite: 2.7, developmental: 3.55 },
   illinois: { elite: 15.6, developmental: 19.5 },
   cond51015: { elite: 165, developmental: 90 },
-  benchRatio: { elite: 1.5, developmental: 0.65 },
-  squatRatio: { elite: 2.25, developmental: 1.05 },
+  benchRatio: benchBenchmark(0.65),
+  squatRatio: squatBenchmark(1.05),
 }
 
 const BIG: BenchmarkProfile = {
@@ -140,8 +187,8 @@ const BIG: BenchmarkProfile = {
   bestLatShuttle: { elite: 2.9, developmental: 4 },
   illinois: { elite: 16.5, developmental: 22 },
   cond51015: { elite: 145, developmental: 60 },
-  benchRatio: { elite: 1.45, developmental: 0.7 },
-  squatRatio: { elite: 2.1, developmental: 1 },
+  benchRatio: benchBenchmark(0.7),
+  squatRatio: squatBenchmark(1),
 }
 
 const SPECIALIST: BenchmarkProfile = {
@@ -154,8 +201,8 @@ const SPECIALIST: BenchmarkProfile = {
   bestLatShuttle: { elite: 2.75, developmental: 3.65 },
   illinois: { elite: 16, developmental: 20 },
   cond51015: { elite: 155, developmental: 80 },
-  benchRatio: { elite: 1.2, developmental: 0.4 },
-  squatRatio: { elite: 1.8, developmental: 0.75 },
+  benchRatio: benchBenchmark(0.4),
+  squatRatio: squatBenchmark(0.75),
 }
 
 const PROFILE_BY_GROUP: Record<PositionGroup, BenchmarkProfile> = {
@@ -255,6 +302,21 @@ export function benchmarkFor(metricKey: string, group: PositionGroup): Benchmark
 
 export function benchmarkScore(value: number, benchmark: Benchmark, higherBetter: boolean): number {
   if (benchmark.elite === benchmark.developmental) return NEUTRAL_SCORE
+
+  if (
+    higherBetter
+    && typeof benchmark.high === 'number'
+    && typeof benchmark.highScore === 'number'
+    && benchmark.high > benchmark.developmental
+    && benchmark.elite > benchmark.high
+  ) {
+    const score = value <= benchmark.high
+      ? ((value - benchmark.developmental) / (benchmark.high - benchmark.developmental)) * benchmark.highScore
+      : benchmark.highScore
+        + ((value - benchmark.high) / (benchmark.elite - benchmark.high)) * (100 - benchmark.highScore)
+    return Math.max(0, Math.min(100, score))
+  }
+
   const progress = higherBetter
     ? (value - benchmark.developmental) / (benchmark.elite - benchmark.developmental)
     : (benchmark.developmental - value) / (benchmark.developmental - benchmark.elite)
