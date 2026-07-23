@@ -5,6 +5,7 @@ import {
   decodeCloudPosition,
   encodeCloudPosition,
   positionGroupFor,
+  positionOptionFor,
   usageLabel,
 } from './positions'
 
@@ -12,16 +13,32 @@ describe('special football positions', () => {
   it.each([
     ['Mike', 'LB'],
     ['Will', 'LB'],
-    ['Star', 'DB'],
+    ['Star', 'LB'],
     ['Boundary Corner', 'DB'],
     ['Field Corner', 'DB'],
-    ['Rover', 'LB'],
+    ['Rover', 'DB'],
     ['Jack', 'DL'],
     ['Badger', 'DB'],
     ['B Back', 'TE'],
     ['H', 'WR'],
   ] as const)('maps %s to the %s FAI group', (position, group) => {
     expect(positionGroupFor(position)).toBe(group)
+  })
+
+  it('defines Star as the fast, long overhang linebacker role', () => {
+    expect(positionOptionFor('Star')).toMatchObject({
+      group: 'LB',
+      special: true,
+    })
+    expect(positionOptionFor('Star')?.description).toContain('Fast, long overhang linebacker')
+  })
+
+  it('defines Rover as the big-nickel defensive back role', () => {
+    expect(positionOptionFor('Rover')).toMatchObject({
+      group: 'DB',
+      special: true,
+    })
+    expect(positionOptionFor('Rover')?.description).toContain('Big nickel defensive back')
   })
 })
 
@@ -34,7 +51,7 @@ describe('two-way and Iron Man roster roles', () => {
     positionGroup: 'WR',
     usage: 'iron-man',
     secondaryPosition: 'Star',
-    secondaryPositionGroup: 'DB',
+    secondaryPositionGroup: 'LB',
     heightIn: 70,
     weightLbs: 175,
   }
@@ -50,8 +67,18 @@ describe('two-way and Iron Man roster roles', () => {
       position: 'H',
       usage: 'iron-man',
       secondaryPosition: 'Star',
-      secondaryPositionGroup: 'DB',
+      secondaryPositionGroup: 'LB',
     })
+  })
+
+  it('repairs stale cloud metadata using the corrected position family', () => {
+    const stale: Athlete = {
+      ...athlete,
+      secondaryPosition: 'Rover',
+      secondaryPositionGroup: 'LB',
+    }
+    const decoded = decodeCloudPosition(encodeCloudPosition(stale))
+    expect(decoded.secondaryPositionGroup).toBe('DB')
   })
 
   it('keeps one-way cloud positions human-readable', () => {
