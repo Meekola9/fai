@@ -13,6 +13,7 @@ import { athleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { playerUsageDefinition } from '../lib/playerUsage'
 import { formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
+import Lineup from './Lineup'
 import type { Athlete, AthleteResult } from '../types'
 
 const ATHLETE_SEASON_ID = 'season-2026'
@@ -24,6 +25,7 @@ interface Row {
 
 export default function Athletes() {
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
+  const [view, setView] = useState<'roster' | 'lineup'>('roster')
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
   const [sort, setSort] = useState<'fai' | 'name'>('fai')
 
@@ -65,8 +67,29 @@ export default function Athletes() {
     return rows
   }, [data.athletes, filters, resultMap, sort])
 
+  if (view === 'lineup') {
+    return (
+      <div className="space-y-5">
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-xl border border-line bg-panel p-1">
+            <button type="button" onClick={() => setView('roster')} className="rounded-lg px-5 py-2 text-xs font-black uppercase tracking-wider text-muted hover:bg-panel-2 hover:text-chalk">Roster</button>
+            <button type="button" className="rounded-lg bg-fai px-5 py-2 text-xs font-black uppercase tracking-wider text-ink">Lineup Board</button>
+          </div>
+        </div>
+        <Lineup />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
+      <div className="flex justify-center">
+        <div className="inline-flex rounded-xl border border-line bg-panel p-1">
+          <button type="button" className="rounded-lg bg-fai px-5 py-2 text-xs font-black uppercase tracking-wider text-ink">Roster</button>
+          <button type="button" onClick={() => setView('lineup')} className="rounded-lg px-5 py-2 text-xs font-black uppercase tracking-wider text-muted hover:bg-panel-2 hover:text-chalk">Lineup Board</button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black tracking-tight">Athletes <span className="text-muted">· {data.athletes.length}</span></h1>
