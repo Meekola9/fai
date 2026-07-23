@@ -280,13 +280,17 @@ export function validateSession(session: Partial<TestSession>): ValidationResult
     if (value === undefined) continue
     metricCount += 1
     if (typeof value !== 'number' || !Number.isFinite(value)) {
-      errors.push(`${key} must be a valid number`)
+      errors.push(`${String(key)} must be a number.`)
       continue
     }
-    const limit = LIMITS[key]
-    if (limit && (value < limit[0] || value > limit[1])) {
-      errors.push(`${key} must be between ${limit[0]} and ${limit[1]}`)
+    const limits = LIMITS[key]
+    if (limits && (value < limits[0] || value > limits[1])) {
+      errors.push(`${String(key)} is outside the allowed range (${limits[0]}–${limits[1]}).`)
     }
   }
+  if (!session.athleteId) errors.push('Select an athlete.')
+  if (!session.eventId) errors.push('Select a testing event.')
+  if (!session.date) errors.push('Enter a testing date.')
+  if (metricCount === 0) errors.push('Enter at least one test result before saving.')
   return { valid: errors.length === 0, errors, metricCount }
 }
