@@ -12,7 +12,7 @@ async function waitForHistoricalSeed(page: Page) {
     const raw = localStorage.getItem('fai:data:v2')
     if (!raw) return false
     const data = JSON.parse(raw) as { athletes?: unknown[]; events?: unknown[]; sessions?: unknown[] }
-    return data.athletes?.length === 159 && data.events?.length === 20 && data.sessions?.length === 762
+    return data.athletes?.length === 164 && data.events?.length === 20 && data.sessions?.length === 770
   })
 }
 
@@ -35,9 +35,9 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
     }
   })
 
-  expect(seeded.athletes).toHaveLength(159)
+  expect(seeded.athletes).toHaveLength(164)
   expect(seeded.events).toHaveLength(20)
-  expect(seeded.sessions).toHaveLength(762)
+  expect(seeded.sessions).toHaveLength(770)
   expect(
     [...new Set(seeded.events.map((event) => Number(event.startDate.slice(0, 4))))].sort(
       (a, b) => a - b,
@@ -48,6 +48,8 @@ test('fresh browser automatically loads 2020–2026 history and shows one exerci
   expect(names.has('Jude Nelson')).toBe(true)
   expect(names.has('Dillion Evans')).toBe(true)
   expect(names.has('Logan Cross')).toBe(true)
+  expect(names.has('Kn. Crump')).toBe(true)
+  expect(names.has('Ku. Crump')).toBe(true)
   expect(names.has('J. Nelson')).toBe(false)
   expect(names.has('D.Evans')).toBe(false)
   expect(names.has('Lu. Cross')).toBe(false)
@@ -153,7 +155,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.locator('input[type="date"]').first().fill('2026-07-06')
   await page.getByRole('button', { name: 'Create Event' }).click()
 
-  // First partial entry: speed and bench.
   await page.locator('input[type="date"]').fill('2026-07-06')
   await fillPlaceholder(page, '225', '225')
   await fillPlaceholder(page, '4.98', '4.70')
@@ -163,7 +164,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Second partial entry: Power Clean and change of direction.
   await page.locator('input[type="date"]').fill('2026-07-07')
   await fillPlaceholder(page, '235', '245')
   await fillPlaceholder(page, '4.35', '4.35')
@@ -174,7 +174,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('button', { name: 'Save Event Entry' }).click()
   await expect(page.getByText('✓ Saved locally')).toBeVisible()
 
-  // Third partial entry: lower-body strength, jumps, and conditioning.
   await page.locator('input[type="date"]').fill('2026-07-08')
   await fillPlaceholder(page, '405', '365')
   await fillPlaceholder(page, '108', '118')
@@ -192,9 +191,9 @@ test('coach adds a complete testing event without losing historical data', async
       sessions: unknown[]
     }
   })
-  expect(persisted.athletes).toHaveLength(160)
+  expect(persisted.athletes).toHaveLength(165)
   expect(persisted.events).toHaveLength(21)
-  expect(persisted.sessions).toHaveLength(765)
+  expect(persisted.sessions).toHaveLength(773)
 
   await page.getByRole('link', { name: 'Athletes', exact: true }).click()
   await page.getByRole('link', { name: 'QA Athlete', exact: true }).click()
@@ -205,7 +204,6 @@ test('coach adds a complete testing event without losing historical data', async
   await page.getByRole('link', { name: 'Leaderboards', exact: true }).click()
   await expect(page.getByRole('main').getByText('QA Athlete', { exact: true }).first()).toBeVisible()
 
-  // Verify backup export and the TV route without entering the full-screen shell.
   await page.getByRole('link', { name: 'Data', exact: true }).click()
   const exportButton = page.getByRole('button', { name: 'Export All Data (CSV)' })
   await expect(exportButton).toBeVisible()
