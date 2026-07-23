@@ -1,0 +1,89 @@
+name: One-time Claude merge repair
+
+on:
+  push:
+    branches:
+      - fix/finish-claude-pr55
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Repair concurrent merge type errors
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "src/data/historicalSeed.test.ts",
+              "import type { RequiredAppData } from '../types'",
+              "import type { AppData } from '../types'",
+          )
+          replace_once(
+              "src/data/historicalSeed.test.ts",
+              "import { historicalSeedData, mergeHistoricalData } from './historicalSeed'\n",
+              "import { historicalSeedData, mergeHistoricalData } from './historicalSeed'\n\ntype RequiredAppData = Required<AppData>\n",
+          )
+
+          replacements = {
+              "events: [...base.events, ...supplement.events],":
+                  "events: [...(base.events ?? []), ...(supplement.events ?? [])],",
+              "plays: [...base.plays, ...supplement.plays],":
+                  "plays: [...(base.plays ?? []), ...(supplement.plays ?? [])],",
+              "filmPlays: [...base.filmPlays, ...supplement.filmPlays],":
+                  "filmPlays: [...(base.filmPlays ?? []), ...(supplement.filmPlays ?? [])],",
+          }
+          for old, new in replacements.items():
+              replace_once("src/data/historicalSeed.ts", old, new)
+
+          replace_once(
+              "src/data/sheet2026Supplement.ts",
+              "phase: 'Spring',",
+              "phase: 'Offseason',",
+          )
+
+          Path(".github/workflows/repair-claude-merge.yml").unlink()
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit validated repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix Claude merge build regressions"
+          git push origin HEAD:fix/finish-claude-pr55
