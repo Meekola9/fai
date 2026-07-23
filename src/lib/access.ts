@@ -68,8 +68,12 @@ export function normalizePermissions(value: unknown): TeamPermissions {
  * Coaches therefore receive the complete operating package, while staff/data
  * administration remains owner/admin only. This avoids misleading partial
  * access until cloud persistence is split into table-scoped writes.
+ *
+ * `assigned` remains accepted for backward compatibility with invitations and
+ * existing tests, but the current fixed coach package intentionally overrides it.
  */
-export function permissionsFor(role: TeamRole, _assigned: TeamPermissions = {}): TeamPermissions {
+export function permissionsFor(role: TeamRole, assigned: TeamPermissions = {}): TeamPermissions {
+  void assigned
   if (role === 'owner' || role === 'admin') return ALL_STAFF
   if (role === 'coach') return COACH_OPERATIONAL_PERMISSIONS
   return {}
