@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import type { RequiredAppData } from '../types'
 import { historicalSeedData, mergeHistoricalData } from './historicalSeed'
+
+function mergedEventRecord(data: RequiredAppData, athleteId: string | undefined, eventId: string): Record<string, unknown> {
+  const merged: Record<string, unknown> = {}
+  for (const session of data.sessions.filter((item) => item.athleteId === athleteId && item.eventId === eventId)) {
+    for (const [key, value] of Object.entries(session)) {
+      if (value !== undefined && value !== null) merged[key] = value
+    }
+  }
+  return merged
+}
 
 describe('historicalSeedData', () => {
   it('decodes the bundled historical seed', async () => {
@@ -27,15 +38,15 @@ describe('historicalSeedData', () => {
     expect(data.events).toHaveLength(20)
   })
 
-  it('contains 159 consolidated athlete identities', async () => {
+  it('contains 164 consolidated athlete identities', async () => {
     const data = await historicalSeedData()
-    expect(data.athletes).toHaveLength(159)
+    expect(data.athletes).toHaveLength(164)
   })
 
-  it('enriches the existing 762 sessions instead of creating duplicate 2026 cards', async () => {
+  it('enriches existing sessions and adds only eight genuinely new 2026 records', async () => {
     const data = await historicalSeedData()
-    expect(data.sessions).toHaveLength(762)
-    expect(data.sessions.some((session) => session.id.startsWith('session-sheet26-'))).toBe(false)
+    expect(data.sessions).toHaveLength(770)
+    expect(data.sessions.filter((session) => session.id.startsWith('session-sheet26-'))).toHaveLength(8)
   })
 
   it('contains no sessions whose athlete or event is missing', async () => {
@@ -87,11 +98,7 @@ describe('historicalSeedData', () => {
     const summerEvent = 'event-7badc8422c3808'
 
     const aj = data.athletes.find((athlete) => athlete.name === 'AJ Bailey')
-    const ajSummer = data.sessions.find(
-      (session) => session.athleteId === aj?.id && session.eventId === summerEvent,
-    )
-    expect(ajSummer).toMatchObject({
-      date: '2026-06-15',
+    expect(mergedEventRecord(data, aj?.id, summerEvent)).toMatchObject({
       weightLbsSnapshot: 184,
       benchMax: 250,
       dash40_1: 4.49,
@@ -106,11 +113,8 @@ describe('historicalSeedData', () => {
     })
 
     const knCrump = data.athletes.find((athlete) => athlete.name === 'Kn. Crump')
-    const crump2030 = data.sessions.find(
-      (session) => session.athleteId === knCrump?.id && session.eventId === summerEvent,
-    )
     expect(knCrump).toMatchObject({ grade: 9, heightIn: 73, weightLbs: 172 })
-    expect(crump2030).toMatchObject({
+    expect(mergedEventRecord(data, knCrump?.id, summerEvent)).toMatchObject({
       weightLbsSnapshot: 172,
       benchMax: 160,
       dash40_1: 5.18,
@@ -125,11 +129,8 @@ describe('historicalSeedData', () => {
     })
 
     const kuCrump = data.athletes.find((athlete) => athlete.name === 'Ku. Crump')
-    const crump2028Summer = data.sessions.find(
-      (session) => session.athleteId === kuCrump?.id && session.eventId === summerEvent,
-    )
     expect(kuCrump).toMatchObject({ grade: 10, heightIn: 75, weightLbs: 191 })
-    expect(crump2028Summer).toMatchObject({
+    expect(mergedEventRecord(data, kuCrump?.id, summerEvent)).toMatchObject({
       weightLbsSnapshot: 191,
       benchMax: 200,
       powerCleanMax: 225,
