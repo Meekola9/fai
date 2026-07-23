@@ -109,4 +109,11 @@ describe('lineup engine', () => {
     expect(Object.keys(assignments)).toEqual(['qb'])
     expect(assignments.qb.rating).toBe(88)
   })
+
+  it('keeps every scheme slot identifier unique', () => {
+    for (const scheme of LINEUP_SCHEMES) {
+      const slotIds = scheme.rows.flat().map((slot) => slot.id)
+      expect(new Set(slotIds).size).toBe(slotIds.length)
+    }
+  })
 })
