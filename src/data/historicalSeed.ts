@@ -2,6 +2,7 @@ import type { AppData } from '../types'
 import { importCsv } from './csv'
 import { consolidateAthleteAliases } from '../lib/athleteIdentity'
 import { normalizeAppData } from '../lib/events'
+import { sheet2026SupplementData } from './sheet2026Supplement'
 import chunk0 from './historicalSeedPayload/0.csv?raw'
 import chunk1 from './historicalSeedPayload/1.csv?raw'
 import chunk2 from './historicalSeedPayload/2a.csv?raw'
@@ -116,8 +117,16 @@ let seedCache: Required<AppData> | null = null
 
 export async function historicalSeedData(): Promise<Required<AppData>> {
   if (!seedCache) {
+    const base = importCsv(HISTORICAL_CSV)
+    const supplement = sheet2026SupplementData()
     seedCache = consolidateAthleteAliases(
-      repairHistoricalReferences(importCsv(HISTORICAL_CSV)),
+      repairHistoricalReferences({
+        athletes: [...base.athletes, ...supplement.athletes],
+        events: [...base.events, ...supplement.events],
+        sessions: [...base.sessions, ...supplement.sessions],
+        plays: [...base.plays, ...supplement.plays],
+        filmPlays: [...base.filmPlays, ...supplement.filmPlays],
+      }),
     )
   }
   return seedCache
@@ -152,7 +161,7 @@ export const HISTORICAL_SEED_SUMMARY = {
   lastYear: 2026,
   eventCount: 20,
   athleteCount: 159,
-  sessionCount: 762,
+  sessionCount: 864,
   mergedAliasCount: 26,
 } as const
 
@@ -160,4 +169,4 @@ export const HISTORICAL_SEED_SUMMARY = {
  * Bump whenever the bundled archive gains records, so signed-in teams get the
  * new baseline merged into their cloud data exactly once per version.
  */
-export const SEED_VERSION = '2026-07-sum26-roster-integrity'
+export const SEED_VERSION = '2026-07-sheet26-complete'
