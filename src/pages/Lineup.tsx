@@ -89,11 +89,11 @@ export default function Lineup() {
 
   const availableSchemes = schemesForUnit(unit)
   const scheme = availableSchemes.find((item) => item.id === selectedSchemeIds[unit]) ?? availableSchemes[0]
-  const overrides = storedLineups[scheme.id] ?? {}
-  const assignments = useMemo(
-    () => generateBestLineup(data.athletes, ratings, scheme, overrides),
-    [data.athletes, overrides, ratings, scheme],
+  const overrides = useMemo(
+    () => storedLineups[scheme.id] ?? {},
+    [scheme.id, storedLineups],
   )
+  const assignments = generateBestLineup(data.athletes, ratings, scheme, overrides)
   const editingSlot = editingSlotId
     ? flatSlots(scheme).find((lineupSlot) => lineupSlot.id === editingSlotId)
     : undefined
