@@ -32,9 +32,9 @@ describe('historicalSeedData', () => {
     expect(data.athletes).toHaveLength(159)
   })
 
-  it('contains all 762 historical testing sessions', async () => {
+  it('contains all 864 historical testing sessions', async () => {
     const data = await historicalSeedData()
-    expect(data.sessions).toHaveLength(762)
+    expect(data.sessions).toHaveLength(864)
   })
 
   it('contains no sessions whose athlete or event is missing', async () => {
@@ -75,47 +75,56 @@ describe('historicalSeedData', () => {
     })
   })
 
-  it('contains the recorded 2026 vertical, broad-jump, and squat results', async () => {
+  it('contains the complete updated 2026 measurements', async () => {
     const data = await historicalSeedData()
 
     const ajSummer = data.sessions.find(
-      (session) =>
-        session.athleteId === 'athlete-404779f150e831'
-        && session.id === 'session-51c7ae5c71707b',
+      (session) => session.id === 'session-sheet26-aj-bailey-2027-summer',
     )
     expect(ajSummer).toMatchObject({
       date: '2026-06-15',
       weightLbsSnapshot: 184,
+      benchMax: 250,
+      dash40_1: 4.49,
+      fly10_1: 1,
+      powerCleanMax: 255,
+      shuttle20_1: 4.27,
+      latShuttle_1: 2.7,
+      illinois: 14.66,
       squatMax: 410,
       broadJump: 108,
       verticalJump: 36,
     })
 
-    // Kn. Crump (2030) is separate from K. Crump (2028).
     const crump2030 = data.sessions.find(
-      (session) => session.id === 'session-9039e5408d6d7f',
+      (session) => session.id === 'session-sheet26-kn-crump-2030-summer',
     )
     expect(crump2030).toMatchObject({
-      athleteId: 'athlete-ea323b307d8f51',
+      weightLbsSnapshot: 172,
+      benchMax: 160,
+      dash40_1: 5.18,
+      fly10_1: 1.25,
+      powerCleanMax: 155,
+      shuttle20_1: 4.9,
+      latShuttle_1: 2.82,
+      illinois: 16.32,
       squatMax: 235,
-      broadJump: 86,
+      broadJump: 86.28,
       verticalJump: 24,
     })
 
-    const crump2028Spring = data.sessions.find(
-      (session) => session.id === 'session-e08561c56a066e',
-    )
+    const knCrump = data.athletes.find((athlete) => athlete.name === 'Kn. Crump')
+    expect(knCrump).toMatchObject({ grade: 9, heightIn: 73, weightLbs: 172 })
+
     const crump2028Summer = data.sessions.find(
-      (session) => session.id === 'session-8ecde7be11646f',
+      (session) => session.id === 'session-sheet26-ku-crump-2028-summer',
     )
-    expect(crump2028Spring).toMatchObject({
-      athleteId: 'athlete-ab232d66c6da60',
-      squatMax: 390,
-    })
     expect(crump2028Summer).toMatchObject({
-      athleteId: 'athlete-ab232d66c6da60',
+      weightLbsSnapshot: 191,
+      benchMax: 200,
+      powerCleanMax: 225,
       squatMax: 460,
-      broadJump: 118,
+      broadJump: 117.6,
       verticalJump: 27,
     })
   })
@@ -130,8 +139,6 @@ describe('historicalSeedData', () => {
     expect(names.has('J. Nelson')).toBe(false)
     expect(names.has('D.Evans')).toBe(false)
     expect(names.has('Lo. Cross')).toBe(false)
-    // Lu. Cross (class of 2025) is a different athlete from Logan Cross
-    // (class of 2023), kept separate under a disambiguated name.
     expect(names.has('Lu. Cross')).toBe(false)
     expect(names.has('Lu. Cross (2025)')).toBe(true)
   })
