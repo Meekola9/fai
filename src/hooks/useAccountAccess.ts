@@ -28,16 +28,40 @@ export interface AccountAccessState {
 }
 
 export function useAccountAccess(): AccountAccessState {
-  const { signedIn, teamRole } = useStore()
-  const [loading, setLoading] = useState(signedIn)
-  const [role, setRole] = useState<TeamRole | undefined>(teamRole ? normalizeRole(teamRole) : undefined)
+  const { signedIn, teamRole, cloudConfigured } = useStore()
+  const initialRole: TeamRole | undefined = !cloudConfigured
+    ? 'owner'
+    : teamRole
+      ? normalizeRole(teamRole)
+      : undefined
+  const [loading, setLoading] = useState(cloudConfigured && signedIn)
+  const [role, setRole] = useState<TeamRole | undefined>(initialRole)
   const [permissions, setPermissions] = useState<TeamPermissions>({})
   const [athleteId, setAthleteId] = useState<string>()
 
   useEffect(() => {
     let active = true
-    if (!signedIn || !supabase) return () => { active = false }
 
+    // Local-only installs have no remote identity or membership table. Preserve
+    // the original full on-device coach experience by treating the device owner
+    // as the owner. Cloud-configured signed-out visitors never enter this path.
+    if (!cloudConfigured) {
+      setLoading(false)
+      setRole('owner')
+      setPermissions({})
+      setAthleteId(undefined)
+      return () => { active = false }
+    }
+
+    if (!signedIn || !supabase) {
+      setLoading(false)
+      setRole(teamRole ? normalizeRole(teamRole) : undefined)
+      setPermissions({})
+      setAthleteId(undefined)
+      return () => { active = false }
+    }
+
+    setLoading(true)
     void (async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession()
@@ -75,7 +99,7 @@ export function useAccountAccess(): AccountAccessState {
     })()
 
     return () => { active = false }
-  }, [signedIn, teamRole])
+  }, [cloudConfigured, signedIn, teamRole])
 
   const capabilities = useMemo(
     () => capabilitiesFor(role, permissions, athleteId),
