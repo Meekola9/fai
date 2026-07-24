@@ -3,8 +3,10 @@ import Archetypes from './Archetypes'
 import Badges from './Badges'
 import VerticalBenchmarks from './VerticalBenchmarks'
 import { Card } from '../components/ui'
-
-export type DevelopmentSection = 'archetypes' | 'badges' | 'vertical'
+import {
+  developmentSectionFromLocation,
+  type DevelopmentSection,
+} from '../lib/playerDevelopment'
 
 const SECTIONS: readonly {
   id: DevelopmentSection
@@ -36,20 +38,10 @@ const SECTIONS: readonly {
   },
 ]
 
-export function sectionFromLocation(pathname: string, search: string): DevelopmentSection {
-  if (pathname.startsWith('/badges')) return 'badges'
-  if (pathname.startsWith('/vertical')) return 'vertical'
-  if (pathname.startsWith('/archetypes')) return 'archetypes'
-  const requested = new URLSearchParams(search).get('section')
-  return requested === 'badges' || requested === 'vertical' || requested === 'archetypes'
-    ? requested
-    : 'archetypes'
-}
-
 export default function PlayerDevelopment() {
   const location = useLocation()
   const navigate = useNavigate()
-  const active = sectionFromLocation(location.pathname, location.search)
+  const active = developmentSectionFromLocation(location.pathname, location.search)
 
   function openSection(section: DevelopmentSection) {
     navigate(`/development?section=${section}`)
