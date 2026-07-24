@@ -99,6 +99,7 @@ interface StoreContextValue {
   addPlay: (play: Omit<PlayEvent, 'id' | 'createdAt'>) => string
   deletePlay: (id: string) => void
   addFilmPlay: (film: Omit<FilmPlay, 'id' | 'createdAt'>) => string
+  addFilmPlays: (films: FilmPlay[]) => void
   updateFilmPlay: (film: FilmPlay) => void
   deleteFilmPlay: (id: string) => void
   /** Record an awareness-quiz result for the given athlete (athlete self-service). */
@@ -619,6 +620,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         filmPlays: [...current.filmPlays, { ...film, id, createdAt }],
       }))
       return id
+    },
+    addFilmPlays(films) {
+      mutate((current) => {
+        const existingIds = new Set(current.filmPlays.map((film) => film.id))
+        const additions = films.filter((film) => !existingIds.has(film.id))
+        return {
+          ...current,
+          filmPlays: [...current.filmPlays, ...additions],
+        }
+      })
     },
     updateFilmPlay(film) {
       mutate((current) => ({

@@ -126,7 +126,7 @@ function applyOverride(
 }
 
 export default function HudlImportWizard() {
-  const { data, replaceAll, canEdit } = useStore()
+  const { data, addFilmPlays, canEdit } = useStore()
   const [expanded, setExpanded] = useState(false)
   const [breakdownText, setBreakdownText] = useState('')
   const [table, setTable] = useState<HudlTable>(emptyTable)
@@ -211,7 +211,7 @@ export default function HudlImportWizard() {
       setMessage('Every preview row already exists in the Film Room. Nothing was imported.')
       return
     }
-    replaceAll({ ...data, filmPlays: [...data.filmPlays, ...records] })
+    addFilmPlays(records)
     setMessage(
       `Imported ${records.length} plays in one save${duplicates ? `; skipped ${duplicates} duplicates` : ''}.`,
     )
