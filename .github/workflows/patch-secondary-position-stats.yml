@@ -1,0 +1,146 @@
+name: Patch secondary position stats
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/secondary-position-stats-clean-archetype
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply focused UI and scoring changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          def replace_count(path: str, old: str, new: str, expected: int) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"Expected {expected} matches in {path}, found {count}: {old!r}")
+              file.write_text(text.replace(old, new))
+
+          replace_once(
+              "src/lib/compute.ts",
+              "}\n\nexport interface PositionScoreBreakdown {",
+              "}\n\n/** Recompute one testing card against an explicit position group's benchmarks. */\nexport function computeSessionForPositionGroup(\n  session: TestSession,\n  athlete: Athlete,\n  event: TestingEvent,\n  positionGroup: PositionGroup,\n): ComputedSession {\n  return computeForGroup(session, athlete, event, positionGroup)\n}\n\nexport interface PositionScoreBreakdown {",
+          )
+
+          replace_once(
+              "src/lib/badges.ts",
+              "    evidence: `${archetype.role} archetype · ${archetype.confidence} confidence${lead ? ` · ${lead}` : ''}`,",
+              "    evidence: lead ?? 'Profile match',",
+          )
+
+          replace_once(
+              "src/components/PlayerBadges.tsx",
+              "              {TIER_NAME[badge.tier]} badge",
+              "              {badge.group === 'signature' ? 'Archetype' : `${TIER_NAME[badge.tier]} badge`}",
+          )
+
+          profile = "src/pages/AthleteProfile.tsx"
+          replace_once(profile, "import { useMemo } from 'react'", "import { useMemo, useState } from 'react'")
+          replace_once(
+              profile,
+              "import { athleteTimeline } from '../lib/compute'",
+              "import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '../lib/compute'",
+          )
+          replace_once(
+              profile,
+              "import { playerBadgesFor } from '../lib/badges'",
+              "import { playerBadgesFor } from '../lib/badges'\nimport { archetypeFor } from '../lib/archetypes'",
+          )
+          replace_once(
+              profile,
+              "export default function AthleteProfile() {\n  const { id } = useParams()",
+              "export default function AthleteProfile() {\n  const { id } = useParams()\n  const [positionView, setPositionView] = useState<'primary' | 'secondary'>('primary')",
+          )
+          replace_count(
+              profile,
+              "<span>{athlete.position}</span>",
+              "<span>{athlete.secondaryPosition ? `${athlete.position} / ${athlete.secondaryPosition}` : athlete.position}</span>",
+              2,
+          )
+
+          replace_once(
+              profile,
+              "  const displayResult = currentSeasonResult(result)\n  const { current, rankEligible } = displayResult\n  const strong = strengths(current)\n  const weak = weaknesses(current)\n  const badges = playerBadgesFor({ result: displayResult, timeline })\n  const radarSeries = [\n    { label: '2026', color: '#c6f24e', values: current.categories as Record<Category, number> },\n  ]",
+              "  const displayResult = currentSeasonResult(result)\n  const { current, rankEligible } = displayResult\n  const primaryGroup = current.session.positionGroupSnapshot ?? athlete.positionGroup\n  const primaryPosition = computeSessionForPositionGroup(\n    current.session,\n    athlete,\n    current.event,\n    primaryGroup,\n  )\n  const secondaryGroup = athlete.secondaryPositionGroup\n  const secondaryPosition = secondaryGroup\n    ? computeSessionForPositionGroup(\n        {\n          ...current.session,\n          positionSnapshot: athlete.secondaryPosition ?? secondaryGroup,\n          positionGroupSnapshot: secondaryGroup,\n        },\n        {\n          ...athlete,\n          position: athlete.secondaryPosition ?? secondaryGroup,\n          positionGroup: secondaryGroup,\n        },\n        current.event,\n        secondaryGroup,\n      )\n    : undefined\n  const viewingSecondary = positionView === 'secondary' && Boolean(secondaryPosition && secondaryGroup)\n  const selectedPosition = viewingSecondary && secondaryPosition ? secondaryPosition : primaryPosition\n  const selectedGroup = viewingSecondary && secondaryGroup ? secondaryGroup : primaryGroup\n  const selectedPositionName = viewingSecondary\n    ? athlete.secondaryPosition ?? secondaryGroup ?? 'Secondary'\n    : athlete.position\n  const totalBoostPct = displayResult.impactBoostPct + displayResult.awarenessBoostPct\n  const positionCurrent = {\n    ...selectedPosition,\n    fai: round1(clamp(selectedPosition.fai * (1 + totalBoostPct / 100), 0, 100)),\n  }\n  const positionArchetype = archetypeFor(positionCurrent)\n  const strong = strengths(positionCurrent)\n  const weak = weaknesses(positionCurrent)\n  const badges = playerBadgesFor({ result: displayResult, timeline })\n  const radarSeries = [\n    { label: `${selectedGroup} view`, color: '#c6f24e', values: positionCurrent.categories as Record<Category, number> },\n  ]",
+          )
+
+          replace_once(
+              profile,
+              "      <FilmCard hudlUrl={athlete.hudlUrl} />\n\n      <div className=\"grid gap-6 lg:grid-cols-2\">",
+              "      <FilmCard hudlUrl={athlete.hudlUrl} />\n\n      {secondaryPosition && secondaryGroup && (\n        <Card className=\"border-fai/25 p-4\">\n          <div className=\"flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between\">\n            <div>\n              <div className=\"text-[10px] font-black uppercase tracking-[0.18em] text-fai\">Position Stats</div>\n              <div className=\"mt-1 text-sm text-muted\">Compare the same testing results against each position's benchmarks.</div>\n            </div>\n            <div className=\"flex rounded-xl border border-line bg-ink p-1\" role=\"tablist\" aria-label=\"Position statistics view\">\n              <button\n                type=\"button\"\n                role=\"tab\"\n                aria-selected={!viewingSecondary}\n                onClick={() => setPositionView('primary')}\n                className={`rounded-lg px-3 py-2 text-xs font-black transition ${!viewingSecondary ? 'bg-fai text-ink' : 'text-muted hover:text-chalk'}`}\n              >\n                Primary · {athlete.position}\n              </button>\n              <button\n                type=\"button\"\n                role=\"tab\"\n                aria-selected={viewingSecondary}\n                onClick={() => setPositionView('secondary')}\n                className={`rounded-lg px-3 py-2 text-xs font-black transition ${viewingSecondary ? 'bg-fai text-ink' : 'text-muted hover:text-chalk'}`}\n              >\n                Secondary · {athlete.secondaryPosition ?? secondaryGroup}\n              </button>\n            </div>\n          </div>\n          <div className=\"mt-4 flex flex-wrap items-center gap-2\">\n            <Pill tone=\"fai\">{selectedPositionName} · {selectedGroup}</Pill>\n            <Pill tone=\"gold\">{positionCurrent.fai.toFixed(1)} position FAI</Pill>\n            {positionArchetype && <Pill>{positionArchetype.name}</Pill>}\n          </div>\n          <p className=\"mt-2 text-xs leading-relaxed text-muted\">\n            Comparison view only. The official blended FAI and rankings above do not change.\n          </p>\n        </Card>\n      )}\n\n      <div className=\"grid gap-6 lg:grid-cols-2\">",
+          )
+
+          replace_once(profile, "<SectionTitle right={<span className=\"text-xs font-bold text-fai\">● 2026</span>}>", "<SectionTitle right={<span className=\"text-xs font-bold text-fai\">● {selectedGroup}</span>}>")
+          replace_once(profile, "            2026 Category Profile", "            {selectedPositionName} Category Profile")
+          replace_count(profile, "current.categories[category]", "positionCurrent.categories[category]", 3)
+          replace_once(profile, "        <SectionTitle>2026 Test Results</SectionTitle>", "        <SectionTitle>{selectedPositionName} Test Scores</SectionTitle>")
+          replace_once(profile, "                const raw = current.metrics[metric.key]", "                const raw = positionCurrent.metrics[metric.key]")
+          replace_once(profile, "                const score = current.normalized[metric.key]", "                const score = positionCurrent.normalized[metric.key]")
+
+          replace_once(
+              "src/lib/compute.test.ts",
+              "import { computeAll } from './compute'",
+              "import { computeAll, computeSessionForPositionGroup } from './compute'",
+          )
+          replace_once(
+              "src/lib/compute.test.ts",
+              "  it('preserves legitimate zero benchmark scores', () => {",
+              "  it('recomputes one testing card against a selected secondary position group', () => {\n    const merged = computeAll(completeData)[0]\n    const withTen = { ...merged.session, dash10_1: 1.7, dash10_2: 1.73 }\n    const skillView = computeSessionForPositionGroup(withTen, athlete, event, 'WR')\n    const lineView = computeSessionForPositionGroup(\n      { ...withTen, positionSnapshot: 'OT', positionGroupSnapshot: 'OL' },\n      { ...athlete, position: 'OT', positionGroup: 'OL', weightLbs: 270 },\n      event,\n      'OL',\n    )\n\n    expect(skillView.normalized.best10).toBeUndefined()\n    expect(lineView.normalized.best10).toBe(100)\n    expect(lineView.fai).not.toBe(skillView.fai)\n  })\n\n  it('preserves legitimate zero benchmark scores', () => {",
+          )
+
+          replace_once(
+              "src/lib/badges.test.ts",
+              "    expect(speedSig[0].id).not.toBe(shiftySig[0].id)\n",
+              "    expect(speedSig[0].id).not.toBe(shiftySig[0].id)\n    expect(speedSig[0].evidence).toMatch(/^Speed \\d+$/)\n    expect(speedSig[0].evidence).not.toContain('archetype')\n    expect(speedSig[0].evidence).not.toContain('confidence')\n",
+          )
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit validated feature branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Clean archetype badges and add secondary position stats"
+          git push origin HEAD:feature/secondary-position-stats-clean-archetype
