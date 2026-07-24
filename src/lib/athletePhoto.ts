@@ -38,7 +38,7 @@ export function athletePhotoPath(
   teamId: string,
   athleteId: string,
   file: AthletePhotoFileLike,
-  uniqueId = crypto.randomUUID(),
+  uniqueId: string = crypto.randomUUID(),
 ): string {
   const extension = athletePhotoExtension(file)
   return `${safeSegment(teamId, 'Team')}/${safeSegment(athleteId, 'Athlete')}/${safeSegment(uniqueId, 'Photo id')}.${extension}`
