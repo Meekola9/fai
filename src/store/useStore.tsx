@@ -70,6 +70,7 @@ interface StoreContextValue {
   cloudConfigured: boolean
   signedIn: boolean
   userEmail?: string
+  teamId?: string
   teamName?: string
   teamRole?: string
   publicTeamName?: string
@@ -87,7 +88,7 @@ interface StoreContextValue {
   signOut: () => Promise<void>
   syncNow: () => Promise<void>
   importLocalToCloud: () => Promise<void>
-  addAthlete: (athlete: Omit<Athlete, 'id'>) => string
+  addAthlete: (athlete: Omit<Athlete, 'id'>, athleteId?: string) => string
   updateAthlete: (athlete: Athlete) => void
   deleteAthlete: (id: string) => void
   addEvent: (event: Omit<TestingEvent, 'id' | 'createdAt'>) => string
@@ -417,6 +418,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     cloudConfigured: isSupabaseConfigured,
     signedIn: Boolean(userId),
     userEmail,
+    teamId: team?.id,
     teamName: team?.name,
     teamRole: team?.role,
     publicTeamName,
@@ -508,8 +510,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     },
 
-    addAthlete(athlete) {
-      const id = newId('athlete')
+    addAthlete(athlete, athleteId) {
+      const id = athleteId ?? newId('athlete')
       mutate((current) => ({
         ...current,
         athletes: [...current.athletes, { ...athlete, id }],
