@@ -146,6 +146,9 @@ describe('player badges', () => {
     expect(shiftySig).toHaveLength(1)
     // Two receivers with different standout traits carry different signatures.
     expect(speedSig[0].id).not.toBe(shiftySig[0].id)
+    expect(speedSig[0].evidence).toMatch(/^Speed \d+$/)
+    expect(speedSig[0].evidence).not.toContain('archetype')
+    expect(speedSig[0].evidence).not.toContain('confidence')
   })
 
   it('awards elite category and absolute performance badges without stacking lower clubs', () => {
