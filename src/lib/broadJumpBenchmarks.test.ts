@@ -27,7 +27,7 @@ describe('broad jump benchmarks', () => {
   })
 
   it('formats stored inches as football feet-and-inches notation', () => {
-    expect(formatBroadJump(112)).toBe(`9'4.0\"`)
-    expect(formatBroadJump(98.5)).toBe(`8'2.5\"`)
+    expect(formatBroadJump(112)).toBe(`9'4.0"`)
+    expect(formatBroadJump(98.5)).toBe(`8'2.5"`)
   })
 })
