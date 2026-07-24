@@ -1,0 +1,49 @@
+name: Run collectible player card integration
+
+on:
+  push:
+    branches: [feature/collectible-player-card-final]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/collectible-player-card-final
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply existing player-card integration script
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/apply-player-card.yml').read_text()
+          marker = "python - <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY", start)
+          script = textwrap.dedent(workflow[start:end])
+          exec(compile(script, 'player-card-integration', 'exec'))
+          PY
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated player card
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/apply-player-card.yml .github/workflows/run-player-card-integration.yml .github/player-card-trigger.txt
+          git add src/pages/AthleteProfile.tsx src/components/AthletePlayerCard.tsx .github/workflows/apply-player-card.yml .github/workflows/run-player-card-integration.yml .github/player-card-trigger.txt
+          git commit -m "Redesign athlete profile as collectible FAI player card"
+          git push origin HEAD:feature/collectible-player-card-final
