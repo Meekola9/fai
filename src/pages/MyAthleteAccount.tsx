@@ -14,37 +14,124 @@ const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
 
 const inputClass = 'w-full rounded-xl border border-line bg-ink px-4 py-3 text-sm text-chalk outline-none placeholder:text-muted focus:border-fai'
 
+function formatQuizDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10)
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function AwarenessMeter({ score }: { score?: number }) {
+  const safeScore = Math.max(0, Math.min(100, score ?? 0))
+  const hasScore = typeof score === 'number'
+
+  return (
+    <div className="mt-5" data-testid="awareness-meter">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-muted">Awareness meter</div>
+        <div className="nums text-xs font-black text-chalk">{hasScore ? `${safeScore}/100` : 'Not scored'}</div>
+      </div>
+
+      <div className="relative pt-4">
+        {hasScore && (
+          <div
+            className="absolute top-0 z-10 -translate-x-1/2"
+            style={{ left: `${safeScore}%` }}
+            aria-label={`Awareness score marker: ${safeScore}`}
+          >
+            <div className="mx-auto h-3 w-3 rotate-45 rounded-[2px] border border-chalk/70 bg-chalk shadow-[0_0_14px_rgba(255,255,255,0.45)]" />
+          </div>
+        )}
+
+        <div className="grid h-4 overflow-hidden rounded-full border border-line bg-panel-2 grid-cols-[60fr_15fr_15fr_10fr]">
+          <div className={safeScore > 0 ? 'bg-down/70' : 'bg-down/25'} />
+          <div className={safeScore >= 60 ? 'bg-gold/80' : 'bg-gold/25'} />
+          <div className={safeScore >= 75 ? 'bg-fai/80' : 'bg-fai/20'} />
+          <div className={safeScore >= 90 ? 'bg-up/80' : 'bg-up/20'} />
+        </div>
+      </div>
+
+      <div className="mt-2 grid grid-cols-4 gap-1 text-center">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-wider text-down">Needs Study</div>
+          <div className="nums text-[9px] text-muted">0–59</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-wider text-gold">Developing</div>
+          <div className="nums text-[9px] text-muted">60–74</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-wider text-fai">Sharp</div>
+          <div className="nums text-[9px] text-muted">75–89</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-wider text-up">Elite IQ</div>
+          <div className="nums text-[9px] text-muted">90–100</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function AwarenessQuizCard({ athleteId }: { athleteId: string }) {
   const { data } = useStore()
   const latest = latestAwarenessFor(data.awarenessResults, athleteId)
+  const boost = latest ? awarenessBoostForScore(latest.score) : 0
+  const level = latest ? awarenessLevel(latest.score) : undefined
+
   return (
-    <Card className="border-fai/25 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-black uppercase tracking-[0.18em] text-fai">Football IQ</div>
-          <h2 className="mt-0.5 text-lg font-black text-chalk">Awareness Quiz</h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted">
-            A 15-question football knowledge check. A high score boosts your overall FAI —
-            100% → +5%, 90%+ → +3%, 80%+ → +2%, 75%+ → +1.5%.
-          </p>
-        </div>
-        {latest ? (
-          <div className="text-right">
-            <div className="nums text-4xl font-black leading-none text-chalk">{latest.score}</div>
-            <Pill tone={AWARENESS_TONE[awarenessLevel(latest.score)]}>{awarenessLevel(latest.score)}</Pill>
-            {awarenessBoostForScore(latest.score) > 0 && (
-              <div className="mt-1 text-xs font-black text-up">+{awarenessBoostForScore(latest.score)}% FAI</div>
-            )}
+    <Card className="overflow-hidden border-fai/35 bg-gradient-to-br from-fai/10 via-panel to-panel p-0">
+      <div className="p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-md">
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-fai">Football IQ</div>
+            <h2 className="mt-1 text-2xl font-black text-chalk">Awareness Quiz</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              Complete the 15-question football knowledge check. Your latest score becomes your Awareness rating and can add up to 5% to your overall FAI.
+            </p>
           </div>
-        ) : (
-          <Pill tone="gold">Not taken yet</Pill>
+
+          {latest ? (
+            <div className="min-w-[120px] rounded-2xl border border-line bg-black/25 p-4 text-center">
+              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-muted">Latest score</div>
+              <div className="nums mt-1 text-5xl font-black leading-none text-chalk">{latest.score}</div>
+              <div className="mt-2"><Pill tone={AWARENESS_TONE[level!]}>{level}</Pill></div>
+              {boost > 0 && <div className="mt-2 text-xs font-black text-up">+{boost}% FAI</div>}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-center">
+              <div className="text-2xl">🧠</div>
+              <div className="mt-1 text-xs font-black text-gold">No score yet</div>
+            </div>
+          )}
+        </div>
+
+        <AwarenessMeter score={latest?.score} />
+
+        {latest && (
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-line bg-panel-2/35 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted">Correct</div>
+              <div className="nums mt-1 text-lg font-black text-chalk">{latest.correct}/{latest.total}</div>
+            </div>
+            <div className="rounded-xl border border-line bg-panel-2/35 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted">Level</div>
+              <div className="mt-1 text-sm font-black text-chalk">{level}</div>
+            </div>
+            <div className="rounded-xl border border-line bg-panel-2/35 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted">Last taken</div>
+              <div className="mt-1 text-sm font-black text-chalk">{formatQuizDate(latest.takenAt)}</div>
+            </div>
+          </div>
         )}
       </div>
+
       <Link
         to="/quiz"
-        className="mt-4 inline-block rounded-xl bg-fai px-6 py-3 text-sm font-black text-ink"
+        data-testid="athlete-awareness-quiz-link"
+        className="flex w-full items-center justify-between border-t border-fai/25 bg-fai px-5 py-4 text-sm font-black text-ink transition hover:brightness-110"
       >
-        {latest ? 'Retake the quiz' : 'Take the quiz'}
+        <span>{latest ? 'Retake Awareness Quiz' : 'Take Awareness Quiz'}</span>
+        <span aria-hidden="true">→</span>
       </Link>
     </Card>
   )
@@ -129,6 +216,8 @@ export default function MyAthleteAccount() {
         </div>
       )}
 
+      <AwarenessQuizCard athleteId={athlete.id} />
+
       <Card className="p-5">
         <div className="flex items-center gap-4">
           <Avatar name={athlete.name} photoUrl={photoUrl || athlete.photoUrl} size={82} />
@@ -157,8 +246,6 @@ export default function MyAthleteAccount() {
           </button>
         </div>
       </Card>
-
-      <AwarenessQuizCard athleteId={athlete.id} />
 
       <Card className="border-gold/25 p-4">
         <div className="text-sm font-black text-chalk">Protected team information</div>
