@@ -90,7 +90,7 @@ const receiverCases: ReceiverCase[] = [
     expected: 'Big Body Boundary',
     weight: 190,
     height: 75,
-    scores: { Speed: 70, Acceleration: 72, Jump: 86, Power: 88, Pursuit: 65, 'Change of Direction': 67, Conditioning: 72, Strength: 82 },
+    scores: { Speed: 70, Acceleration: 72, Jump: 78, Power: 94, Pursuit: 65, 'Change of Direction': 67, Conditioning: 72, Strength: 90 },
   },
   {
     expected: 'Contested Catch Freak',
