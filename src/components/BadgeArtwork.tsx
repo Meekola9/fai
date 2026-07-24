@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { BADGE_ART } from '../lib/badgeArt'
 import type { BadgeGroup, BadgeTier, PlayerBadgeDefinition } from '../lib/badges'
 
@@ -6,63 +7,109 @@ const TIER_PALETTE: Record<BadgeTier, {
   light: string
   mid: string
   dark: string
+  core: string
   ink: string
+  glow: string
 }> = {
-  bronze: { edge: '#fb923c', light: '#fdba74', mid: '#c2410c', dark: '#431407', ink: '#fff7ed' },
-  silver: { edge: '#e2e8f0', light: '#f8fafc', mid: '#94a3b8', dark: '#1e293b', ink: '#f8fafc' },
-  gold: { edge: '#fcd34d', light: '#fef3c7', mid: '#d97706', dark: '#451a03', ink: '#fffbeb' },
-  elite: { edge: '#67e8f9', light: '#cffafe', mid: '#0891b2', dark: '#083344', ink: '#ecfeff' },
-  legend: { edge: '#c4b5fd', light: '#ede9fe', mid: '#7c3aed', dark: '#2e1065', ink: '#faf5ff' },
+  bronze: {
+    edge: '#fb923c',
+    light: '#ffedd5',
+    mid: '#c2410c',
+    dark: '#431407',
+    core: '#170906',
+    ink: '#fff7ed',
+    glow: '#f97316',
+  },
+  silver: {
+    edge: '#e2e8f0',
+    light: '#ffffff',
+    mid: '#94a3b8',
+    dark: '#1e293b',
+    core: '#0f172a',
+    ink: '#f8fafc',
+    glow: '#cbd5e1',
+  },
+  gold: {
+    edge: '#fcd34d',
+    light: '#fff7cc',
+    mid: '#d97706',
+    dark: '#451a03',
+    core: '#1c0c03',
+    ink: '#fffbeb',
+    glow: '#fbbf24',
+  },
+  elite: {
+    edge: '#67e8f9',
+    light: '#ecfeff',
+    mid: '#0891b2',
+    dark: '#083344',
+    core: '#031b22',
+    ink: '#ecfeff',
+    glow: '#22d3ee',
+  },
+  legend: {
+    edge: '#c4b5fd',
+    light: '#f5f3ff',
+    mid: '#7c3aed',
+    dark: '#2e1065',
+    core: '#14052e',
+    ink: '#faf5ff',
+    glow: '#a78bfa',
+  },
 }
 
-const FRAME_PATH: Record<BadgeTier, string> = {
-  bronze: 'M32 3L55 16V48L32 61L9 48V16Z',
-  silver: 'M20 4H44L60 20V44L44 60H20L4 44V20Z',
-  gold: 'M32 3L57 13V31C57 46 47 56 32 61C17 56 7 46 7 31V13Z',
-  elite: 'M32 2L39 9L49 6L53 16L62 20L58 31L62 42L53 47L49 58L38 55L32 62L25 55L14 58L10 47L2 42L6 31L2 20L11 16L15 6L25 9Z',
-  legend: 'M32 2L39 10L49 5L52 16L62 20L57 31L62 42L52 47L48 59L37 55L32 63L26 55L15 59L12 47L2 42L7 31L2 20L12 16L15 5L25 10Z',
+const TIER_RANK: Record<BadgeTier, number> = {
+  bronze: 1,
+  silver: 2,
+  gold: 3,
+  elite: 4,
+  legend: 5,
 }
+
+const OUTER_FRAME = 'M11 5H53L59 13V36C59 49 49 58 32 63C15 58 5 49 5 36V13Z'
+const INNER_FRAME = 'M14 12H50L54 18V35C54 44 46 51 32 56C18 51 10 44 10 35V18Z'
+const CORE_FRAME = 'M17 17H47L50 21V34C50 41 43 47 32 51C21 47 14 41 14 34V21Z'
 
 function GroupPattern({ group, color }: { group: BadgeGroup; color: string }) {
   if (group === 'testing') {
     return (
-      <g opacity="0.2" stroke={color} strokeWidth="1">
-        <path d="M11 21H53M11 32H53M11 43H53M21 11V53M32 11V53M43 11V53" />
+      <g opacity="0.17" stroke={color} strokeWidth="1">
+        <path d="M12 22H52M11 31H53M13 40H51M22 13V48M32 12V52M42 13V48" />
       </g>
     )
   }
   if (group === 'performance') {
     return (
-      <g opacity="0.18" stroke={color} strokeWidth="1">
-        <path d="M32 7V18M32 46V57M7 32H18M46 32H57M14 14L22 22M42 42L50 50M50 14L42 22M22 42L14 50" />
+      <g opacity="0.17" stroke={color} strokeWidth="1">
+        <path d="M32 11V19M32 45V53M11 32H19M45 32H53M17 17L23 23M41 41L47 47M47 17L41 23M23 41L17 47" />
       </g>
     )
   }
   if (group === 'club') {
     return (
-      <g opacity="0.18" stroke={color} strokeWidth="1.2">
-        <path d="M8 19H42M5 27H49M8 35H55M15 43H58" />
+      <g opacity="0.17" stroke={color} strokeWidth="1.2">
+        <path d="M10 21H42M8 28H49M10 35H54M16 42H55" />
       </g>
     )
   }
   if (group === 'progress') {
     return (
-      <g opacity="0.18" fill="none" stroke={color} strokeWidth="1.2">
-        <path d="M12 46L23 35L31 40L46 22L54 28M46 22H55V31" />
+      <g opacity="0.17" fill="none" stroke={color} strokeWidth="1.2">
+        <path d="M13 45L23 35L31 39L45 23L52 28M45 23H53V31" />
       </g>
     )
   }
   if (group === 'signature') {
     return (
-      <g opacity="0.2" fill="none" stroke={color} strokeWidth="1.1">
-        <path d="M14 40C10 30 18 15 32 15C46 15 54 30 50 40" />
-        <path d="M20 46C16 38 22 26 32 26C42 26 48 38 44 46" />
+      <g opacity="0.18" fill="none" stroke={color} strokeWidth="1.1">
+        <path d="M15 39C12 29 19 17 32 17C45 17 52 29 49 39" />
+        <path d="M21 45C18 37 23 27 32 27C41 27 46 37 43 45" />
       </g>
     )
   }
   return (
-    <g opacity="0.18" fill="none" stroke={color} strokeWidth="1.2">
-      <path d="M16 47C9 39 9 25 16 17M48 47C55 39 55 25 48 17M17 17L12 13M47 17L52 13" />
+    <g opacity="0.17" fill="none" stroke={color} strokeWidth="1.2">
+      <path d="M17 46C11 39 11 26 17 19M47 46C53 39 53 26 47 19M18 19L13 15M46 19L51 15" />
     </g>
   )
 }
@@ -75,26 +122,21 @@ function monogram(name: string): string {
 }
 
 function BadgeGlyph({ badge, color }: { badge: PlayerBadgeDefinition; color: string }) {
-  // Signature badges are unique per archetype, so they carry a name monogram
-  // and a small star instead of a fixed vector mark.
   if (badge.group === 'signature') {
     return (
       <g fill={color} stroke="none">
         <text
           x="32"
-          y="40"
+          y="41"
           textAnchor="middle"
-          fontSize="24"
+          fontSize="25"
           fontWeight="950"
-          letterSpacing="-1"
+          letterSpacing="-1.2"
           fontFamily="ui-sans-serif, system-ui, sans-serif"
         >
           {monogram(badge.name)}
         </text>
-        <path
-          d="M32 6L34 12L40 12L35 16L37 22L32 18L27 22L29 16L24 12L30 12Z"
-          stroke="none"
-        />
+        <path d="M32 7L34 12L40 12L35 16L37 21L32 18L27 21L29 16L24 12L30 12Z" />
       </g>
     )
   }
@@ -102,7 +144,7 @@ function BadgeGlyph({ badge, color }: { badge: PlayerBadgeDefinition; color: str
   const art = BADGE_ART[badge.id]
   if (!art) {
     return (
-      <text x="32" y="38" textAnchor="middle" fontSize="17" fontWeight="900" fill={color}>
+      <text x="32" y="39" textAnchor="middle" fontSize="18" fontWeight="950" fill={color}>
         FAI
       </text>
     )
@@ -112,7 +154,7 @@ function BadgeGlyph({ badge, color }: { badge: PlayerBadgeDefinition; color: str
     <g
       fill="none"
       stroke={color}
-      strokeWidth="3"
+      strokeWidth="3.25"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -156,8 +198,9 @@ export function BadgeArtwork({
   size: number
 }) {
   const palette = TIER_PALETTE[badge.tier]
-  const frame = FRAME_PATH[badge.tier]
-  const id = `badge-${badge.id.replace(/[^a-z0-9]/gi, '-')}`
+  const markerCount = TIER_RANK[badge.tier]
+  const reactId = useId().replace(/:/g, '')
+  const id = `badge-${reactId}-${badge.id.replace(/[^a-z0-9]/gi, '-')}`
 
   return (
     <svg
@@ -169,41 +212,71 @@ export function BadgeArtwork({
       className="overflow-visible"
     >
       <defs>
-        <linearGradient id={`${id}-metal`} x1="8" y1="5" x2="55" y2="59" gradientUnits="userSpaceOnUse">
+        <linearGradient id={`${id}-metal`} x1="8" y1="4" x2="57" y2="61" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor={palette.light} />
-          <stop offset="0.28" stopColor={palette.edge} />
-          <stop offset="0.58" stopColor={palette.mid} />
-          <stop offset="1" stopColor={palette.dark} />
+          <stop offset="0.2" stopColor={palette.edge} />
+          <stop offset="0.52" stopColor={palette.mid} />
+          <stop offset="0.78" stopColor={palette.dark} />
+          <stop offset="1" stopColor={palette.mid} />
         </linearGradient>
-        <radialGradient id={`${id}-core`} cx="0" cy="0" r="1" gradientTransform="translate(25 20) rotate(48) scale(39)">
-          <stop offset="0" stopColor={palette.light} stopOpacity="0.28" />
-          <stop offset="0.5" stopColor={palette.dark} stopOpacity="0.72" />
-          <stop offset="1" stopColor="#050914" stopOpacity="0.96" />
+        <linearGradient id={`${id}-rim`} x1="12" y1="8" x2="50" y2="58" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.8" />
+          <stop offset="0.22" stopColor={palette.edge} stopOpacity="0.95" />
+          <stop offset="0.7" stopColor={palette.dark} />
+          <stop offset="1" stopColor={palette.light} stopOpacity="0.7" />
+        </linearGradient>
+        <radialGradient id={`${id}-core`} cx="0" cy="0" r="1" gradientTransform="translate(26 21) rotate(54) scale(35 39)">
+          <stop offset="0" stopColor={palette.edge} stopOpacity="0.24" />
+          <stop offset="0.42" stopColor={palette.dark} stopOpacity="0.88" />
+          <stop offset="1" stopColor={palette.core} />
         </radialGradient>
         <clipPath id={`${id}-clip`}>
-          <path d={frame} />
+          <path d={INNER_FRAME} />
         </clipPath>
-        <filter id={`${id}-shadow`} x="-35%" y="-35%" width="170%" height="170%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2.2" floodColor={palette.edge} floodOpacity="0.42" />
+        <filter id={`${id}-shadow`} x="-45%" y="-45%" width="190%" height="190%">
+          <feDropShadow dx="0" dy="2.2" stdDeviation="2.4" floodColor="#000000" floodOpacity="0.68" />
+          <feDropShadow dx="0" dy="0" stdDeviation="2.7" floodColor={palette.glow} floodOpacity="0.52" />
+        </filter>
+        <filter id={`${id}-glyph-glow`} x="-35%" y="-35%" width="170%" height="170%">
+          <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor={palette.light} floodOpacity="0.48" />
         </filter>
       </defs>
 
       <g filter={`url(#${id}-shadow)`}>
-        <path d={frame} fill={`url(#${id}-metal)`} stroke={palette.edge} strokeWidth="1.4" />
-        <path d={frame} fill="none" stroke="#ffffff" strokeOpacity="0.28" strokeWidth="0.8" transform="translate(1.92 2.92) scale(0.94)" />
+        <path d={OUTER_FRAME} fill={`url(#${id}-metal)`} stroke={palette.light} strokeOpacity="0.8" strokeWidth="0.9" />
+        <path d={INNER_FRAME} fill={`url(#${id}-rim)`} stroke={palette.edge} strokeWidth="1" />
+        <path d={CORE_FRAME} fill={`url(#${id}-core)`} stroke={palette.edge} strokeOpacity="0.7" strokeWidth="1.15" />
+
         <g clipPath={`url(#${id}-clip)`}>
-          <circle cx="32" cy="32" r="24" fill={`url(#${id}-core)`} stroke={palette.edge} strokeOpacity="0.55" strokeWidth="1.2" />
           <GroupPattern group={badge.group} color={palette.edge} />
-          <path d="M14 18C23 10 42 8 51 18" fill="none" stroke="#fff" strokeOpacity="0.16" strokeWidth="2" />
+          <path d="M14 17C23 10 42 9 51 17" fill="none" stroke="#fff" strokeOpacity="0.24" strokeWidth="2.1" />
+          <path d="M13 40C21 50 43 53 52 39" fill="none" stroke={palette.edge} strokeOpacity="0.18" strokeWidth="1.4" />
         </g>
-        <g transform="translate(6.5 6.5) scale(0.797)">
+
+        <path d="M11 5H53L57 10H7Z" fill={palette.light} fillOpacity="0.22" />
+        <path d="M14 12L20 8H44L50 12" fill="none" stroke={palette.light} strokeOpacity="0.72" strokeWidth="1.2" />
+
+        <g filter={`url(#${id}-glyph-glow)`} transform="translate(7.4 8.1) scale(0.77)">
           <BadgeGlyph badge={badge} color={palette.ink} />
         </g>
-        <circle cx="32" cy="32" r="27" fill="none" stroke={palette.edge} strokeOpacity="0.34" strokeWidth="0.8" strokeDasharray="1.5 3" />
-        <circle cx="32" cy="6.5" r="1.2" fill={palette.light} />
-        <circle cx="57.5" cy="32" r="1.2" fill={palette.light} />
-        <circle cx="32" cy="57.5" r="1.2" fill={palette.light} />
-        <circle cx="6.5" cy="32" r="1.2" fill={palette.light} />
+
+        <path d="M20 49L32 55L44 49" fill="none" stroke={palette.edge} strokeOpacity="0.75" strokeWidth="1.15" />
+        <path d="M24 52L32 57L40 52" fill="none" stroke={palette.light} strokeOpacity="0.42" strokeWidth="0.8" />
+
+        <g aria-hidden="true">
+          {Array.from({ length: markerCount }, (_, index) => {
+            const x = 32 - ((markerCount - 1) * 2.8) + (index * 5.6)
+            return (
+              <path
+                key={index}
+                d={`M${x} 12L${x + 1.45} 13.45L${x} 14.9L${x - 1.45} 13.45Z`}
+                fill={palette.light}
+                stroke={palette.edge}
+                strokeWidth="0.45"
+              />
+            )
+          })}
+        </g>
       </g>
     </svg>
   )
