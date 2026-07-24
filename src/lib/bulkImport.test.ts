@@ -5,7 +5,9 @@ import {
   buildRosterDraft,
   buildSessionDraft,
   detectDelimiter,
+  isAutoIncluded,
   matchAthlete,
+  resolveRows,
   parseDateCell,
   parseDelimited,
   parseHeightCell,
@@ -170,6 +172,38 @@ describe('athlete matching', () => {
 
   it('returns none when nothing matches', () => {
     expect(matchAthlete({ fullName: 'Nobody Here' }, roster).confidence).toBe('none')
+  })
+})
+
+describe('row resolution', () => {
+  const roster: RosterAthlete[] = [{ id: 'a1', name: 'Demek Kemp', grade: 11 }]
+
+  it('marks a matched result row ready and a new combined athlete for creation', () => {
+    const { headers, rows } = parseDelimited(
+      'athlete,testing date,bench\nDemek Kemp,2026-07-15,225\nNew Kid,2026-07-15,185',
+    )
+    const { mapping } = autoMapColumns(headers)
+    const resultsRows = resolveRows(rows, mapping, 'results', roster)
+    expect(resultsRows[0].match.athleteId).toBe('a1')
+    expect(resultsRows[0].status).toBe('ready')
+    // In results mode an unknown athlete cannot get a session — needs review.
+    expect(resultsRows[1].match.confidence).toBe('none')
+    expect(resultsRows[1].status).toBe('needs-review')
+
+    const combinedRows = resolveRows(rows, mapping, 'combined', roster)
+    expect(combinedRows[1].status).toBe('ready') // combined will create the athlete
+    expect(isAutoIncluded(combinedRows[1])).toBe(true)
+  })
+
+  it('flags a duplicate athlete+date row within the batch', () => {
+    const { headers, rows } = parseDelimited(
+      'athlete,testing date,bench\nDemek Kemp,2026-07-15,225\nDemek Kemp,2026-07-15,230',
+    )
+    const { mapping } = autoMapColumns(headers)
+    const resolved = resolveRows(rows, mapping, 'results', roster)
+    expect(resolved[0].status).toBe('ready')
+    expect(resolved[1].status).toBe('duplicate')
+    expect(isAutoIncluded(resolved[1])).toBe(false)
   })
 })
 

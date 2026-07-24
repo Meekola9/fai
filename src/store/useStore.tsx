@@ -55,6 +55,25 @@ import {
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export type StorageMode = 'local' | 'cloud'
 
+/** A resolved, coach-approved bulk import ready to commit in one atomic append. */
+export interface BulkImportPlan {
+  /** New athletes to create; ids are generated on commit. */
+  newAthletes: Omit<Athlete, 'id'>[]
+  /** Reuse an existing event, create one, or attach nothing (roster-only). */
+  event: { existingId: string } | { create: Omit<TestingEvent, 'id' | 'createdAt'> } | null
+  /** Testing rows; each references an athlete by existing id or new-athlete index. */
+  sessions: Array<{
+    athlete: { existingId: string } | { newIndex: number }
+    session: Omit<TestSession, 'id' | 'createdAt' | 'athleteId' | 'eventId'>
+  }>
+}
+
+export interface BulkImportResult {
+  athletesCreated: number
+  sessionsCreated: number
+  eventId?: string
+}
+
 interface ActiveTeam {
   id: string
   name: string
@@ -97,6 +116,8 @@ interface StoreContextValue {
   addSession: (session: Omit<TestSession, 'id' | 'createdAt'>) => string
   updateSession: (session: TestSession) => void
   deleteSession: (id: string) => void
+  /** Commit a resolved bulk import in one non-destructive append. */
+  commitBulkImport: (plan: BulkImportPlan) => BulkImportResult
   addPlay: (play: Omit<PlayEvent, 'id' | 'createdAt'>) => string
   deletePlay: (id: string) => void
   addFilmPlay: (film: Omit<FilmPlay, 'id' | 'createdAt'>) => string
@@ -596,6 +617,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...current,
         sessions: current.sessions.filter((session) => session.id !== id),
       }))
+    },
+
+    commitBulkImport(plan) {
+      const now = new Date().toISOString()
+      const newAthletes: Athlete[] = plan.newAthletes.map((athlete) => ({
+        ...athlete,
+        id: newId('athlete'),
+      }))
+      const athleteIdFor = (ref: { existingId: string } | { newIndex: number }): string =>
+        'existingId' in ref ? ref.existingId : newAthletes[ref.newIndex].id
+
+      const newEvents: TestingEvent[] = []
+      let eventId: string | undefined
+      if (plan.event && 'existingId' in plan.event) {
+        eventId = plan.event.existingId
+      } else if (plan.event && 'create' in plan.event) {
+        eventId = newId('event')
+        newEvents.push({ ...plan.event.create, id: eventId, createdAt: now })
+      }
+
+      const newSessions: TestSession[] = plan.sessions.map((entry, index) => ({
+        ...entry.session,
+        id: `${newId('session')}-${index}`,
+        createdAt: now,
+        athleteId: athleteIdFor(entry.athlete),
+        eventId,
+      }))
+
+      // One atomic, non-destructive append — existing records are never touched.
+      mutate((current) => ({
+        ...current,
+        athletes: [...current.athletes, ...newAthletes],
+        events: [...current.events, ...newEvents],
+        sessions: [...current.sessions, ...newSessions],
+      }))
+
+      return {
+        athletesCreated: newAthletes.length,
+        sessionsCreated: newSessions.length,
+        eventId,
+      }
     },
 
     addPlay(play) {
