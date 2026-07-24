@@ -100,5 +100,5 @@ export function formatBroadJump(inches: number): string {
   const safe = Number.isFinite(inches) ? Math.max(0, inches) : 0
   const feet = Math.floor(safe / 12)
   const remainder = safe - feet * 12
-  return `${feet}'${remainder.toFixed(1)}\"`
+  return `${feet}'${remainder.toFixed(1)}"`
 }
