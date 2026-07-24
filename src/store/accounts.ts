@@ -1,5 +1,9 @@
 import { supabase } from '../lib/supabase'
 import {
+  ATHLETE_PHOTO_BUCKET,
+  athletePhotoPath,
+} from '../lib/athletePhoto'
+import {
   COACH_OPERATIONAL_PERMISSIONS,
   normalizePermissions,
   normalizeRole,
@@ -41,6 +45,11 @@ export interface TeamInvite {
   status: 'pending' | 'accepted' | 'revoked'
   createdAt: string
   acceptedAt?: string
+}
+
+export interface UploadedAthletePhoto {
+  path: string
+  publicUrl: string
 }
 
 function db() {
@@ -132,6 +141,30 @@ export async function updateMyAthleteProfile(photoUrl?: string, hudlUrl?: string
     p_hudl_url: hudlUrl ?? '',
   })
   throwIfError(error, 'Could not update athlete profile')
+}
+
+export async function uploadAthletePhoto(
+  teamId: string,
+  athleteId: string,
+  file: File,
+): Promise<UploadedAthletePhoto> {
+  const path = athletePhotoPath(teamId, athleteId, file)
+  const { data, error } = await db().storage.from(ATHLETE_PHOTO_BUCKET).upload(path, file, {
+    cacheControl: '31536000',
+    contentType: file.type,
+    upsert: false,
+  })
+  throwIfError(error, 'Could not upload athlete photo')
+  if (!data?.path) throw new Error('Supabase did not return the uploaded photo path.')
+
+  const { data: publicData } = db().storage.from(ATHLETE_PHOTO_BUCKET).getPublicUrl(data.path)
+  if (!publicData.publicUrl) throw new Error('Could not create the athlete photo URL.')
+  return { path: data.path, publicUrl: publicData.publicUrl }
+}
+
+export async function deleteAthletePhoto(path: string): Promise<void> {
+  const { error } = await db().storage.from(ATHLETE_PHOTO_BUCKET).remove([path])
+  throwIfError(error, 'Could not remove athlete photo')
 }
 
 export async function createTeamInvite(input: {
