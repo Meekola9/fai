@@ -15,6 +15,7 @@ import StatsGuide from './pages/StatsGuide'
 import AthleteProfile from './pages/AthleteProfile'
 import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
+import BulkImport from './pages/BulkImport'
 import DataPage from './pages/DataPage'
 import TVMode from './pages/TVMode'
 import AccountSetup from './pages/AccountSetup'
@@ -90,6 +91,7 @@ function navForAccount(
     { to: '/stats', label: 'Stats Guide' },
   )
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
+  if (capabilities.canManageRoster) nav.push({ to: '/import', label: 'Bulk Import' })
   if (capabilities.canManageData) nav.push({ to: '/data', label: 'Data' })
   if (capabilities.canManageStaff) nav.push({ to: '/staff', label: 'Staff' })
   return nav
@@ -272,6 +274,7 @@ export default function App() {
           <Route path="/athletes/:id" element={isAthlete ? <Navigate to="/account/profile" replace /> : <AthleteProfile />} />
           <Route path="/athletes/:id/edit" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />
           <Route path="/entry" element={allowed(access.capabilities.canManageTesting, <SessionEntry />)} />
+          <Route path="/import" element={allowed(access.capabilities.canManageRoster, <BulkImport />, 'Your role does not include roster management.')} />
           <Route path="/data" element={allowed(access.capabilities.canManageData, <DataPage />)} />
           <Route path="/staff" element={allowed(ownerOrAdmin, <StaffAccess />, 'Only an owner or administrator can manage accounts, claims, and staff invitations.')} />
           <Route path="/account/setup" element={<AccountSetup />} />

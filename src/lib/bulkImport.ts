@@ -691,3 +691,95 @@ export function rosterTemplateCsv(): string {
 export function resultsTemplateCsv(): string {
   return templateCsv(RESULTS_TEMPLATE_KEYS)
 }
+
+// ---------------------------------------------------------------------------
+// 7. Row resolution — turn a mapped table into reviewable, matched outcomes
+// ---------------------------------------------------------------------------
+
+export type ImportMode = 'roster' | 'results' | 'combined'
+
+export type RowStatus = 'ready' | 'warning' | 'error' | 'duplicate' | 'needs-review'
+
+export interface ResolvedRow {
+  index: number
+  displayName: string
+  roster: RosterDraft
+  session: SessionDraft
+  match: MatchResult
+  issues: RowIssue[]
+  status: RowStatus
+  hasMetrics: boolean
+}
+
+function draftDisplayName(roster: RosterDraft, session: SessionDraft): string {
+  return (
+    roster.fullName ||
+    [roster.firstName, roster.lastName].filter(Boolean).join(' ') ||
+    session.athleteName ||
+    roster.athleteId ||
+    ''
+  )
+}
+
+/**
+ * Resolve every data row into a reviewable outcome: matched athlete, validation
+ * issues, and an overall status. Pure and deterministic so the preview can be
+ * unit-tested. Duplicate rows (same athlete + testing date within the batch)
+ * are flagged rather than silently dropped.
+ */
+export function resolveRows(
+  rows: string[][],
+  mapping: ColumnMapping,
+  mode: ImportMode,
+  roster: readonly RosterAthlete[],
+  aliases?: ReadonlyMap<string, string>,
+): ResolvedRow[] {
+  const seen = new Set<string>()
+  const resolved: ResolvedRow[] = []
+
+  rows.forEach((row, index) => {
+    const rosterDraft = buildRosterDraft(row, mapping)
+    const sessionDraft = buildSessionDraft(row, mapping)
+    const displayName = draftDisplayName(rosterDraft, sessionDraft)
+    const match = matchAthlete(
+      {
+        athleteId: rosterDraft.athleteId,
+        fullName: rosterDraft.fullName,
+        athleteName: sessionDraft.athleteName,
+        grade: rosterDraft.grade,
+        graduationYear: rosterDraft.graduationYear,
+      },
+      roster,
+      aliases,
+    )
+    const hasMetrics = Object.values(sessionDraft.metrics).some((value) => typeof value === 'number')
+
+    const issues: RowIssue[] = []
+    if (mode !== 'results') issues.push(...validateRosterDraft(rosterDraft))
+    if (mode !== 'roster') issues.push(...validateSessionDraft(sessionDraft))
+
+    // Duplicate check: same resolved athlete + testing date, seen earlier in the batch.
+    const identity = match.athleteId ?? normalizeAthleteName(displayName)
+    const dupeKey = `${identity}|${sessionDraft.date ?? ''}`
+    const isDuplicate = mode !== 'roster' && hasMetrics && seen.has(dupeKey)
+    if (!isDuplicate && identity) seen.add(dupeKey)
+
+    let status: RowStatus
+    if (worstSeverity(issues) === 'error') status = 'error'
+    else if (isDuplicate) status = 'duplicate'
+    else if (match.confidence === 'ambiguous') status = 'needs-review'
+    else if (mode === 'results' && match.confidence === 'none') status = 'needs-review'
+    else if (worstSeverity(issues) === 'review') status = 'needs-review'
+    else if (worstSeverity(issues) === 'warning') status = 'warning'
+    else status = 'ready'
+
+    resolved.push({ index, displayName, roster: rosterDraft, session: sessionDraft, match, issues, status, hasMetrics })
+  })
+
+  return resolved
+}
+
+/** Rows safe to import by default: everything except errors, duplicates, and reviews. */
+export function isAutoIncluded(row: ResolvedRow): boolean {
+  return row.status === 'ready' || row.status === 'warning'
+}
