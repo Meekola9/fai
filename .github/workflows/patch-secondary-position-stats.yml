@@ -101,7 +101,7 @@ jobs:
 
           replace_once(profile, "<SectionTitle right={<span className=\"text-xs font-bold text-fai\">● 2026</span>}>", "<SectionTitle right={<span className=\"text-xs font-bold text-fai\">● {selectedGroup}</span>}>")
           replace_once(profile, "            2026 Category Profile", "            {selectedPositionName} Category Profile")
-          replace_count(profile, "current.categories[category]", "positionCurrent.categories[category]", 3)
+          replace_count(profile, "current.categories[category]", "positionCurrent.categories[category]", 4)
           replace_once(profile, "        <SectionTitle>2026 Test Results</SectionTitle>", "        <SectionTitle>{selectedPositionName} Test Scores</SectionTitle>")
           replace_once(profile, "                const raw = current.metrics[metric.key]", "                const raw = positionCurrent.metrics[metric.key]")
           replace_once(profile, "                const score = current.normalized[metric.key]", "                const score = positionCurrent.normalized[metric.key]")
