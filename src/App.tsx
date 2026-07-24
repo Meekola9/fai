@@ -10,10 +10,8 @@ import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
 import AwarenessQuiz from './pages/AwarenessQuiz'
-import Archetypes from './pages/Archetypes'
+import PlayerDevelopment from './pages/PlayerDevelopment'
 import StatsGuide from './pages/StatsGuide'
-import Badges from './pages/Badges'
-import VerticalBenchmarks from './pages/VerticalBenchmarks'
 import AthleteProfile from './pages/AthleteProfile'
 import AthleteEditor from './pages/AthleteEditor'
 import SessionEntry from './pages/SessionEntry'
@@ -37,10 +35,8 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
   { to: '/film', label: 'Film Room' },
-  { to: '/archetypes', label: 'Archetypes' },
-  { to: '/badges', label: 'Badges' },
+  { to: '/development', label: 'Development' },
   { to: '/stats', label: 'Stats Guide' },
-  { to: '/vertical', label: 'Vertical Standards' },
   { to: '/entry', label: 'Enter Testing' },
   { to: '/data', label: 'Data' },
 ]
@@ -77,9 +73,8 @@ function navForAccount(
       { to: '/account/profile', label: 'My Profile', end: true },
       { to: '/quiz', label: 'Awareness Quiz' },
       { to: '/leaderboards', label: 'Rankings' },
-      { to: '/badges', label: 'Badges' },
+      { to: '/development', label: 'Development' },
       { to: '/stats', label: 'Stats Guide' },
-      { to: '/vertical', label: 'Vertical Standards' },
     ]
   }
 
@@ -91,10 +86,8 @@ function navForAccount(
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
   nav.push(
-    { to: '/archetypes', label: 'Archetypes' },
-    { to: '/badges', label: 'Badges' },
+    { to: '/development', label: 'Development' },
     { to: '/stats', label: 'Stats Guide' },
-    { to: '/vertical', label: 'Vertical Standards' },
   )
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
   if (capabilities.canManageData) nav.push({ to: '/data', label: 'Data' })
@@ -129,7 +122,7 @@ function Header() {
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
-          <NavLink to="/vertical" className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open vertical standards">VERT</NavLink>
+          <NavLink to="/development" className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open player development hub">DEV</NavLink>
           <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted">
             {access.role === 'athlete' ? 'ME' : 'GUIDES'}
           </NavLink>
@@ -153,7 +146,7 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
       ? [
           { to: '/account/profile', label: 'My Profile', icon: '◉', end: true },
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
-          { to: '/badges', label: 'Badges', icon: '◆' },
+          { to: '/development', label: 'Develop', icon: '◆' },
           { to: '/stats', label: 'Guide', icon: '?' },
         ]
       : [
@@ -269,12 +262,12 @@ export default function App() {
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
           <Route path="/film" element={viewerMode ? <FilmRoom /> : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')} />
-          <Route path="/archetypes" element={<Archetypes />} />
+          <Route path="/development" element={<PlayerDevelopment />} />
+          <Route path="/archetypes" element={<PlayerDevelopment />} />
+          <Route path="/badges" element={<PlayerDevelopment />} />
+          <Route path="/vertical" element={<PlayerDevelopment />} />
           <Route path="/quiz" element={<AwarenessQuiz />} />
-          <Route path="/vertical" element={<VerticalBenchmarks />} />
-          <Route path="/badges" element={<Badges />} />
           <Route path="/stats" element={<StatsGuide />} />
-          <Route path="/vertical" element={<VerticalBenchmarks />} />
           <Route path="/athletes/new" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />
           <Route path="/athletes/:id" element={isAthlete ? <Navigate to="/account/profile" replace /> : <AthleteProfile />} />
           <Route path="/athletes/:id/edit" element={allowed(access.capabilities.canManageRoster, <AthleteEditor />)} />
