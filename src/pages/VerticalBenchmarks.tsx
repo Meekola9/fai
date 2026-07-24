@@ -32,7 +32,7 @@ function loadMode(): VerticalBenchmarkMode {
   return 'national-hs'
 }
 
-export default function VerticalBenchmarks() {
+export default function VerticalBenchmarks({ embedded = false }: { embedded?: boolean }) {
   const { resultsForEvent, gradeLabelFor } = useStore()
   const [mode, setMode] = useState<VerticalBenchmarkMode>(loadMode)
   const [group, setGroup] = useState<'all' | PositionGroup>('all')
@@ -60,16 +60,18 @@ export default function VerticalBenchmarks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="text-xs font-black uppercase tracking-[0.2em] text-fai">Explosive Power Standards</div>
-          <h1 className="mt-1 text-3xl font-black tracking-tight text-chalk">Vertical Jump Benchmarks</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-            Compare 2026 vertical jumps by football position family. National High School is the fixed FAI scoring standard; Georgia and NCAA modes change comparison context only.
-          </p>
+      {!embedded && (
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-fai">Explosive Power Standards</div>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-chalk">Vertical Jump Benchmarks</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
+              Compare 2026 vertical jumps by football position family. National High School is the fixed FAI scoring standard; Georgia and NCAA modes change comparison context only.
+            </p>
+          </div>
+          <Link to="/stats" className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-muted hover:text-fai">Stats Guide →</Link>
         </div>
-        <Link to="/stats" className="rounded-xl border border-line px-4 py-2 text-sm font-bold text-muted hover:text-fai">Stats Guide →</Link>
-      </div>
+      )}
 
       <Card className="p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">

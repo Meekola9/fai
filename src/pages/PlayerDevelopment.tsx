@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import Archetypes from './Archetypes'
 import Badges from './Badges'
-import VerticalBenchmarks from './VerticalBenchmarks'
+import ExplosiveJumpStandards from './ExplosiveJumpStandards'
 import { Card } from '../components/ui'
 import {
   developmentSectionFromLocation,
@@ -32,8 +32,8 @@ const SECTIONS: readonly {
   {
     id: 'vertical',
     eyebrow: 'Standards',
-    title: 'Vertical Jump',
-    description: 'Compare explosive-power results against position-specific standards.',
+    title: 'Jump Standards',
+    description: 'Compare broad-jump and vertical-jump explosion against football standards.',
     icon: '↥',
   },
 ]
@@ -94,7 +94,7 @@ export default function PlayerDevelopment() {
       <div role="tabpanel" aria-label={SECTIONS.find((section) => section.id === active)?.title}>
         {active === 'archetypes' && <Archetypes />}
         {active === 'badges' && <Badges />}
-        {active === 'vertical' && <VerticalBenchmarks />}
+        {active === 'vertical' && <ExplosiveJumpStandards />}
       </div>
     </div>
   )
