@@ -2,7 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill } from '../components/ui'
-import { loadMyAthleteClaim, updateMyAthleteProfile, type AthleteClaim } from '../store/accounts'
+import {
+  deleteAthletePhoto,
+  loadMyAthleteClaim,
+  updateMyAthleteProfile,
+  uploadAthletePhoto,
+  type AthleteClaim,
+} from '../store/accounts'
+import {
+  athletePhotoExtension,
+  athletePhotoPathFromPublicUrl,
+} from '../lib/athletePhoto'
 import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 
 const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
@@ -141,6 +151,8 @@ export default function MyAthleteAccount() {
   const { data, userEmail, signOut } = useStore()
   const [claim, setClaim] = useState<AthleteClaim | null>(null)
   const [photoUrl, setPhotoUrl] = useState('')
+  const [photoFile, setPhotoFile] = useState<File>()
+  const [photoPreview, setPhotoPreview] = useState<string>()
   const [hudlUrl, setHudlUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -163,17 +175,58 @@ export default function MyAthleteAccount() {
     })()
   }, [data.athletes])
 
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+    }
+  }, [photoPreview])
+
   const athlete = claim ? data.athletes.find((item) => item.id === claim.athleteId) : undefined
 
+  function choosePhoto(file?: File) {
+    setError(undefined)
+    setMessage(undefined)
+    if (!file) return
+    try {
+      athletePhotoExtension(file)
+      setPhotoFile(file)
+      setPhotoPreview(URL.createObjectURL(file))
+    } catch (cause: unknown) {
+      setPhotoFile(undefined)
+      setPhotoPreview(undefined)
+      setError(cause instanceof Error ? cause.message : 'Could not use that photo.')
+    }
+  }
+
   async function save() {
+    if (!claim || !athlete) return
     setBusy(true)
     setError(undefined)
     setMessage(undefined)
+
+    let nextPhotoUrl = photoUrl.trim() || undefined
+    let newPhotoPath: string | undefined
     try {
-      await updateMyAthleteProfile(photoUrl.trim() || undefined, hudlUrl.trim() || undefined)
-      setMessage('Profile updated. Reloading the latest team profile…')
+      if (photoFile) {
+        const uploaded = await uploadAthletePhoto(claim.teamId, athlete.id, photoFile)
+        nextPhotoUrl = uploaded.publicUrl
+        newPhotoPath = uploaded.path
+      }
+
+      await updateMyAthleteProfile(nextPhotoUrl, hudlUrl.trim() || undefined)
+
+      const oldPhotoPath = athletePhotoPathFromPublicUrl(athlete.photoUrl)
+      if (oldPhotoPath && oldPhotoPath !== newPhotoPath) {
+        void deleteAthletePhoto(oldPhotoPath).catch(() => undefined)
+      }
+
+      setPhotoUrl(nextPhotoUrl ?? '')
+      setPhotoFile(undefined)
+      setPhotoPreview(undefined)
+      setMessage(photoFile ? 'Photo uploaded. Reloading your profile…' : 'Profile updated. Reloading the latest team profile…')
       window.setTimeout(() => window.location.reload(), 700)
     } catch (cause: unknown) {
+      if (newPhotoPath) void deleteAthletePhoto(newPhotoPath).catch(() => undefined)
       setError(cause instanceof Error ? cause.message : 'Could not save profile.')
       setBusy(false)
     }
@@ -220,7 +273,7 @@ export default function MyAthleteAccount() {
 
       <Card className="p-5">
         <div className="flex items-center gap-4">
-          <Avatar name={athlete.name} photoUrl={photoUrl || athlete.photoUrl} size={82} />
+          <Avatar name={athlete.name} photoUrl={photoPreview || photoUrl || athlete.photoUrl} size={82} />
           <div>
             <h2 className="text-xl font-black text-chalk">{athlete.name}</h2>
             <div className="mt-1 text-sm text-muted">{athlete.position} · Grade {athlete.grade}</div>
@@ -229,11 +282,38 @@ export default function MyAthleteAccount() {
         </div>
 
         <div className="mt-6 space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-xs font-black uppercase tracking-wider text-muted">Profile photo URL</span>
-            <input value={photoUrl} onChange={(event) => setPhotoUrl(event.target.value)} placeholder="https://…" className={inputClass} />
-            <p className="mt-1 text-xs leading-relaxed text-muted">Use a direct image link. Coaches can replace inappropriate or incorrect photos.</p>
-          </label>
+          <div className="rounded-xl border border-line bg-panel-2/30 p-4">
+            <div className="text-xs font-black uppercase tracking-wider text-muted">Profile photo</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              Choose a JPG, PNG, or WebP image from your camera or photo library. Maximum size: 5 MB.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label className="cursor-pointer rounded-xl bg-fai px-4 py-2.5 text-sm font-black text-ink hover:brightness-110">
+                {photoFile ? 'Choose a different photo' : 'Choose photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(event) => choosePhoto(event.target.files?.[0])}
+                />
+              </label>
+              {photoFile && (
+                <>
+                  <span className="max-w-64 truncate text-xs font-bold text-chalk">{photoFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoFile(undefined)
+                      setPhotoPreview(undefined)
+                    }}
+                    className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-muted hover:text-chalk"
+                  >
+                    Cancel selection
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-xs font-black uppercase tracking-wider text-muted">Hudl / highlight link</span>
@@ -242,7 +322,7 @@ export default function MyAthleteAccount() {
           </label>
 
           <button type="button" disabled={busy} onClick={() => void save()} className="rounded-xl bg-fai px-6 py-3 text-sm font-black text-ink disabled:opacity-50">
-            {busy ? 'Saving…' : 'Save my profile'}
+            {busy ? (photoFile ? 'Uploading photo…' : 'Saving…') : (photoFile ? 'Upload photo & save' : 'Save my profile')}
           </button>
         </div>
       </Card>
