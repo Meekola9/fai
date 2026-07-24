@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { athleteTimeline } from '../lib/compute'
+import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '../lib/compute'
 import { strengths, weaknesses } from '../lib/progress'
 import { playerBadgesFor } from '../lib/badges'
+import { archetypeFor } from '../lib/archetypes'
 import { athleteGameDayBadgeSummary, type AthleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
@@ -152,6 +153,7 @@ function AwarenessCard({ athleteId }: { athleteId: string }) {
 
 export default function AthleteProfile() {
   const { id } = useParams()
+  const [positionView, setPositionView] = useState<'primary' | 'secondary'>('primary')
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const athlete = id ? data.athletes.find((item) => item.id === id) : undefined
   const result = id
@@ -187,7 +189,7 @@ export default function AthleteProfile() {
               <h1 className="text-2xl font-black tracking-tight text-chalk">{athlete.name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
                 <Pill tone="fai">{athlete.positionGroup}</Pill>
-                <span>{athlete.position}</span>
+                <span>{athlete.secondaryPosition ? `${athlete.position} / ${athlete.secondaryPosition}` : athlete.position}</span>
                 <span>· {gradeLabelFor(athlete, 'long')}</span>
                 <span>· {formatHeight(athlete.heightIn)}</span>
                 <span>· {athlete.weightLbs} lbs</span>
@@ -212,11 +214,47 @@ export default function AthleteProfile() {
 
   const displayResult = currentSeasonResult(result)
   const { current, rankEligible } = displayResult
-  const strong = strengths(current)
-  const weak = weaknesses(current)
+  const primaryGroup = current.session.positionGroupSnapshot ?? athlete.positionGroup
+  const primaryPosition = computeSessionForPositionGroup(
+    current.session,
+    athlete,
+    current.event,
+    primaryGroup,
+  )
+  const secondaryGroup = athlete.secondaryPositionGroup
+  const secondaryPosition = secondaryGroup
+    ? computeSessionForPositionGroup(
+        {
+          ...current.session,
+          positionSnapshot: athlete.secondaryPosition ?? secondaryGroup,
+          positionGroupSnapshot: secondaryGroup,
+        },
+        {
+          ...athlete,
+          position: athlete.secondaryPosition ?? secondaryGroup,
+          positionGroup: secondaryGroup,
+        },
+        current.event,
+        secondaryGroup,
+      )
+    : undefined
+  const viewingSecondary = positionView === 'secondary' && Boolean(secondaryPosition && secondaryGroup)
+  const selectedPosition = viewingSecondary && secondaryPosition ? secondaryPosition : primaryPosition
+  const selectedGroup = viewingSecondary && secondaryGroup ? secondaryGroup : primaryGroup
+  const selectedPositionName = viewingSecondary
+    ? athlete.secondaryPosition ?? secondaryGroup ?? 'Secondary'
+    : athlete.position
+  const totalBoostPct = displayResult.impactBoostPct + displayResult.awarenessBoostPct
+  const positionCurrent = {
+    ...selectedPosition,
+    fai: round1(clamp(selectedPosition.fai * (1 + totalBoostPct / 100), 0, 100)),
+  }
+  const positionArchetype = archetypeFor(positionCurrent)
+  const strong = strengths(positionCurrent)
+  const weak = weaknesses(positionCurrent)
   const badges = playerBadgesFor({ result: displayResult, timeline })
   const radarSeries = [
-    { label: '2026', color: '#c6f24e', values: current.categories as Record<Category, number> },
+    { label: `${selectedGroup} view`, color: '#c6f24e', values: positionCurrent.categories as Record<Category, number> },
   ]
 
   return (
@@ -230,7 +268,7 @@ export default function AthleteProfile() {
             <h1 className="text-3xl font-black tracking-tight text-chalk">{athlete.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
               <Pill tone="fai">{athlete.positionGroup}</Pill>
-              <span>{athlete.position}</span>
+              <span>{athlete.secondaryPosition ? `${athlete.position} / ${athlete.secondaryPosition}` : athlete.position}</span>
               <span>· {gradeLabelFor(athlete, 'long')}</span>
               <span>· {current.session.weightLbsSnapshot ?? athlete.weightLbs} lbs at test</span>
             </div>
@@ -284,18 +322,57 @@ export default function AthleteProfile() {
 
       <FilmCard hudlUrl={athlete.hudlUrl} />
 
+      {secondaryPosition && secondaryGroup && (
+        <Card className="border-fai/25 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-fai">Position Stats</div>
+              <div className="mt-1 text-sm text-muted">Compare the same testing results against each position's benchmarks.</div>
+            </div>
+            <div className="flex rounded-xl border border-line bg-ink p-1" role="tablist" aria-label="Position statistics view">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!viewingSecondary}
+                onClick={() => setPositionView('primary')}
+                className={`rounded-lg px-3 py-2 text-xs font-black transition ${!viewingSecondary ? 'bg-fai text-ink' : 'text-muted hover:text-chalk'}`}
+              >
+                Primary · {athlete.position}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewingSecondary}
+                onClick={() => setPositionView('secondary')}
+                className={`rounded-lg px-3 py-2 text-xs font-black transition ${viewingSecondary ? 'bg-fai text-ink' : 'text-muted hover:text-chalk'}`}
+              >
+                Secondary · {athlete.secondaryPosition ?? secondaryGroup}
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Pill tone="fai">{selectedPositionName} · {selectedGroup}</Pill>
+            <Pill tone="gold">{positionCurrent.fai.toFixed(1)} position FAI</Pill>
+            {positionArchetype && <Pill>{positionArchetype.name}</Pill>}
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            Comparison view only. The official blended FAI and rankings above do not change.
+          </p>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-5">
-          <SectionTitle right={<span className="text-xs font-bold text-fai">● 2026</span>}>
-            2026 Category Profile
+          <SectionTitle right={<span className="text-xs font-bold text-fai">● {selectedGroup}</span>}>
+            {selectedPositionName} Category Profile
           </SectionTitle>
           <RadarChart series={radarSeries} />
           <div className="mt-3 space-y-2">
             {CATEGORIES.map((category) => (
               <div key={category} className="flex items-center gap-3">
                 <div className="w-10 text-xs font-bold text-muted">{CATEGORY_SHORT[category]}</div>
-                <div className="flex-1"><ScoreMeter value={current.categories[category]} color={CATEGORY_COLOR[category]} /></div>
-                <div className="w-10 text-right text-sm font-black nums text-chalk">{current.categories[category].toFixed(0)}</div>
+                <div className="flex-1"><ScoreMeter value={positionCurrent.categories[category]} color={CATEGORY_COLOR[category]} /></div>
+                <div className="w-10 text-right text-sm font-black nums text-chalk">{positionCurrent.categories[category].toFixed(0)}</div>
               </div>
             ))}
           </div>
@@ -330,18 +407,18 @@ export default function AthleteProfile() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="p-4">
               <div className="mb-2 text-xs font-bold uppercase tracking-wider text-up">2026 Strengths</div>
-              <div className="flex flex-wrap gap-1.5">{strong.length ? strong.map((category) => <Pill key={category} tone="up">{category} · {current.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">Building baseline strengths.</span>}</div>
+              <div className="flex flex-wrap gap-1.5">{strong.length ? strong.map((category) => <Pill key={category} tone="up">{category} · {positionCurrent.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">Building baseline strengths.</span>}</div>
             </Card>
             <Card className="p-4">
               <div className="mb-2 text-xs font-bold uppercase tracking-wider text-down">2026 Weaknesses</div>
-              <div className="flex flex-wrap gap-1.5">{weak.length ? weak.map((category) => <Pill key={category} tone="down">{category} · {current.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">No major weakness flagged.</span>}</div>
+              <div className="flex flex-wrap gap-1.5">{weak.length ? weak.map((category) => <Pill key={category} tone="down">{category} · {positionCurrent.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">No major weakness flagged.</span>}</div>
             </Card>
           </div>
         </div>
       </div>
 
       <Card className="p-5">
-        <SectionTitle>2026 Test Results</SectionTitle>
+        <SectionTitle>{selectedPositionName} Test Scores</SectionTitle>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
@@ -354,8 +431,8 @@ export default function AthleteProfile() {
             </thead>
             <tbody>
               {SCORED_METRICS.map((metric) => {
-                const raw = current.metrics[metric.key]
-                const score = current.normalized[metric.key]
+                const raw = positionCurrent.metrics[metric.key]
+                const score = positionCurrent.normalized[metric.key]
                 return (
                   <tr key={metric.key} className="border-b border-line/50">
                     <td className="py-2 pr-3 font-semibold text-chalk">{metric.label}</td>

@@ -103,6 +103,16 @@ function computeForGroup(
   }
 }
 
+/** Recompute one testing card against an explicit position group's benchmarks. */
+export function computeSessionForPositionGroup(
+  session: TestSession,
+  athlete: Athlete,
+  event: TestingEvent,
+  positionGroup: PositionGroup,
+): ComputedSession {
+  return computeForGroup(session, athlete, event, positionGroup)
+}
+
 export interface PositionScoreBreakdown {
   primaryGroup: PositionGroup
   primaryScore: number

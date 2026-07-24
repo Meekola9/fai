@@ -290,7 +290,7 @@ export function signatureBadgeFor(archetype: PlayerArchetype): EarnedPlayerBadge
   return {
     ...signatureBadgeDefinition(archetype),
     tier: signatureTier(archetype.confidence),
-    evidence: `${archetype.role} archetype · ${archetype.confidence} confidence${lead ? ` · ${lead}` : ''}`,
+    evidence: lead ?? 'Profile match',
   }
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AppData, Athlete, PositionGroup, TestSession, TestingEvent } from '../types'
 import { benchmarkScore, categoryWeightsFor } from '../data/scoring'
-import { computeAll } from './compute'
+import { computeAll, computeSessionForPositionGroup } from './compute'
 import { buildResults } from './progress'
 
 const athlete: Athlete = {
@@ -197,6 +197,22 @@ describe('FAI computation', () => {
     expect(none.awarenessBoostPct).toBe(0)
     expect(none.impactBoostPct).toBe(0)
     expect(none.current.fai).toBe(none.baseFai)
+  })
+
+  it('recomputes one testing card against a selected secondary position group', () => {
+    const merged = computeAll(completeData)[0]
+    const withTen = { ...merged.session, dash10_1: 1.7, dash10_2: 1.73 }
+    const skillView = computeSessionForPositionGroup(withTen, athlete, event, 'WR')
+    const lineView = computeSessionForPositionGroup(
+      { ...withTen, positionSnapshot: 'OT', positionGroupSnapshot: 'OL' },
+      { ...athlete, position: 'OT', positionGroup: 'OL', weightLbs: 270 },
+      event,
+      'OL',
+    )
+
+    expect(skillView.normalized.best10).toBeUndefined()
+    expect(lineView.normalized.best10).toBe(100)
+    expect(lineView.fai).not.toBe(skillView.fai)
   })
 
   it('preserves legitimate zero benchmark scores', () => {
