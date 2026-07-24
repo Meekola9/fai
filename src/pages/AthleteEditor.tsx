@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { Card } from '../components/ui'
+import { Avatar, Card } from '../components/ui'
 import { POSITION_GROUPS, GRADES, parseHeight, formatHeight } from '../data/constants'
 import {
   PLAYER_USAGE_OPTIONS,
@@ -9,6 +9,15 @@ import {
   positionGroupFor,
   positionOptionFor,
 } from '../data/positions'
+import {
+  deleteAthletePhoto,
+  uploadAthletePhoto,
+} from '../store/accounts'
+import {
+  athletePhotoExtension,
+  athletePhotoPathFromPublicUrl,
+} from '../lib/athletePhoto'
+import { newId } from '../store/storage'
 import type { Athlete, PlayerUsage, PositionGroup } from '../types'
 
 const inputCls =
@@ -30,7 +39,7 @@ function PositionSuggestions({ id }: { id: string }) {
 export default function AthleteEditor() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { data, addAthlete, updateAthlete, deleteAthlete } = useStore()
+  const { data, teamId, addAthlete, updateAthlete, deleteAthlete } = useStore()
   const existing = id ? data.athletes.find((a) => a.id === id) : undefined
 
   const [name, setName] = useState(existing?.name ?? '')
@@ -45,7 +54,17 @@ export default function AthleteEditor() {
   const [height, setHeight] = useState(existing ? formatHeight(existing.heightIn) : '')
   const [weight, setWeight] = useState(existing?.weightLbs ? String(existing.weightLbs) : '')
   const [photoUrl, setPhotoUrl] = useState(existing?.photoUrl ?? '')
+  const [photoFile, setPhotoFile] = useState<File>()
+  const [photoPreview, setPhotoPreview] = useState<string>()
   const [hudlUrl, setHudlUrl] = useState(existing?.hudlUrl ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview)
+    }
+  }, [photoPreview])
 
   function changePrimaryPosition(value: string) {
     setPosition(value)
@@ -59,31 +78,75 @@ export default function AthleteEditor() {
     if (known) setSecondaryGroup(known.group)
   }
 
-  function save() {
-    if (!name.trim()) return
-    const isTwoWay = usage !== 'one-way'
-    const cleanSecondary = isTwoWay ? secondaryPosition.trim() : ''
-    const payload: Omit<Athlete, 'id'> = {
-      name: name.trim(),
-      grade: Number(grade),
-      position: position.trim() || group,
-      positionGroup: group,
-      usage,
-      secondaryPosition: cleanSecondary || undefined,
-      secondaryPositionGroup: cleanSecondary
-        ? positionGroupFor(cleanSecondary, secondaryGroup)
-        : undefined,
-      heightIn: parseHeight(height),
-      weightLbs: Number(weight) || 0,
-      photoUrl: photoUrl.trim() || undefined,
-      hudlUrl: hudlUrl.trim() || undefined,
+  function choosePhoto(file?: File) {
+    setError(undefined)
+    if (!file) return
+    try {
+      athletePhotoExtension(file)
+      setPhotoFile(file)
+      setPhotoPreview(URL.createObjectURL(file))
+    } catch (cause: unknown) {
+      setPhotoFile(undefined)
+      setPhotoPreview(undefined)
+      setError(cause instanceof Error ? cause.message : 'Could not use that photo.')
     }
-    if (existing) {
-      updateAthlete({ ...payload, id: existing.id })
-      nav(`/athletes/${existing.id}`)
-    } else {
-      const newId = addAthlete(payload)
-      nav(`/athletes/${newId}`)
+  }
+
+  async function save() {
+    if (!name.trim() || busy) return
+    setBusy(true)
+    setError(undefined)
+    let uploadedPath: string | undefined
+
+    try {
+      const isTwoWay = usage !== 'one-way'
+      const cleanSecondary = isTwoWay ? secondaryPosition.trim() : ''
+      const athleteId = existing?.id ?? newId('athlete')
+      let nextPhotoUrl = photoUrl.trim() || undefined
+
+      if (photoFile) {
+        if (!teamId) {
+          throw new Error('Sign in to the team cloud before uploading an athlete photo.')
+        }
+        const uploaded = await uploadAthletePhoto(teamId, athleteId, photoFile)
+        uploadedPath = uploaded.path
+        nextPhotoUrl = uploaded.publicUrl
+      }
+
+      const payload: Omit<Athlete, 'id'> = {
+        name: name.trim(),
+        grade: Number(grade),
+        position: position.trim() || group,
+        positionGroup: group,
+        usage,
+        secondaryPosition: cleanSecondary || undefined,
+        secondaryPositionGroup: cleanSecondary
+          ? positionGroupFor(cleanSecondary, secondaryGroup)
+          : undefined,
+        heightIn: parseHeight(height),
+        weightLbs: Number(weight) || 0,
+        photoUrl: nextPhotoUrl,
+        hudlUrl: hudlUrl.trim() || undefined,
+      }
+
+      if (existing) {
+        updateAthlete({ ...payload, id: existing.id })
+      } else {
+        addAthlete(payload, athleteId)
+      }
+
+      if (uploadedPath && existing?.photoUrl) {
+        const previousPath = athletePhotoPathFromPublicUrl(existing.photoUrl)
+        if (previousPath && previousPath !== uploadedPath) {
+          void deleteAthletePhoto(previousPath).catch(() => undefined)
+        }
+      }
+
+      nav(`/athletes/${athleteId}`)
+    } catch (cause: unknown) {
+      if (uploadedPath) void deleteAthletePhoto(uploadedPath).catch(() => undefined)
+      setError(cause instanceof Error ? cause.message : 'Could not save athlete profile.')
+      setBusy(false)
     }
   }
 
@@ -111,6 +174,61 @@ export default function AthleteEditor() {
       </div>
 
       <Card className="space-y-4 p-5">
+        {error && (
+          <div className="rounded-xl border border-down/40 bg-down/5 p-3 text-sm font-bold text-down">
+            {error}
+          </div>
+        )}
+
+        <div className="rounded-xl border border-line bg-panel-2/30 p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar
+              name={name.trim() || existing?.name || 'Athlete'}
+              photoUrl={photoPreview || photoUrl || existing?.photoUrl}
+              size={82}
+            />
+            <div className="min-w-0 flex-1">
+              <div className={labelCls}>Athlete profile picture</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Choose a JPG, PNG, or WebP image from the camera or photo library. Maximum size: 5 MB.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-lg bg-fai px-4 py-2 text-sm font-bold text-ink hover:brightness-110">
+                  {photoFile ? 'Choose a different photo' : 'Choose photo'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => choosePhoto(event.target.files?.[0])}
+                  />
+                </label>
+                {photoFile && (
+                  <>
+                    <span className="max-w-56 truncate text-xs font-semibold text-chalk">
+                      {photoFile.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoFile(undefined)
+                        setPhotoPreview(undefined)
+                      }}
+                      className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-muted hover:text-chalk"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
+              {!teamId && (
+                <p className="mt-2 text-xs font-semibold text-gold">
+                  Device uploads require a signed-in team cloud account. A direct image URL still works below.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className={labelCls}>Name</label>
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Athlete name" />
@@ -215,8 +333,11 @@ export default function AthleteEditor() {
         )}
 
         <div>
-          <label className={labelCls}>Photo URL (optional)</label>
+          <label className={labelCls}>Photo URL fallback (optional)</label>
           <input className={inputCls} value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            Use this only when the image is already hosted online. A selected device photo takes priority when saving.
+          </p>
         </div>
 
         <div>
@@ -229,14 +350,19 @@ export default function AthleteEditor() {
 
         <div className="flex items-center justify-between pt-2">
           <button
-            onClick={save}
-            disabled={!name.trim()}
+            type="button"
+            onClick={() => void save()}
+            disabled={!name.trim() || busy}
             className="rounded-lg bg-fai px-6 py-2 text-sm font-bold text-ink disabled:opacity-40"
           >
-            {existing ? 'Save Changes' : 'Create Athlete'}
+            {busy
+              ? (photoFile ? 'Uploading photo…' : 'Saving…')
+              : existing
+                ? 'Save Changes'
+                : 'Create Athlete'}
           </button>
           {existing && (
-            <button onClick={remove} className="rounded-lg border border-down/40 px-4 py-2 text-sm font-bold text-down hover:bg-down/10">
+            <button type="button" onClick={remove} className="rounded-lg border border-down/40 px-4 py-2 text-sm font-bold text-down hover:bg-down/10">
               Delete Athlete
             </button>
           )}
