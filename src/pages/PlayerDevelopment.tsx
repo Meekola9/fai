@@ -4,7 +4,7 @@ import Badges from './Badges'
 import VerticalBenchmarks from './VerticalBenchmarks'
 import { Card } from '../components/ui'
 
-type DevelopmentSection = 'archetypes' | 'badges' | 'vertical'
+export type DevelopmentSection = 'archetypes' | 'badges' | 'vertical'
 
 const SECTIONS: readonly {
   id: DevelopmentSection
@@ -36,7 +36,7 @@ const SECTIONS: readonly {
   },
 ]
 
-function sectionFromLocation(pathname: string, search: string): DevelopmentSection {
+export function sectionFromLocation(pathname: string, search: string): DevelopmentSection {
   if (pathname.startsWith('/badges')) return 'badges'
   if (pathname.startsWith('/vertical')) return 'vertical'
   if (pathname.startsWith('/archetypes')) return 'archetypes'
