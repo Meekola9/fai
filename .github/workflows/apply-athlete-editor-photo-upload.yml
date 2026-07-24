@@ -1,0 +1,71 @@
+name: Apply athlete editor photo upload
+
+on:
+  push:
+    branches: [fix/athlete-editor-photo-upload]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/athlete-editor-photo-upload
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Expose team id and support prepared athlete ids
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/store/useStore.tsx')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "  userEmail?: string\n  teamName?: string\n  teamRole?: string",
+                  "  userEmail?: string\n  teamId?: string\n  teamName?: string\n  teamRole?: string",
+              ),
+              (
+                  "  addAthlete: (athlete: Omit<Athlete, 'id'>) => string",
+                  "  addAthlete: (athlete: Omit<Athlete, 'id'>, athleteId?: string) => string",
+              ),
+              (
+                  "    userEmail,\n    teamName: team?.name,\n    teamRole: team?.role,",
+                  "    userEmail,\n    teamId: team?.id,\n    teamName: team?.name,\n    teamRole: team?.role,",
+              ),
+              (
+                  "    addAthlete(athlete) {\n      const id = newId('athlete')",
+                  "    addAthlete(athlete, athleteId) {\n      const id = athleteId ?? newId('athlete')",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one match, found {count}: {old!r}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated store support
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/store/useStore.tsx
+          git commit -m "Support coach profile photo uploads for new athletes"
+          git push origin HEAD:fix/athlete-editor-photo-upload
