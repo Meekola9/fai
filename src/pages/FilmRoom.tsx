@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
+import HudlImportWizard from '../components/HudlImportWizard'
 import type {
   FilmAnnotation,
   FilmAnnotationKind,
@@ -423,6 +424,8 @@ export default function FilmRoom() {
         <StatTile label="Pass rate" value={`${Math.round(report.passShare * 100)}%`} accent="fai" />
         <StatTile label="Opponents" value={opponents.length} accent="gold" />
       </div>
+
+      <HudlImportWizard />
 
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <div className="space-y-3">
