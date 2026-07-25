@@ -199,7 +199,8 @@ export function positionGroupBoards(
     rows: rankBy(
       results.filter(
         (result) =>
-          (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group,
+          (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group
+          || result.athlete.secondaryPositionGroup === group,
       ),
       (result) => result.current.fai,
       (value) => value.toFixed(1),
