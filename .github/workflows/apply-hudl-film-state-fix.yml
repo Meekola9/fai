@@ -1,0 +1,38 @@
+name: Apply Hudl film state fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/hudl-film-state-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/hudl-film-state-two-way-filters
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python scripts/apply_hudl_film_state_fix.py
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated Hudl fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/apply_hudl_film_state_fix.py
+          git add src/pages/FilmRoom.tsx src/components/HudlImportWizard.tsx src/lib/filmRoomFilters.ts src/lib/filmRoomFilters.test.ts scripts/apply_hudl_film_state_fix.py
+          git commit -m "Preserve Hudl film state and filter two-way players"
+          git push origin HEAD:feature/hudl-film-state-two-way-filters
