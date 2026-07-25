@@ -15,11 +15,16 @@ export interface LatestSaveQueueCallbacks<T> {
 export class LatestSaveQueue<T> {
   private pending: T | undefined
   private running = false
+  private readonly worker: (value: T) => Promise<void>
+  private readonly callbacks: LatestSaveQueueCallbacks<T>
 
   constructor(
-    private readonly worker: (value: T) => Promise<void>,
-    private readonly callbacks: LatestSaveQueueCallbacks<T> = {},
-  ) {}
+    worker: (value: T) => Promise<void>,
+    callbacks: LatestSaveQueueCallbacks<T> = {},
+  ) {
+    this.worker = worker
+    this.callbacks = callbacks
+  }
 
   enqueue(value: T): void {
     this.pending = value
