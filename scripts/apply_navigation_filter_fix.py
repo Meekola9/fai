@@ -1,0 +1,184 @@
+from pathlib import Path
+
+
+def replace(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text()
+    if old not in text:
+        raise SystemExit(f"Expected text not found in {path}: {old[:120]!r}")
+    file.write_text(text.replace(old, new, 1))
+
+
+Path('src/hooks/usePageMemory.ts').write_text("""import { useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+
+function resolveInitial<T>(initial: T | (() => T)): T {
+  return typeof initial === 'function' ? (initial as () => T)() : initial
+}
+
+function readStored<T>(key: string, initial: T | (() => T)): T {
+  const fallback = resolveInitial(initial)
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.sessionStorage.getItem(key)
+    return raw ? JSON.parse(raw) as T : fallback
+  } catch {
+    return fallback
+  }
+}
+
+/** Keep page controls stable while navigating away and back during the current browser session. */
+export function usePageMemory<T>(
+  key: string,
+  initial: T | (() => T),
+): [T, Dispatch<SetStateAction<T>>] {
+  const [value, setValue] = useState<T>(() => readStored(key, initial))
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      // The page still works when browser storage is blocked.
+    }
+  }, [key, value])
+
+  return [value, setValue]
+}
+
+/** Restore the page to the same vertical position after opening a profile and returning. */
+export function usePageScrollMemory(key: string): void {
+  const restored = useRef(false)
+
+  useLayoutEffect(() => {
+    if (restored.current || typeof window === 'undefined') return
+    restored.current = true
+    try {
+      const raw = window.sessionStorage.getItem(key)
+      const top = raw ? Number(raw) : 0
+      if (Number.isFinite(top) && top > 0) {
+        window.requestAnimationFrame(() => window.scrollTo({ top, behavior: 'auto' }))
+      }
+    } catch {
+      // Ignore unavailable session storage.
+    }
+  }, [key])
+
+  useEffect(() => {
+    const save = () => {
+      try {
+        window.sessionStorage.setItem(key, String(window.scrollY))
+      } catch {
+        // Ignore unavailable session storage.
+      }
+    }
+    window.addEventListener('pagehide', save)
+    return () => {
+      save()
+      window.removeEventListener('pagehide', save)
+    }
+  }, [key])
+}
+""")
+
+replace(
+    'src/pages/Athletes.tsx',
+    "import { useMemo, useState } from 'react'",
+    "import { useMemo } from 'react'",
+)
+replace(
+    'src/pages/Athletes.tsx',
+    "import type { Athlete, AthleteResult } from '../types'",
+    "import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'\nimport type { Athlete, AthleteResult } from '../types'",
+)
+replace(
+    'src/pages/Athletes.tsx',
+    "  const [view, setView] = useState<'roster' | 'lineup'>('roster')\n  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)\n  const [sort, setSort] = useState<'fai' | 'name'>('fai')",
+    "  const [view, setView] = usePageMemory<'roster' | 'lineup'>('fai:athletes:view', 'roster')\n  const [filters, setFilters] = usePageMemory<FilterState>('fai:athletes:filters', EMPTY_FILTERS)\n  const [sort, setSort] = usePageMemory<'fai' | 'name'>('fai:athletes:sort', 'fai')\n  usePageScrollMemory('fai:athletes:scroll')",
+)
+
+replace(
+    'src/pages/Leaderboards.tsx',
+    "import { useMemo, useState } from 'react'",
+    "import { useMemo } from 'react'",
+)
+replace(
+    'src/pages/Leaderboards.tsx',
+    "import type { AthleteResult } from '../types'",
+    "import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'\nimport type { AthleteResult } from '../types'",
+)
+replace(
+    'src/pages/Leaderboards.tsx',
+    "  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)\n  const [boardId, setBoardId] = useState(() => firstPopulatedBoard(results))",
+    "  const [filters, setFilters] = usePageMemory<FilterState>('fai:rankings:filters', EMPTY_FILTERS)\n  const [boardId, setBoardId] = usePageMemory('fai:rankings:board', () => firstPopulatedBoard(results))\n  usePageScrollMemory('fai:rankings:scroll')",
+)
+
+replace(
+    'src/components/Filters.tsx',
+    "    const group = result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup\n    if (filters.grade && String(result.current.session.gradeSnapshot ?? result.athlete.grade) !== filters.grade) return false\n    // Leaderboard group filters stay tied to the primary test-day benchmark.\n    if (filters.group && group !== filters.group) return false",
+    "    const group = result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup\n    if (filters.grade && String(result.current.session.gradeSnapshot ?? result.athlete.grade) !== filters.grade) return false\n    if (\n      filters.group\n      && group !== filters.group\n      && result.athlete.secondaryPositionGroup !== filters.group\n    ) return false",
+)
+
+replace(
+    'src/lib/leaderboards.ts',
+    "          (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group,",
+    "          (result.current.session.positionGroupSnapshot ?? result.athlete.positionGroup) === group\n          || result.athlete.secondaryPositionGroup === group,",
+)
+
+Path('src/lib/twoWayFilters.test.ts').write_text("""import { describe, expect, it } from 'vitest'
+import { EMPTY_FILTERS, applyFilters } from '../components/Filters'
+import { positionGroupBoards } from './leaderboards'
+import type { AthleteResult } from '../types'
+
+function twoWayResult(): AthleteResult {
+  return {
+    athlete: {
+      id: 'two-way-1',
+      name: 'Two Way Player',
+      grade: 11,
+      position: 'WR',
+      positionGroup: 'WR',
+      usage: 'two-way',
+      secondaryPosition: 'CB',
+      secondaryPositionGroup: 'DB',
+      heightIn: 72,
+      weightLbs: 185,
+    },
+    current: {
+      fai: 84.2,
+      session: {
+        id: 'session-1',
+        athleteId: 'two-way-1',
+        eventId: 'season-2026',
+        positionSnapshot: 'WR',
+        positionGroupSnapshot: 'WR',
+      },
+    },
+    rankEligible: true,
+  } as unknown as AthleteResult
+}
+
+describe('two-way position filtering', () => {
+  it('includes a two-way athlete in both primary and secondary group filters', () => {
+    const result = twoWayResult()
+
+    expect(applyFilters([result], { ...EMPTY_FILTERS, group: 'WR' })).toHaveLength(1)
+    expect(applyFilters([result], { ...EMPTY_FILTERS, group: 'DB' })).toHaveLength(1)
+    expect(applyFilters([result], { ...EMPTY_FILTERS, group: 'RB' })).toHaveLength(0)
+  })
+
+  it('includes a two-way athlete when either exact position is searched', () => {
+    const result = twoWayResult()
+
+    expect(applyFilters([result], { ...EMPTY_FILTERS, position: 'WR' })).toHaveLength(1)
+    expect(applyFilters([result], { ...EMPTY_FILTERS, position: 'CB' })).toHaveLength(1)
+  })
+
+  it('places an official two-way athlete on both position-group boards', () => {
+    const boards = positionGroupBoards([twoWayResult()])
+    const wr = boards.find((board) => board.group === 'WR')
+    const db = boards.find((board) => board.group === 'DB')
+
+    expect(wr?.rows.map((row) => row.result.athlete.id)).toEqual(['two-way-1'])
+    expect(db?.rows.map((row) => row.result.athlete.id)).toEqual(['two-way-1'])
+  })
+})
+""")
