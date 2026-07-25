@@ -18,7 +18,9 @@ jobs:
           ref: feature/import-match-review-aliases
           fetch-depth: 0
       - name: Apply Claude import alias follow-up
-        run: python scripts/finish_claude_aliases.py
+        run: |
+          python scripts/finish_claude_aliases.py
+          python scripts/fix_alias_effect_lint.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -60,6 +62,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
           rm -f scripts/finish_claude_aliases.py
+          rm -f scripts/fix_alias_effect_lint.py
           rm -f .github/workflows/finish-claude-aliases.yml
           rm -f .github/finish-claude-aliases-trigger.txt
           git add -A
