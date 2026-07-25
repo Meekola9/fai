@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore, type BulkImportPlan, type BulkImportResult } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
@@ -6,6 +6,10 @@ import { downloadCsv } from '../data/csv'
 import { TESTING_PHASES } from '../data/constants'
 import { positionGroupFor } from '../data/positions'
 import { normalizeAthleteName } from '../lib/athleteIdentity'
+import {
+  loadTeamAthleteAliases,
+  saveTeamAthleteAlias,
+} from '../store/accounts'
 import type { Athlete, TestSession, TestingPhase } from '../types'
 import {
   IMPORT_FIELDS,
@@ -54,6 +58,14 @@ function clampGrade(grade: number | undefined): number {
   return grade
 }
 
+function matchChoices(row: ResolvedRow, roster: readonly RosterAthlete[]): RosterAthlete[] {
+  const suggestedIds = new Set(row.match.candidates.map((athlete) => athlete.id))
+  return [
+    ...row.match.candidates,
+    ...roster.filter((athlete) => !suggestedIds.has(athlete.id)),
+  ]
+}
+
 function toNewAthlete(draft: RosterDraft): Omit<Athlete, 'id'> {
   const position = draft.position || 'ATH'
   return {
@@ -68,7 +80,7 @@ function toNewAthlete(draft: RosterDraft): Omit<Athlete, 'id'> {
 }
 
 export default function BulkImport() {
-  const { data, commitBulkImport, canEdit } = useStore()
+  const { data, teamId, commitBulkImport, canEdit } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [mode, setMode] = useState<ImportMode>('combined')
@@ -79,11 +91,33 @@ export default function BulkImport() {
   const [excluded, setExcluded] = useState<Set<number>>(new Set())
   const [includeOverrides, setIncludeOverrides] = useState<Set<number>>(new Set())
   const [result, setResult] = useState<BulkImportResult | null>(null)
+  const [aliasMap, setAliasMap] = useState<Map<string, string>>(new Map())
+  const [manualMatches, setManualMatches] = useState<Map<number, string>>(new Map())
+  const [matchNotice, setMatchNotice] = useState<string>()
+  const [matchError, setMatchError] = useState<string>()
+  const [savingMatchRow, setSavingMatchRow] = useState<number>()
 
   const [newEventName, setNewEventName] = useState('')
   const [newEventDate, setNewEventDate] = useState(new Date().toISOString().slice(0, 10))
   const [newEventPhase, setNewEventPhase] = useState<TestingPhase>('Summer')
   const [existingEventId, setExistingEventId] = useState('')
+
+  useEffect(() => {
+    let active = true
+    if (!teamId) return () => { active = false }
+
+    void loadTeamAthleteAliases(teamId)
+      .then((aliases) => {
+        if (!active) return
+        setAliasMap(new Map(aliases.map((alias) => [alias.normalizedAlias, alias.athleteId])))
+      })
+      .catch((cause: unknown) => {
+        if (!active) return
+        setMatchError(cause instanceof Error ? cause.message : 'Could not load saved athlete aliases.')
+      })
+
+    return () => { active = false }
+  }, [teamId])
 
   const roster: RosterAthlete[] = useMemo(
     () => data.athletes.map((athlete) => ({ id: athlete.id, name: athlete.name, grade: athlete.grade })),
@@ -92,8 +126,8 @@ export default function BulkImport() {
   const athleteById = useMemo(() => new Map(data.athletes.map((a) => [a.id, a])), [data.athletes])
 
   const resolved = useMemo(
-    () => (table ? resolveRows(table.rows, mapping, mode, roster) : []),
-    [table, mapping, mode, roster],
+    () => (table ? resolveRows(table.rows, mapping, mode, roster, aliasMap, manualMatches) : []),
+    [table, mapping, mode, roster, aliasMap, manualMatches],
   )
 
   const counts = useMemo(() => {
@@ -137,6 +171,48 @@ export default function BulkImport() {
     }
   }
 
+  async function assignMatch(row: ResolvedRow, athleteId: string) {
+    setMatchNotice(undefined)
+    setMatchError(undefined)
+    setManualMatches((current) => {
+      const next = new Map(current)
+      if (athleteId) next.set(row.index, athleteId)
+      else next.delete(row.index)
+      return next
+    })
+    if (!athleteId) return
+
+    setExcluded((current) => {
+      const next = new Set(current)
+      next.delete(row.index)
+      return next
+    })
+
+    const cleanAlias = row.displayName.trim()
+    if (!teamId || !cleanAlias) {
+      setMatchNotice('Match applied to this import. Sign in to remember this alias for future files.')
+      return
+    }
+
+    setSavingMatchRow(row.index)
+    try {
+      const saved = await saveTeamAthleteAlias(teamId, cleanAlias, athleteId)
+      setAliasMap((current) => {
+        const next = new Map(current)
+        next.set(saved.normalizedAlias, saved.athleteId)
+        return next
+      })
+      const athleteName = athleteById.get(athleteId)?.name ?? 'the selected athlete'
+      setMatchNotice(`Saved “${cleanAlias}” as an alias for ${athleteName}. Future imports will match automatically.`)
+    } catch (cause: unknown) {
+      setMatchError(
+        `Match applied to this import, but the alias was not saved: ${cause instanceof Error ? cause.message : 'Unknown error.'}`,
+      )
+    } finally {
+      setSavingMatchRow(undefined)
+    }
+  }
+
   const includedRows = resolved.filter(isIncluded)
   const needsEvent = mode !== 'roster'
 
@@ -145,6 +221,9 @@ export default function BulkImport() {
     setResult(null)
     setExcluded(new Set())
     setIncludeOverrides(new Set())
+    setManualMatches(new Map())
+    setMatchNotice(undefined)
+    setMatchError(undefined)
     try {
       const parsed = parseDelimited(rawText)
       if (parsed.headers.length === 0 || parsed.rows.length === 0) {
@@ -167,6 +246,8 @@ export default function BulkImport() {
   }
 
   function remap(fieldKey: string, columnIndex: number) {
+    setManualMatches(new Map())
+    setMatchNotice(undefined)
     setMapping((prev) => {
       const next: ColumnMapping = {}
       // Clear any field currently on this column, and this field's old column.
@@ -248,6 +329,9 @@ export default function BulkImport() {
     setResult(null)
     setExcluded(new Set())
     setIncludeOverrides(new Set())
+    setManualMatches(new Map())
+    setMatchNotice(undefined)
+    setMatchError(undefined)
   }
 
   if (!canEdit) {
@@ -294,7 +378,13 @@ export default function BulkImport() {
                 <button
                   key={option.key}
                   type="button"
-                  onClick={() => setMode(option.key)}
+                  onClick={() => {
+                    setMode(option.key)
+                    setManualMatches(new Map())
+                    setExcluded(new Set())
+                    setIncludeOverrides(new Set())
+                    setMatchNotice(undefined)
+                  }}
                   className={`rounded-lg border px-3 py-2 text-left transition ${mode === option.key ? 'border-fai bg-fai/10' : 'border-line hover:border-fai/40'}`}
                 >
                   <div className="text-sm font-bold text-chalk">{option.label}</div>
@@ -350,6 +440,12 @@ export default function BulkImport() {
           {table && (
             <Card className="p-5">
               <SectionTitle>3 · Review &amp; import</SectionTitle>
+              {matchNotice && (
+                <div className="mb-4 rounded-xl border border-up/35 bg-up/5 p-3 text-xs font-bold text-up">{matchNotice}</div>
+              )}
+              {matchError && (
+                <div className="mb-4 rounded-xl border border-down/35 bg-down/5 p-3 text-xs font-bold text-down">{matchError}</div>
+              )}
               <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 <StatTile label="Rows" value={counts.total} />
                 <StatTile label="Ready" value={counts.ready + counts.warning} accent="up" />
@@ -397,17 +493,43 @@ export default function BulkImport() {
                     {resolved.map((row) => {
                       const included = isIncluded(row)
                       const disabled = row.status === 'error' || (mode === 'results' && !row.match.athleteId)
+                      const showResolver = row.match.confidence === 'ambiguous'
+                        || (mode === 'results' && row.match.confidence === 'none')
+                        || manualMatches.has(row.index)
+                      const choices = showResolver ? matchChoices(row, roster) : []
                       return (
                         <tr key={row.index} className="border-b border-line/50 align-top">
                           <td className="px-2 py-2">
                             <input type="checkbox" checked={included} disabled={disabled} onChange={() => toggleRow(row)} aria-label={`Include ${row.displayName}`} />
                           </td>
                           <td className="px-2 py-2 font-bold text-chalk">{row.displayName || <span className="text-muted">—</span>}</td>
-                          <td className="px-2 py-2">
-                            {row.match.athleteId ? (
+                          <td className="min-w-64 px-2 py-2">
+                            {showResolver ? (
+                              <div className="space-y-1.5">
+                                <select
+                                  aria-label={`Match ${row.displayName}`}
+                                  value={row.match.athleteId ?? ''}
+                                  disabled={savingMatchRow === row.index}
+                                  onChange={(event) => void assignMatch(row, event.target.value)}
+                                  className={inputClass + ' min-w-56 py-1.5 text-xs'}
+                                >
+                                  <option value="">Choose athlete…</option>
+                                  {choices.map((athlete, choiceIndex) => (
+                                    <option key={athlete.id} value={athlete.id}>
+                                      {choiceIndex < row.match.candidates.length ? 'Suggested · ' : ''}{athlete.name}{athlete.grade ? ` · Grade ${athlete.grade}` : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="text-[10px] leading-relaxed text-muted">
+                                  {savingMatchRow === row.index
+                                    ? 'Saving match…'
+                                    : teamId
+                                      ? 'Choose once to remember this imported name for future files.'
+                                      : 'Choose an athlete for this import.'}
+                                </div>
+                              </div>
+                            ) : row.match.athleteId ? (
                               <span className="text-xs text-up">{row.match.confidence === 'exact' ? 'Matched' : 'Likely'} · {athleteById.get(row.match.athleteId)?.name}</span>
-                            ) : row.match.confidence === 'ambiguous' ? (
-                              <span className="text-xs text-gold">{row.match.candidates.length} possible matches</span>
                             ) : mode === 'results' ? (
                               <span className="text-xs text-down">No match</span>
                             ) : (

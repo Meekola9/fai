@@ -205,6 +205,30 @@ describe('row resolution', () => {
     expect(resolved[1].status).toBe('duplicate')
     expect(isAutoIncluded(resolved[1])).toBe(false)
   })
+
+  it('uses a coach-selected athlete to resolve an unmatched result row', () => {
+    const { headers, rows } = parseDelimited(
+      'athlete,testing date,bench\nDK,2026-07-15,225',
+    )
+    const { mapping } = autoMapColumns(headers)
+    const unresolved = resolveRows(rows, mapping, 'results', roster)
+    expect(unresolved[0].status).toBe('needs-review')
+
+    const resolved = resolveRows(rows, mapping, 'results', roster, undefined, new Map([[0, 'a1']]))
+    expect(resolved[0].match).toMatchObject({ athleteId: 'a1', confidence: 'high' })
+    expect(resolved[0].status).toBe('ready')
+  })
+
+  it('detects duplicates after two aliases are manually assigned to the same athlete', () => {
+    const { headers, rows } = parseDelimited(
+      'athlete,testing date,bench\nD Kemp,2026-07-15,225\nDK,2026-07-15,230',
+    )
+    const { mapping } = autoMapColumns(headers)
+    const manual = new Map([[0, 'a1'], [1, 'a1']])
+    const resolved = resolveRows(rows, mapping, 'results', roster, undefined, manual)
+    expect(resolved[0].status).toBe('ready')
+    expect(resolved[1].status).toBe('duplicate')
+  })
 })
 
 describe('templates', () => {
