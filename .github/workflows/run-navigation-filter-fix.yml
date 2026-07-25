@@ -1,0 +1,38 @@
+name: Run navigation and two-way filter fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/nav-filter-main-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/back-navigation-two-way-filters
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python scripts/apply_navigation_filter_fix.py
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/apply_navigation_filter_fix.py .github/workflows/apply-navigation-filter-fix.yml .github/navigation-filter-trigger.txt
+          git add src/hooks/usePageMemory.ts src/pages/Athletes.tsx src/pages/Leaderboards.tsx src/components/Filters.tsx src/lib/leaderboards.ts src/lib/twoWayFilters.test.ts scripts/apply_navigation_filter_fix.py .github/workflows/apply-navigation-filter-fix.yml .github/navigation-filter-trigger.txt
+          git commit -m "Preserve list state and include two-way position filters"
+          git push origin HEAD:fix/back-navigation-two-way-filters
