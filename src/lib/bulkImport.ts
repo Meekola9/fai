@@ -733,6 +733,7 @@ export function resolveRows(
   mode: ImportMode,
   roster: readonly RosterAthlete[],
   aliases?: ReadonlyMap<string, string>,
+  manualMatches?: ReadonlyMap<number, string>,
 ): ResolvedRow[] {
   const seen = new Set<string>()
   const resolved: ResolvedRow[] = []
@@ -741,7 +742,7 @@ export function resolveRows(
     const rosterDraft = buildRosterDraft(row, mapping)
     const sessionDraft = buildSessionDraft(row, mapping)
     const displayName = draftDisplayName(rosterDraft, sessionDraft)
-    const match = matchAthlete(
+    const automaticMatch = matchAthlete(
       {
         athleteId: rosterDraft.athleteId,
         fullName: rosterDraft.fullName,
@@ -752,6 +753,13 @@ export function resolveRows(
       roster,
       aliases,
     )
+    const selectedAthleteId = manualMatches?.get(index)
+    const selectedAthlete = selectedAthleteId
+      ? roster.find((athlete) => athlete.id === selectedAthleteId)
+      : undefined
+    const match: MatchResult = selectedAthlete
+      ? { athleteId: selectedAthlete.id, confidence: 'high', candidates: [selectedAthlete] }
+      : automaticMatch
     const hasMetrics = Object.values(sessionDraft.metrics).some((value) => typeof value === 'number')
 
     const issues: RowIssue[] = []

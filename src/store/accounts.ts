@@ -10,6 +10,7 @@ import {
   type TeamPermissions,
   type TeamRole,
 } from '../lib/access'
+import { normalizeAthleteName } from '../lib/athleteIdentity'
 
 export type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 
@@ -52,6 +53,16 @@ export interface UploadedAthletePhoto {
   publicUrl: string
 }
 
+export interface AthleteAlias {
+  id: string
+  teamId: string
+  alias: string
+  normalizedAlias: string
+  athleteId: string
+  createdAt: string
+  updatedAt: string
+}
+
 function db() {
   if (!supabase) throw new Error('Supabase is not configured for this build.')
   return supabase
@@ -63,6 +74,18 @@ function throwIfError(error: { message: string } | null, operation: string) {
 
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function mapAthleteAlias(row: Record<string, unknown>): AthleteAlias {
+  return {
+    id: String(row.id),
+    teamId: String(row.team_id),
+    alias: String(row.alias),
+    normalizedAlias: String(row.normalized_alias),
+    athleteId: String(row.athlete_id),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  }
 }
 
 function mapClaim(row: Record<string, unknown>): AthleteClaim {
@@ -165,6 +188,45 @@ export async function uploadAthletePhoto(
 export async function deleteAthletePhoto(path: string): Promise<void> {
   const { error } = await db().storage.from(ATHLETE_PHOTO_BUCKET).remove([path])
   throwIfError(error, 'Could not remove athlete photo')
+}
+
+export async function loadTeamAthleteAliases(teamId: string): Promise<AthleteAlias[]> {
+  const { data, error } = await db()
+    .from('athlete_aliases')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('updated_at', { ascending: false })
+  // Safe during staged migration rollout: imports still work without saved aliases.
+  if (error && /does not exist|schema cache/i.test(error.message)) return []
+  throwIfError(error, 'Could not load athlete aliases')
+  return (data ?? []).map((row) => mapAthleteAlias(row as Record<string, unknown>))
+}
+
+export async function saveTeamAthleteAlias(
+  teamId: string,
+  alias: string,
+  athleteId: string,
+): Promise<AthleteAlias> {
+  const cleanAlias = alias.trim()
+  const normalizedAlias = normalizeAthleteName(cleanAlias)
+  if (!normalizedAlias) throw new Error('The imported athlete name is blank.')
+  if (!athleteId.trim()) throw new Error('Choose an athlete before saving the alias.')
+
+  const now = new Date().toISOString()
+  const { data, error } = await db()
+    .from('athlete_aliases')
+    .upsert({
+      team_id: teamId,
+      alias: cleanAlias,
+      normalized_alias: normalizedAlias,
+      athlete_id: athleteId,
+      updated_at: now,
+    }, { onConflict: 'team_id,normalized_alias' })
+    .select('*')
+    .single()
+  throwIfError(error, 'Could not save athlete alias')
+  if (!data) throw new Error('Supabase did not return the saved athlete alias.')
+  return mapAthleteAlias(data as Record<string, unknown>)
 }
 
 export async function createTeamInvite(input: {
