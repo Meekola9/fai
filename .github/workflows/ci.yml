@@ -21,6 +21,7 @@ jobs:
         run: |
           python scripts/finish_claude_aliases.py
           python scripts/fix_alias_effect_lint.py
+          python scripts/fix_alias_browser_regressions.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -63,6 +64,7 @@ jobs:
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
           rm -f scripts/finish_claude_aliases.py
           rm -f scripts/fix_alias_effect_lint.py
+          rm -f scripts/fix_alias_browser_regressions.py
           rm -f .github/workflows/finish-claude-aliases.yml
           rm -f .github/finish-claude-aliases-trigger.txt
           git add -A
