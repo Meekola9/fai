@@ -1,0 +1,38 @@
+name: Apply player cards and home development
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/player-cards-home-development-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/player-cards-home-development
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python scripts/apply_player_cards_home_development.py
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated feature
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/apply_player_cards_home_development.py
+          git add src/pages/AthleteProfile.tsx src/pages/MyAthleteAccount.tsx src/components/AthletePlayerCard.tsx src/components/HomeDevelopmentPlan.tsx src/lib/homeTraining.ts scripts/apply_player_cards_home_development.py
+          git commit -m "Add player cards and at-home development plans"
+          git push origin HEAD:feature/player-cards-home-development
