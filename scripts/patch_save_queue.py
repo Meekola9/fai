@@ -3,6 +3,10 @@ from pathlib import Path
 p = Path('src/store/useStore.tsx')
 s = p.read_text()
 
+if "persistQueue.enqueue({ data: next, team })" in s:
+    print('Serialized save queue is already applied.')
+    raise SystemExit(0)
+
 s = s.replace(
     "} from '../lib/athleteIdentity'\n",
     "} from '../lib/athleteIdentity'\nimport { LatestSaveQueue } from './latestSaveQueue'\n",
