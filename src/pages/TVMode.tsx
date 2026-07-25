@@ -25,8 +25,11 @@ interface Slide {
   groups?: boolean
 }
 
-const boardRows = (id: string) => (results: AthleteResult[]) =>
-  ALL_LEADERBOARDS.find((board) => board.id === id)!.rows(results)
+const boardRows = (id: string) => (results: AthleteResult[]) => {
+  // Defensive: a stale/renamed board id must never blank the whole TV screen.
+  const board = ALL_LEADERBOARDS.find((item) => item.id === id)
+  return board ? board.rows(results) : []
+}
 
 const SLIDE_DEFS: Slide[] = [
   {
@@ -86,11 +89,11 @@ const SLIDE_DEFS: Slide[] = [
     official: false,
   },
   {
-    id: 'hang',
-    title: 'Best Hang Clean',
+    id: 'powerClean',
+    title: 'Best Power Clean',
     subtitle: 'Available measurements · partial batteries included',
-    rows: boardRows('test-hangCleanReps'),
-    metricLabel: 'Reps',
+    rows: boardRows('test-powerCleanMax'),
+    metricLabel: 'Power Clean',
     official: false,
   },
   {

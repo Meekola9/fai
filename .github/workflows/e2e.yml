@@ -25,6 +25,8 @@ jobs:
         run: npx playwright test --grep "fresh browser automatically loads"
       - name: Run coach Power Clean entry flow
         run: npx playwright test --grep "coach adds a complete testing event"
+      - name: Run route-health guard (every route renders)
+        run: npx playwright test e2e/route-health.spec.ts
       - name: Upload failure evidence
         if: failure()
         uses: actions/upload-artifact@v4
