@@ -12,8 +12,8 @@ export interface OverallRatingBand {
 /**
  * Coach-facing names for the overall 0–100 FAI score.
  *
- * The source note left 80–89 and 65–69 unnamed. FAI uses Difference Maker and
- * Building Block for those two gaps so every score receives a readable label.
+ * Score thresholds and internal tone ids remain stable so existing card colors,
+ * filters, and stored data are unaffected by public label changes.
  */
 export const OVERALL_RATING_BANDS: readonly OverallRatingBand[] = [
   {
@@ -26,35 +26,35 @@ export const OVERALL_RATING_BANDS: readonly OverallRatingBand[] = [
   },
   {
     id: 'dawg',
-    label: 'DAWG',
+    label: 'X Factor',
     rangeLabel: '90–95',
     min: 90,
     tone: 'dawg',
-    description: 'An exceptional overall athletic profile with very few limitations.',
+    description: 'An exceptional athlete whose complete profile can consistently change a game.',
   },
   {
     id: 'difference-maker',
-    label: 'Difference Maker',
+    label: 'Superstar',
     rangeLabel: '80–89',
     min: 80,
     tone: 'difference',
-    description: 'A high-level athlete whose testing profile can create a clear on-field advantage.',
+    description: 'A high-level athlete with multiple traits that create a clear on-field advantage.',
   },
   {
     id: 'developing-talent',
-    label: 'Developing Talent',
+    label: 'Star',
     rangeLabel: '70–79',
     min: 70,
     tone: 'developing',
-    description: 'A useful athletic foundation with identifiable areas still being developed.',
+    description: 'A strong athletic foundation with clear impact traits and room for continued growth.',
   },
   {
     id: 'building-block',
-    label: 'Building Block',
+    label: 'Normal',
     rangeLabel: '65–69',
     min: 65,
     tone: 'building',
-    description: 'A developing profile that can contribute while priority traits are built.',
+    description: 'A functional overall profile that meets the normal FAI performance range.',
   },
   {
     id: 'needs-work',
