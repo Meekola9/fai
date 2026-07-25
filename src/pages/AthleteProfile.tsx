@@ -7,18 +7,13 @@ import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
 import { athleteGameDayBadgeSummary, type AthleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
-import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
-import {
-  Avatar,
-  Card,
-  FaiRing,
-  Pill,
-  SectionTitle,
-} from '../components/ui'
+import { CATEGORIES, CATEGORY_SHORT } from '../data/constants'
+import { Card, Pill, SectionTitle } from '../components/ui'
 import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
 import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
-import { OverallRatingName } from '../components/OverallRatingName'
+import { AthletePlayerCard } from '../components/AthletePlayerCard'
+import { HomeDevelopmentPlan } from '../components/HomeDevelopmentPlan'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
 import type { AthleteResult, Category } from '../types'
@@ -154,7 +149,7 @@ function AwarenessCard({ athleteId }: { athleteId: string }) {
 export default function AthleteProfile() {
   const { id } = useParams()
   const [positionView, setPositionView] = useState<'primary' | 'secondary'>('primary')
-  const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
+  const { data, computed, resultsForEvent, gradeLabelFor, canEdit, teamName } = useStore()
   const athlete = id ? data.athletes.find((item) => item.id === id) : undefined
   const result = id
     ? resultsForEvent(ATHLETE_SEASON_ID).find((item) => item.athlete.id === id)
@@ -182,28 +177,22 @@ export default function AthleteProfile() {
     return (
       <div className="mx-auto max-w-2xl space-y-5">
         <ProfileNav athleteId={athlete.id} />
+        <AthletePlayerCard
+          athlete={athlete}
+          teamName={teamName}
+          gradeLabel={gradeLabelFor(athlete, 'long')}
+          weightLbs={athlete.weightLbs}
+          statusLabel="No 2026 testing"
+        />
         <Card className="p-6">
-          <div className="flex items-center gap-4">
-            <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={80} />
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-chalk">{athlete.name}</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-                <Pill tone="fai">{athlete.positionGroup}</Pill>
-                <span>{athlete.secondaryPosition ? `${athlete.position} / ${athlete.secondaryPosition}` : athlete.position}</span>
-                <span>· {gradeLabelFor(athlete, 'long')}</span>
-                <span>· {formatHeight(athlete.heightIn)}</span>
-                <span>· {athlete.weightLbs} lbs</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
+          <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
             <div className="text-base font-bold text-chalk">No 2026 testing data yet</div>
-            <div className="mt-1 text-sm text-muted">Historical seasons are available only from Rankings.</div>
+            <div className="mt-1 text-sm text-muted">Complete the testing battery to activate the rating, archetype, ranks, weaknesses, and at-home development plan.</div>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {canEdit && (
                 <Link to={`/entry?athlete=${athlete.id}`} className="inline-block rounded-lg bg-fai px-5 py-2 text-sm font-bold text-ink">+ Enter 2026 Testing Data</Link>
               )}
-              <Link to="/leaderboard" className="inline-block rounded-lg border border-line px-5 py-2 text-sm font-bold text-chalk">View Rankings</Link>
+              <Link to="/leaderboards" className="inline-block rounded-lg border border-line px-5 py-2 text-sm font-bold text-chalk">View Rankings</Link>
             </div>
           </div>
         </Card>
@@ -261,50 +250,34 @@ export default function AthleteProfile() {
     <div className="space-y-6">
       <ProfileNav athleteId={athlete.id} />
 
-      <Card glow className="p-5">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={96} />
-          <div className="flex-1">
-            <h1 className="text-3xl font-black tracking-tight text-chalk">{athlete.name}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-              <Pill tone="fai">{athlete.positionGroup}</Pill>
-              <span>{athlete.secondaryPosition ? `${athlete.position} / ${athlete.secondaryPosition}` : athlete.position}</span>
-              <span>· {gradeLabelFor(athlete, 'long')}</span>
-              <span>· {current.session.weightLbsSnapshot ?? athlete.weightLbs} lbs at test</span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Pill tone="fai">2026 season</Pill>
-              <Pill tone={rankEligible ? 'up' : 'gold'}>
-                {rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
-              </Pill>
-              <OverallRatingName score={current.fai} />
-              {rankEligible && <Pill tone="gold">2026 Team Rank #{displayResult.teamRank} / {displayResult.teamCount}</Pill>}
-              {rankEligible && <Pill>{current.session.positionGroupSnapshot ?? athlete.positionGroup} Rank #{displayResult.groupRank} / {displayResult.groupCount}</Pill>}
-              {displayResult.impactBoostPct > 0 && (
-                <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>
-              )}
-              {displayResult.awarenessBoostPct > 0 && (
-                <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>
-              )}
-              {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && (
-                <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>
-              )}
-              {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && (
-                <Pill tone="gold">
-                  Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph
-                </Pill>
-              )}
-            </div>
-          </div>
-          <div className="text-center">
-            <FaiRing score={current.fai} size={130} label={rankEligible ? 'FAI' : 'PROV'} />
-            <div className="mt-2"><OverallRatingName score={current.fai} compact /></div>
-          </div>
-        </div>
+      <AthletePlayerCard
+        athlete={athlete}
+        score={current.fai}
+        archetype={positionArchetype?.name}
+        teamName={teamName}
+        gradeLabel={gradeLabelFor(athlete, 'long')}
+        weightLbs={current.session.weightLbsSnapshot ?? athlete.weightLbs}
+        rankEligible={rankEligible}
+        teamRank={displayResult.teamRank}
+        teamCount={displayResult.teamCount}
+        groupRank={displayResult.groupRank}
+        groupCount={displayResult.groupCount}
+        strongestTrait={strong[0] ? `${strong[0]} ${positionCurrent.categories[strong[0]].toFixed(0)}` : undefined}
+        statusLabel={rankEligible ? 'Official 2026 score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
+      />
 
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill tone="fai">2026 season</Pill>
+          <Pill tone={rankEligible ? 'up' : 'gold'}>{rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}</Pill>
+          {displayResult.impactBoostPct > 0 && <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>}
+          {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>}
+          {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>}
+          {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && <Pill tone="gold">Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph</Pill>}
+        </div>
         {!rankEligible && (
-          <div className="mt-5 rounded-xl border border-flame/30 bg-flame/5 p-4 text-sm text-muted">
-            This 2026 score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
+          <div className="mt-3 rounded-xl border border-flame/30 bg-flame/5 p-3 text-sm text-muted">
+            This score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
           </div>
         )}
       </Card>
@@ -414,6 +387,12 @@ export default function AthleteProfile() {
               <div className="flex flex-wrap gap-1.5">{weak.length ? weak.map((category) => <Pill key={category} tone="down">{category} · {positionCurrent.categories[category].toFixed(0)}</Pill>) : <span className="text-xs text-muted">No major weakness flagged.</span>}</div>
             </Card>
           </div>
+
+          <HomeDevelopmentPlan
+            categories={weak}
+            scores={positionCurrent.categories}
+            title={`${selectedPositionName} At-Home Development`}
+          />
         </div>
       </div>
 
@@ -455,7 +434,7 @@ export default function AthleteProfile() {
       </Card>
 
       <div className="text-center text-xs text-muted">
-        Athlete pages display 2026 only. <Link to="/leaderboard" className="font-bold text-fai hover:underline">View historical seasons in Rankings.</Link>
+        Athlete pages display 2026 only. <Link to="/leaderboards" className="font-bold text-fai hover:underline">View historical seasons in Rankings.</Link>
       </div>
     </div>
   )

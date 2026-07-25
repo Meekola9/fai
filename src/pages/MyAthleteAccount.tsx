@@ -14,6 +14,10 @@ import {
   athletePhotoPathFromPublicUrl,
 } from '../lib/athletePhoto'
 import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
+import { AthletePlayerCard } from '../components/AthletePlayerCard'
+import { HomeDevelopmentPlan } from '../components/HomeDevelopmentPlan'
+import { archetypeFor } from '../lib/archetypes'
+import { strengths, weaknesses } from '../lib/progress'
 
 const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
   'Elite IQ': 'up',
@@ -148,7 +152,7 @@ function AwarenessQuizCard({ athleteId }: { athleteId: string }) {
 }
 
 export default function MyAthleteAccount() {
-  const { data, userEmail, signOut } = useStore()
+  const { data, userEmail, signOut, teamName, resultsForEvent, gradeLabelFor } = useStore()
   const [claim, setClaim] = useState<AthleteClaim | null>(null)
   const [photoUrl, setPhotoUrl] = useState('')
   const [photoFile, setPhotoFile] = useState<File>()
@@ -182,6 +186,12 @@ export default function MyAthleteAccount() {
   }, [photoPreview])
 
   const athlete = claim ? data.athletes.find((item) => item.id === claim.athleteId) : undefined
+  const athleteResult = athlete
+    ? resultsForEvent('season-2026').find((item) => item.athlete.id === athlete.id)
+    : undefined
+  const athleteWeaknesses = athleteResult ? weaknesses(athleteResult.current) : []
+  const athleteStrengths = athleteResult ? strengths(athleteResult.current) : []
+  const athleteArchetype = athleteResult ? archetypeFor(athleteResult.current) : undefined
 
   function choosePhoto(file?: File) {
     setError(undefined)
@@ -268,6 +278,28 @@ export default function MyAthleteAccount() {
           {error ?? message}
         </div>
       )}
+
+      <AthletePlayerCard
+        athlete={{ ...athlete, photoUrl: photoPreview || photoUrl || athlete.photoUrl }}
+        score={athleteResult?.current.fai}
+        archetype={athleteArchetype?.name}
+        teamName={teamName}
+        gradeLabel={gradeLabelFor(athlete, 'long')}
+        weightLbs={athleteResult?.current.session.weightLbsSnapshot ?? athlete.weightLbs}
+        rankEligible={athleteResult?.rankEligible}
+        teamRank={athleteResult?.teamRank}
+        teamCount={athleteResult?.teamCount}
+        groupRank={athleteResult?.groupRank}
+        groupCount={athleteResult?.groupCount}
+        strongestTrait={athleteStrengths[0] && athleteResult ? `${athleteStrengths[0]} ${athleteResult.current.categories[athleteStrengths[0]].toFixed(0)}` : undefined}
+        statusLabel={athleteResult ? `${athleteResult.current.scoreStatus} · ${athleteResult.current.completionPct}% complete` : 'No 2026 testing'}
+      />
+
+      <HomeDevelopmentPlan
+        categories={athleteWeaknesses}
+        scores={athleteResult?.current.categories}
+        title="My At-Home Development Plan"
+      />
 
       <AwarenessQuizCard athleteId={athlete.id} />
 
