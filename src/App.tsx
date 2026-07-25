@@ -279,11 +279,6 @@ export default function App() {
     <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
-        <PersistentFilmRoute active={isFilm}>
-          {viewerMode
-            ? <FilmRoom />
-            : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
-        </PersistentFilmRoute>
         <Routes>
           <Route path="/" element={isAthlete ? <Navigate to="/account/profile" replace /> : <Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
@@ -307,6 +302,11 @@ export default function App() {
           <Route path="/account/profile" element={allowed(isAthlete, <MyAthleteAccount />, 'Only an approved athlete account has a self-service profile.')} />
           <Route path="/login" element={<Navigate to={isAthlete ? '/account/profile' : '/'} replace />} />
         </Routes>
+        <PersistentFilmRoute active={isFilm}>
+          {viewerMode
+            ? <FilmRoom />
+            : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
+        </PersistentFilmRoute>
       </main>
       <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">FAI — Football Athlete Index · {viewerMode ? 'Live team view · read only' : storageMode === 'cloud' ? 'Secure role-based cloud access with on-device backup' : 'Local-first with on-device backup'}</footer>
       <PwaControls />
