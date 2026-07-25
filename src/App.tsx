@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { useAccountAccess } from './hooks/useAccountAccess'
@@ -232,11 +232,32 @@ function PermissionDenied({ message = 'Your FAI account does not have permission
   return <div className="mx-auto max-w-xl rounded-2xl border border-down/30 bg-panel p-6 text-center"><h1 className="text-xl font-black text-chalk">Permission required</h1><p className="mt-2 text-sm text-muted">{message}</p><NavLink to="/" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk">Return to FAI</NavLink></div>
 }
 
+function PersistentFilmRoute({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const scrollTop = useRef(0)
+
+  useLayoutEffect(() => {
+    if (active) {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollTop.current, behavior: 'auto' })
+      })
+    } else {
+      scrollTop.current = window.scrollY
+    }
+  }, [active])
+
+  return (
+    <section hidden={!active} aria-hidden={!active}>
+      {children}
+    </section>
+  )
+}
+
 export default function App() {
   const { loading, cloudConfigured, signedIn, teamName, viewerMode, storageMode } = useStore()
   const access = useAccountAccess()
   const location = useLocation()
   const isTv = location.pathname.startsWith('/tv')
+  const isFilm = location.pathname === '/film'
 
   if (loading || access.loading) return <Loading />
   const signedOut = cloudConfigured && !signedIn
@@ -258,12 +279,17 @@ export default function App() {
     <div className="min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <Header />
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
+        <PersistentFilmRoute active={isFilm}>
+          {viewerMode
+            ? <FilmRoom />
+            : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
+        </PersistentFilmRoute>
         <Routes>
           <Route path="/" element={isAthlete ? <Navigate to="/account/profile" replace /> : <Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
-          <Route path="/film" element={viewerMode ? <FilmRoom /> : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')} />
+          <Route path="/film" element={null} />
           <Route path="/development" element={<PlayerDevelopment />} />
           <Route path="/archetypes" element={<PlayerDevelopment />} />
           <Route path="/badges" element={<PlayerDevelopment />} />
