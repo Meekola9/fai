@@ -165,8 +165,10 @@ export function AthletePlayerCard({
           </div>
 
           <div className="absolute left-[9%] right-[7%] top-[28%]">
-            {firstName && <div className="text-[clamp(.75rem,2.5vw,1.65rem)] font-medium uppercase italic leading-none text-white/90">{firstName}</div>}
-            <div className="mt-1 break-words text-[clamp(1.25rem,4.5vw,3rem)] font-black uppercase italic leading-[0.9] tracking-[-0.045em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]">{lastName}</div>
+            <h1 aria-label={athlete.name}>
+              {firstName && <span className="block text-[clamp(.75rem,2.5vw,1.65rem)] font-medium uppercase italic leading-none text-white/90">{firstName}</span>}
+              <span className="mt-1 block break-words text-[clamp(1.25rem,4.5vw,3rem)] font-black uppercase italic leading-[0.9] tracking-[-0.045em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]">{lastName}</span>
+            </h1>
             <div className="mt-[7%] h-px w-[74%]" style={{ background: `linear-gradient(90deg, ${theme.edge}, transparent)` }} />
             <div className="mt-[4%] text-[clamp(.5rem,1.2vw,.75rem)] font-black uppercase tracking-[0.18em] text-white/58">Rating class</div>
             <div className="mt-1 text-[clamp(.68rem,1.75vw,1.05rem)] font-black uppercase leading-tight" style={{ color: theme.soft }}>
