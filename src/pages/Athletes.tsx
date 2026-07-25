@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill } from '../components/ui'
@@ -14,6 +14,7 @@ import { playerUsageDefinition } from '../lib/playerUsage'
 import { formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
 import Lineup from './Lineup'
+import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'
 import type { Athlete, AthleteResult } from '../types'
 
 const ATHLETE_SEASON_ID = 'season-2026'
@@ -25,9 +26,10 @@ interface Row {
 
 export default function Athletes() {
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
-  const [view, setView] = useState<'roster' | 'lineup'>('roster')
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [sort, setSort] = useState<'fai' | 'name'>('fai')
+  const [view, setView] = usePageMemory<'roster' | 'lineup'>('fai:athletes:view', 'roster')
+  const [filters, setFilters] = usePageMemory<FilterState>('fai:athletes:filters', EMPTY_FILTERS)
+  const [sort, setSort] = usePageMemory<'fai' | 'name'>('fai:athletes:sort', 'fai')
+  usePageScrollMemory('fai:athletes:scroll')
 
   const seasonResults = resultsForEvent(ATHLETE_SEASON_ID)
   const filteredResults = useMemo(

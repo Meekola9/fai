@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import {
@@ -14,6 +14,7 @@ import { OverallRatingName } from '../components/OverallRatingName'
 import { FilterBar, EMPTY_FILTERS, applyFilters, type FilterState } from '../components/Filters'
 import { seasonEvents } from '../lib/events'
 import { OVERALL_RATING_BANDS } from '../lib/overallRatings'
+import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'
 import type { AthleteResult } from '../types'
 
 function trendOf(value: number) {
@@ -87,8 +88,9 @@ function firstPopulatedBoard(results: AthleteResult[]): string {
 
 export default function Leaderboards() {
   const { data, results, resultsForEvent } = useStore()
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS)
-  const [boardId, setBoardId] = useState(() => firstPopulatedBoard(results))
+  const [filters, setFilters] = usePageMemory<FilterState>('fai:rankings:filters', EMPTY_FILTERS)
+  const [boardId, setBoardId] = usePageMemory('fai:rankings:board', () => firstPopulatedBoard(results))
+  usePageScrollMemory('fai:rankings:scroll')
 
   const selectedResults = useMemo(
     () => (filters.eventId ? resultsForEvent(filters.eventId) : results),
