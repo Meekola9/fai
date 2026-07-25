@@ -1,0 +1,49 @@
+name: Finish Claude import aliases
+
+on:
+  push:
+    branches: [feature/import-match-review-aliases]
+    paths:
+      - .github/finish-claude-aliases-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/import-match-review-aliases
+          fetch-depth: 0
+      - name: Apply match-review and alias feature
+        run: python scripts/finish_claude_aliases.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Bulk-import and route regression tests
+        run: npx playwright test e2e/bulk-import-match-review.spec.ts e2e/bulk-import-smoke.spec.ts e2e/route-health.spec.ts
+      - name: Commit validated feature
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/finish_claude_aliases.py
+          rm -f .github/workflows/finish-claude-aliases.yml
+          rm -f .github/finish-claude-aliases-trigger.txt
+          git add -A
+          git commit -m "Add bulk import match review and saved aliases"
+          git push origin HEAD:feature/import-match-review-aliases
