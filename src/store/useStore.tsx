@@ -51,6 +51,7 @@ import {
   consolidateAthleteAliases,
   normalizeAthleteName,
 } from '../lib/athleteIdentity'
+import { LatestSaveQueue } from './latestSaveQueue'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export type StorageMode = 'local' | 'cloud'
@@ -148,6 +149,11 @@ interface AuthUserLike {
   email?: string | null
 }
 
+interface PersistJob {
+  data: Required<AppData>
+  team: ActiveTeam | null
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Required<AppData>>(EMPTY)
   const [loading, setLoading] = useState(true)
@@ -161,6 +167,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [localImportAvailable, setLocalImportAvailable] = useState(false)
   const [viewerMode, setViewerMode] = useState(false)
   const [publicTeamName, setPublicTeamName] = useState<string>()
+  const [persistQueue] = useState(() => new LatestSaveQueue<PersistJob>(
+    async (job) => {
+      await localStore.save(job.data)
+      if (job.team) await saveCloudData(job.team.id, job.data)
+    },
+    {
+      onQueued: () => {
+        setSaveStatus('saving')
+        setSaveError(undefined)
+      },
+      onSaved: (job) => {
+        if (job.team) setLastSyncedAt(new Date().toISOString())
+        setSaveStatus('saved')
+        setSaveError(undefined)
+      },
+      onError: (error, job) => {
+        setSaveStatus('error')
+        const message = error instanceof Error ? error.message : 'Save failed.'
+        setSaveError(job.team
+          ? `Saved to this device, but cloud synchronization failed: ${message}`
+          : message)
+      },
+    },
+  ))
 
   useEffect(() => {
     let alive = true
@@ -380,26 +410,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   function persist(next: Required<AppData>) {
-    setSaveStatus('saving')
-    setSaveError(undefined)
-    const activeTeam = team
-
-    void (async () => {
-      await localStore.save(next)
-      if (activeTeam) {
-        await saveCloudData(activeTeam.id, next)
-        setLastSyncedAt(new Date().toISOString())
-      }
-      setSaveStatus('saved')
-    })().catch((error: unknown) => {
-      setSaveStatus('error')
-      const message = error instanceof Error ? error.message : 'Save failed.'
-      setSaveError(
-        activeTeam
-          ? `Saved to this device, but cloud synchronization failed: ${message}`
-          : message,
-      )
-    })
+    // Keep full-team snapshot writes ordered. An older cloud save must never
+    // finish after a newer result and prune that newer row.
+    persistQueue.enqueue({ data: next, team })
   }
 
   function mutate(recipe: (current: Required<AppData>) => AppData) {
