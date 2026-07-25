@@ -1,0 +1,38 @@
+name: Apply serialized testing saves
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/serialized-testing-saves-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/serialize-testing-saves
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: python scripts/patch_save_queue.py
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f scripts/patch_save_queue.py
+          git add src/store/useStore.tsx src/store/latestSaveQueue.ts src/store/latestSaveQueue.test.ts scripts/patch_save_queue.py
+          git commit -m "Serialize testing saves to prevent result loss"
+          git push origin HEAD:fix/serialize-testing-saves
