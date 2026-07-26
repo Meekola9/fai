@@ -18,7 +18,9 @@ jobs:
           ref: feature/film-auto-follow-formation
           fetch-depth: 0
       - name: Apply Film Room auto-follow feature
-        run: python scripts/add_film_auto_follow.py
+        run: |
+          set -o pipefail
+          python scripts/add_film_auto_follow.py 2>&1 | tee patch.log
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -42,6 +44,7 @@ jobs:
         with:
           name: fai-auto-follow-validation
           path: |
+            patch.log
             lint.log
             test.log
             build.log
