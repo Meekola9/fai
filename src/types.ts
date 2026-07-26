@@ -144,6 +144,18 @@ export interface FilmAnnotationPoint {
   source?: 'manual' | 'auto'
   /** 0-1 visual match confidence for automatic points. */
   confidence?: number
+  /** Estimated whole-frame horizontal camera shift, normalized to frame width. */
+  cameraDx?: number
+  /** Estimated whole-frame vertical camera shift, normalized to frame height. */
+  cameraDy?: number
+  /** Per-frame camera zoom ratio used to compensate the point. */
+  cameraScale?: number
+  /** Estimated 0-1 motion/defocus blur level for the source frame. */
+  blurLevel?: number
+  /** Player-template scale relative to the coach-selected starting frame. */
+  playerScale?: number
+  /** True when whole-frame pan/tilt/zoom compensation materially changed prediction. */
+  motionCompensated?: boolean
 }
 
 export type FilmAnnotationKind = 'route' | 'trail' | 'zone' | 'arrow'
