@@ -18,7 +18,9 @@ jobs:
           ref: fix/film-video-scrubbing
           fetch-depth: 0
       - name: Apply Film Room scrubbing patch
-        run: python scripts/add_film_scrubbing.py
+        run: |
+          python scripts/add_film_scrubbing.py
+          python scripts/fix_film_scrub_test.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -57,6 +59,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
           rm -f scripts/add_film_scrubbing.py
+          rm -f scripts/fix_film_scrub_test.py
           git add -A
           git commit -m "Add touch-friendly Film Room video scrubbing"
           git push origin HEAD:fix/film-video-scrubbing
