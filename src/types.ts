@@ -161,6 +161,57 @@ export interface FilmAnnotationPoint {
 export type FilmAnnotationKind = 'route' | 'trail' | 'zone' | 'arrow'
 export type TrackingTeam = 'ours' | 'opponent'
 
+export type ThrowFamily =
+  | 'screen'
+  | 'quick-game'
+  | 'rpo'
+  | 'dropback'
+  | 'play-action'
+  | 'rollout'
+  | 'sprint-out'
+  | 'boot'
+  | 'deep-shot'
+  | 'throwaway'
+  | 'other'
+export type ThrowTrajectory = 'bullet' | 'touch' | 'lob' | 'layered' | 'checkdown' | 'throwaway'
+export type ThrowPlatform =
+  | 'on-platform'
+  | 'off-platform'
+  | 'moving-left'
+  | 'moving-right'
+  | 'back-foot'
+  | 'jump-pass'
+export type ThrowArmSlot = 'overhand' | 'three-quarter' | 'sidearm' | 'underhand'
+export type ThrowHandedness = 'right' | 'left'
+export type ThrowLandmark =
+  | 'throwingShoulder'
+  | 'throwingElbow'
+  | 'throwingWrist'
+  | 'frontShoulder'
+  | 'throwingHip'
+  | 'frontHip'
+  | 'backFoot'
+  | 'frontFoot'
+
+/** Coach-assisted quarterback throw breakdown saved with one film play. */
+export interface ThrowAnalysis {
+  quarterbackId?: string
+  throwFamily?: ThrowFamily
+  trajectory?: ThrowTrajectory
+  platform?: ThrowPlatform
+  armSlot?: ThrowArmSlot
+  handedness?: ThrowHandedness
+  snapTimeSec?: number
+  plantTimeSec?: number
+  releaseTimeSec?: number
+  arrivalTimeSec?: number
+  /** Air distance supplied by the coach; required for average ball-speed mph. */
+  throwDistanceYards?: number
+  /** Eight coach-marked 2D landmarks from the release frame. */
+  landmarks?: Partial<Record<ThrowLandmark, FilmAnnotationPoint>>
+  note?: string
+}
+
 /** A route line, defender trail, coverage zone, or pointer drawn over film. */
 export interface FilmAnnotation {
   id: string
@@ -179,6 +230,8 @@ export interface FilmAnnotation {
   formationRole?: string
   /** Coach marked this individual route as finished. */
   trackingComplete?: boolean
+  /** Special metadata record for QB timing, mechanics, speed, and throw type. */
+  throwAnalysis?: ThrowAnalysis
   points: FilmAnnotationPoint[]
 }
 
