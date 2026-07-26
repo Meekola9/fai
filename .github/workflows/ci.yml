@@ -24,6 +24,7 @@ jobs:
           python scripts/add_film_auto_follow.py 2>&1 | tee patch.log
           python scripts/fix_auto_follow_lint.py
           python scripts/fix_auto_follow_test_pattern.py
+          python scripts/fix_auto_follow_types.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -69,6 +70,7 @@ jobs:
           rm -f scripts/relax_auto_follow_markers.py
           rm -f scripts/fix_auto_follow_lint.py
           rm -f scripts/fix_auto_follow_test_pattern.py
+          rm -f scripts/fix_auto_follow_types.py
           git add -A
           git commit -m "Add one-player auto-follow and 11-player formation builder"
           git push origin HEAD:feature/film-auto-follow-formation
