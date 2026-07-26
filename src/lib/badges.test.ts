@@ -195,6 +195,25 @@ describe('player badges', () => {
     expect(ids(resultFor(strong))).not.toContain('clean-machine')
   })
 
+  it('tiers averaged composite badges by the mean of their stat set', () => {
+    const tierOf = (result: AthleteResult, id: string) =>
+      playerBadgesFor({ result, timeline: [result.current] }).find((badge) => badge.id === id)?.tier
+
+    // Burner = avg(Speed, Acceleration): 65 bronze, 75 silver, 85 gold, 90 elite.
+    expect(tierOf(resultFor(computed('WR', { Speed: 66, Acceleration: 64 })), 'avg-burner')).toBe('bronze')
+    expect(tierOf(resultFor(computed('WR', { Speed: 80, Acceleration: 76 })), 'avg-burner')).toBe('silver')
+    expect(tierOf(resultFor(computed('WR', { Speed: 88, Acceleration: 86 })), 'avg-burner')).toBe('gold')
+    expect(tierOf(resultFor(computed('WR', { Speed: 94, Acceleration: 90 })), 'avg-burner')).toBe('elite')
+    // Below the bronze floor earns nothing.
+    expect(tierOf(resultFor(computed('WR', { Speed: 60, Acceleration: 60 })), 'avg-burner')).toBeUndefined()
+  })
+
+  it('withholds an average badge until every stat in its set is measured', () => {
+    // Explosive needs Jump, Power, and Acceleration all present.
+    const partial = resultFor(computed('RB', { Jump: 90, Power: 90 }))
+    expect(playerBadgesFor({ result: partial, timeline: [partial.current] }).some((b) => b.id === 'avg-explosive')).toBe(false)
+  })
+
   it('does not award the relative-strength badge to speed-skill groups', () => {
     const receiver = computed('WR', { Strength: 100 })
     const lineman = computed('OL', { Strength: 100 })

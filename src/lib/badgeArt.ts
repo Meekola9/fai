@@ -102,6 +102,36 @@ export const BADGE_ART: Readonly<Record<string, BadgeArtSpec>> = {
     ],
     circles: [{ cx: 32, cy: 32, r: 4, fill: true }],
   },
+  'avg-burner': {
+    group: 'performance',
+    paths: ['M32 8C40 20 44 27 39 39C36 47 32 50 32 50C32 50 28 47 25 39C21 30 25 22 32 8Z'],
+    circles: [{ cx: 32, cy: 38, r: 5, fill: true }],
+  },
+  'avg-explosive': {
+    group: 'performance',
+    paths: ['M32 6L38 24L56 20L44 34L58 44L39 44L32 60L25 44L6 44L20 34L8 20L26 24Z'],
+    circles: [{ cx: 32, cy: 34, r: 5, fill: true }],
+  },
+  'avg-twitch': {
+    group: 'performance',
+    paths: ['M36 8L18 34H30L26 56L46 28H34Z'],
+    lines: [{ x1: 8, y1: 20, x2: 16, y2: 20 }, { x1: 48, y1: 44, x2: 56, y2: 44 }],
+  },
+  'avg-functional-strong': {
+    group: 'performance',
+    paths: ['M12 40C12 28 22 21 34 24C43 26 49 32 49 41V47H39C39 39 33 35 28 37C25 38 24 43 24 47H13Z'],
+    circles: [{ cx: 40, cy: 20, r: 5 }],
+  },
+  'avg-motor': {
+    group: 'performance',
+    paths: ['M32 52C12 38 14 18 26 18C30 18 32 22 32 25C32 22 34 18 38 18C50 18 52 38 32 52Z'],
+    lines: [{ x1: 20, y1: 33, x2: 27, y2: 33 }, { x1: 27, y1: 33, x2: 30, y2: 27 }, { x1: 30, y1: 27, x2: 34, y2: 39 }, { x1: 34, y1: 39, x2: 37, y2: 33 }, { x1: 37, y1: 33, x2: 44, y2: 33 }],
+  },
+  'avg-freak': {
+    group: 'performance',
+    paths: ['M32 6L54 19V45L32 58L10 45V19Z'],
+    lines: [{ x1: 22, y1: 22, x2: 42, y2: 42 }, { x1: 42, y1: 22, x2: 22, y2: 42 }, { x1: 24, y1: 26, x2: 40, y2: 26 }, { x1: 24, y1: 38, x2: 40, y2: 38 }],
+  },
   'twenty-mph-club': { group: 'club', text: '20', textSize: 25, paths: ['M10 48C19 39 16 27 24 20', 'M54 16C45 25 48 37 40 45'] },
   'nineteen-mph-club': { group: 'club', text: '19', textSize: 25, paths: ['M9 43H20', 'M44 21H56', 'M7 50H24'] },
   'four-fifty-club': { group: 'club', text: '4.50', textSize: 17, paths: ['M12 17H52', 'M12 48H52'] },

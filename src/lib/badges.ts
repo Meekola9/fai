@@ -1,4 +1,4 @@
-import { CATEGORIES } from '../data/constants'
+import { CATEGORIES, CATEGORY_SHORT } from '../data/constants'
 import {
   flyTimeToMph,
   isSpeedSkillGroup,
@@ -127,6 +127,39 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Score 75 or higher in at least five measured categories.',
   },
 
+  // Averaged composite traits — one badge each, tiered by the mean of a fixed
+  // stat set: 65+ bronze, 75+ silver, 85+ gold, 90+ elite.
+  {
+    id: 'avg-burner', name: 'Burner', icon: '🔥', tier: 'gold', group: 'performance', priority: 83,
+    description: 'Straight-line speed: the athlete’s Speed and Acceleration average high together.',
+    earnedBy: 'Average of Speed and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-explosive', name: 'Explosive Athlete', icon: '💥', tier: 'gold', group: 'performance', priority: 82,
+    description: 'Lower-body explosion: the athlete’s Jump, Power, and Acceleration average high together.',
+    earnedBy: 'Average of Jump, Power, and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-twitch', name: 'Twitched Up', icon: '⚡', tier: 'gold', group: 'performance', priority: 81,
+    description: 'Short-area suddenness: the athlete’s Change of Direction and Acceleration average high together.',
+    earnedBy: 'Average of Change of Direction and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-functional-strong', name: 'Functional Strong', icon: '🏋️', tier: 'silver', group: 'performance', priority: 76,
+    description: 'Applied force: the athlete’s Strength and Power average high together.',
+    earnedBy: 'Average of Strength and Power — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-motor', name: 'Motor', icon: '🫀', tier: 'silver', group: 'performance', priority: 75,
+    description: 'Repeat-effort engine: the athlete’s Conditioning and Pursuit average high together.',
+    earnedBy: 'Average of Conditioning and Pursuit — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-freak', name: 'Freak', icon: '🧬', tier: 'elite', group: 'performance', priority: 95,
+    description: 'The complete package: every measured category averages high together.',
+    earnedBy: 'Average of all eight categories (full battery) — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+
   // Absolute test clubs ------------------------------------------------------
   {
     id: 'twenty-mph-club', name: '20 MPH Club', icon: '🌪️', tier: 'legend', group: 'club', priority: 98,
@@ -242,6 +275,29 @@ export const PLAYER_BADGE_CATALOG = catalog([
 const DEFINITION_BY_ID: ReadonlyMap<string, PlayerBadgeDefinition> = new Map(
   PLAYER_BADGE_CATALOG.map((definition) => [definition.id, definition] as const),
 )
+
+/** Composite badges scored on the average of a fixed category set. */
+export const AVERAGE_BADGE_TRAITS: Readonly<Record<string, readonly Category[]>> = {
+  'avg-burner': ['Speed', 'Acceleration'],
+  'avg-explosive': ['Jump', 'Power', 'Acceleration'],
+  'avg-twitch': ['Change of Direction', 'Acceleration'],
+  'avg-functional-strong': ['Strength', 'Power'],
+  'avg-motor': ['Conditioning', 'Pursuit'],
+  'avg-freak': CATEGORIES,
+}
+
+const AVERAGE_TIER_BANDS: readonly (readonly [number, BadgeTier])[] = [
+  [90, 'elite'],
+  [85, 'gold'],
+  [75, 'silver'],
+  [65, 'bronze'],
+]
+
+/** Tier an averaged composite earns, or undefined below the bronze floor. */
+export function averageBadgeTier(average: number): BadgeTier | undefined {
+  for (const [min, tier] of AVERAGE_TIER_BANDS) if (average >= min) return tier
+  return undefined
+}
 
 function definition(id: string): PlayerBadgeDefinition {
   const item = DEFINITION_BY_ID.get(id)
@@ -376,6 +432,16 @@ export function playerBadgesFor({
   const highCategories = categories.filter((category) => current.categories[category] >= 75)
   if (highCategories.length >= 5) {
     add(earned, 'five-tool-athlete', `${highCategories.length} categories at 75+`)
+  }
+
+  // Averaged composite badges — tiered by the mean of their fixed stat set.
+  for (const [id, traits] of Object.entries(AVERAGE_BADGE_TRAITS)) {
+    if (!traits.every((category) => categoryAvailable(current, category))) continue
+    const mean = traits.reduce((sum, category) => sum + current.categories[category], 0) / traits.length
+    const tier = averageBadgeTier(mean)
+    if (!tier) continue
+    const label = traits.map((category) => CATEGORY_SHORT[category]).join('·')
+    earned.push({ ...definition(id), tier, evidence: `${label} avg ${Math.round(mean)}` })
   }
 
   const fly = current.metrics.bestFly
