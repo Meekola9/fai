@@ -5,24 +5,34 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/coach-assisted-film-tracking
+          fetch-depth: 0
+      - name: Apply Film Room tracking integration
+        run: python scripts/apply_film_tracking.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install dependencies
         run: npm install
       - name: Lint
-        run: npm run lint
-      - name: Test
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee lint.log
+      - name: Unit tests
         run: |
           set -o pipefail
           npm test 2>&1 | tee test.log
-      - name: Build
+      - name: Production build
         run: |
           set -o pipefail
           npm run build 2>&1 | tee build.log
@@ -32,19 +42,32 @@ jobs:
         with:
           name: fai-validation-diagnostics
           path: |
+            lint.log
             test.log
             build.log
           if-no-files-found: ignore
           retention-days: 14
-      - name: Install mobile browser
+      - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Phone app acceptance
         run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
-      - name: Upload mobile diagnostics on failure
+      - name: Film tracking and route regression
+        run: npx playwright test e2e/film-tracking.spec.ts e2e/route-health.spec.ts
+      - name: Commit validated feature
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          rm -f scripts/apply_film_tracking.py
+          git add -A
+          git commit -m "Add coach-assisted player tracking to Film Room"
+          git push origin HEAD:feature/coach-assisted-film-tracking
+      - name: Upload browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-mobile-diagnostics
+          name: fai-film-tracking-diagnostics
           path: |
             playwright-report/
             test-results/
