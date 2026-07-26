@@ -184,6 +184,17 @@ describe('player badges', () => {
     expect(earned).toContain('team-number-one')
   })
 
+  it('awards Power Cleaner from the current power-clean max, not the retired hang-clean reps', () => {
+    const strong = computed('OL', { Power: 80 }, { metrics: { powerCleanMax: 245, hangCleanReps: 4 } })
+    const light = computed('OL', { Power: 60 }, { metrics: { powerCleanMax: 200, hangCleanReps: 20 } })
+
+    expect(ids(resultFor(strong))).toContain('power-cleaner')
+    // A big legacy rep count no longer earns it on its own once the max is low.
+    expect(ids(resultFor(light))).not.toContain('power-cleaner')
+    // The retired badge id is gone.
+    expect(ids(resultFor(strong))).not.toContain('clean-machine')
+  })
+
   it('does not award the relative-strength badge to speed-skill groups', () => {
     const receiver = computed('WR', { Strength: 100 })
     const lineman = computed('OL', { Strength: 100 })

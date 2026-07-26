@@ -164,9 +164,9 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Record a vertical jump of at least 35 inches.',
   },
   {
-    id: 'clean-machine', name: 'Clean Machine', icon: '🏋️', tier: 'gold', group: 'club', priority: 81,
-    description: 'The athlete repeatedly moved body weight in the hang clean with quality work capacity.',
-    earnedBy: 'Complete at least 12 valid hang-clean repetitions at body weight.',
+    id: 'power-cleaner', name: 'Power Cleaner', icon: '🏋️', tier: 'gold', group: 'club', priority: 81,
+    description: 'The athlete moves high-end explosive load through the power clean.',
+    earnedBy: 'Record a Power Clean max of at least 225 lb (measured, or the FAI-estimated max).',
   },
   {
     id: 'shuttle-technician', name: 'Shuttle Technician', icon: '↔️', tier: 'elite', group: 'club', priority: 89,
@@ -399,8 +399,8 @@ export function playerBadgesFor({
   if (typeof broad === 'number' && broad >= 120) add(earned, 'ten-foot-club', `${broad.toFixed(0)}in broad jump`)
   const vertical = current.metrics.verticalJump
   if (typeof vertical === 'number' && vertical >= 35) add(earned, 'thirty-five-inch-club', `${vertical.toFixed(1)}in vertical jump`)
-  const clean = current.metrics.hangCleanReps
-  if (typeof clean === 'number' && clean >= 12) add(earned, 'clean-machine', `${clean.toFixed(0)} body-weight hang-clean reps`)
+  const powerClean = current.metrics.powerCleanMax
+  if (typeof powerClean === 'number' && powerClean >= 225) add(earned, 'power-cleaner', `${powerClean.toFixed(0)} lb power clean`)
   const shuttle = current.metrics.best20Shuttle
   if (typeof shuttle === 'number' && shuttle <= 4.35) add(earned, 'shuttle-technician', `${shuttle.toFixed(2)}s 20-yard shuttle`)
   const lateral = current.metrics.bestLatShuttle

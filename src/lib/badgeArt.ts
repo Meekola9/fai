@@ -128,7 +128,7 @@ export const BADGE_ART: Readonly<Record<string, BadgeArtSpec>> = {
     group: 'club', text: '35', textSize: 19,
     paths: ['M13 45V16M13 16L7 24M13 16L19 24', 'M51 19V48M51 48L45 40M51 48L57 40'],
   },
-  'clean-machine': {
+  'power-cleaner': {
     group: 'club',
     paths: ['M11 25H17V39H11Z', 'M18 21H24V43H18Z', 'M40 21H46V43H40Z', 'M47 25H53V39H47Z'],
     lines: [{ x1: 24, y1: 32, x2: 40, y2: 32 }],

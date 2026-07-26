@@ -17,6 +17,7 @@ import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../l
 import { AthletePlayerCard } from '../components/AthletePlayerCard'
 import { HomeDevelopmentPlan } from '../components/HomeDevelopmentPlan'
 import { archetypeFor } from '../lib/archetypes'
+import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
 import { strengths, weaknesses } from '../lib/progress'
 
 const AWARENESS_TONE: Record<string, 'up' | 'fai' | 'gold' | 'down'> = {
@@ -294,6 +295,10 @@ export default function MyAthleteAccount() {
         strongestTrait={athleteStrengths[0] && athleteResult ? `${athleteStrengths[0]} ${athleteResult.current.categories[athleteStrengths[0]].toFixed(0)}` : undefined}
         statusLabel={athleteResult ? `${athleteResult.current.scoreStatus} · ${athleteResult.current.completionPct}% complete` : 'No 2026 testing'}
       />
+
+      {athleteArchetype && (
+        <ArchetypeNameplate archetype={athleteArchetype} positionLabel={`${athlete.positionGroup} · ${athlete.position}`} />
+      )}
 
       <HomeDevelopmentPlan
         categories={athleteWeaknesses}
