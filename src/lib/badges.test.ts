@@ -208,6 +208,28 @@ describe('player badges', () => {
     expect(tierOf(resultFor(computed('WR', { Speed: 60, Acceleration: 60 })), 'avg-burner')).toBeUndefined()
   })
 
+  it('awards coverage-count badges by how many categories clear each band', () => {
+    // Four categories at 80+ → Two-Way Threat; none reach 90 → no Quad Force.
+    const four80s = resultFor(computed('LB', { Speed: 82, Acceleration: 84, Power: 81, Strength: 88 }))
+    const four80earned = ids(four80s)
+    expect(four80earned).toContain('two-way-threat')
+    expect(four80earned).not.toContain('quad-force')
+
+    // Four categories at 90+ earns both (90 also clears 80).
+    const four90s = ids(resultFor(computed('LB', { Speed: 92, Acceleration: 91, Power: 90, Strength: 95 })))
+    expect(four90s).toContain('quad-force')
+    expect(four90s).toContain('two-way-threat')
+
+    // Complete Athlete needs the full battery, every category 70+.
+    const full = {
+      Speed: 72, Acceleration: 74, Jump: 71, Power: 73,
+      Pursuit: 70, 'Change of Direction': 76, Conditioning: 70, Strength: 78,
+    }
+    expect(ids(resultFor(computed('LB', full)))).toContain('complete-athlete')
+    // One soft spot (or a missing test) blocks it.
+    expect(ids(resultFor(computed('LB', { ...full, Jump: 68 })))).not.toContain('complete-athlete')
+  })
+
   it('withholds an average badge until every stat in its set is measured', () => {
     // Explosive needs Jump, Power, and Acceleration all present.
     const partial = resultFor(computed('RB', { Jump: 90, Power: 90 }))

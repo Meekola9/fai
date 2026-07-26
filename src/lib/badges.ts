@@ -160,6 +160,23 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Average of all eight categories (full battery) — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
   },
 
+  // Coverage counts — how many categories clear a band -----------------------
+  {
+    id: 'two-way-threat', name: 'Two-Way Threat', icon: '🔀', tier: 'gold', group: 'performance', priority: 80,
+    description: 'The athlete grades strong across a wide slice of the battery, not just one trait.',
+    earnedBy: 'Score 80 or higher in at least four measured categories.',
+  },
+  {
+    id: 'quad-force', name: 'Quad Force', icon: '🌀', tier: 'legend', group: 'performance', priority: 97,
+    description: 'Four separate athletic categories grade at a rare, near-perfect level.',
+    earnedBy: 'Score 90 or higher in at least four measured categories.',
+  },
+  {
+    id: 'complete-athlete', name: 'Complete Athlete', icon: '🛡️', tier: 'elite', group: 'performance', priority: 91,
+    description: 'A full testing battery with no soft spot anywhere on the card.',
+    earnedBy: 'Measure all eight categories and score 70 or higher in every one.',
+  },
+
   // Absolute test clubs ------------------------------------------------------
   {
     id: 'twenty-mph-club', name: '20 MPH Club', icon: '🌪️', tier: 'legend', group: 'club', priority: 98,
@@ -442,6 +459,15 @@ export function playerBadgesFor({
     if (!tier) continue
     const label = traits.map((category) => CATEGORY_SHORT[category]).join('·')
     earned.push({ ...definition(id), tier, evidence: `${label} avg ${Math.round(mean)}` })
+  }
+
+  // Coverage counts — how many measured categories clear a band.
+  const in80s = categories.filter((category) => current.categories[category] >= 80)
+  if (in80s.length >= 4) add(earned, 'two-way-threat', `${in80s.length} categories at 80+`)
+  const in90s = categories.filter((category) => current.categories[category] >= 90)
+  if (in90s.length >= 4) add(earned, 'quad-force', `${in90s.length} categories at 90+`)
+  if (categories.length >= CATEGORIES.length && values.every((value) => value >= 70)) {
+    add(earned, 'complete-athlete', 'All eight categories at 70+')
   }
 
   const fly = current.metrics.bestFly

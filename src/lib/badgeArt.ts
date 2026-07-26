@@ -132,6 +132,23 @@ export const BADGE_ART: Readonly<Record<string, BadgeArtSpec>> = {
     paths: ['M32 6L54 19V45L32 58L10 45V19Z'],
     lines: [{ x1: 22, y1: 22, x2: 42, y2: 42 }, { x1: 42, y1: 22, x2: 22, y2: 42 }, { x1: 24, y1: 26, x2: 40, y2: 26 }, { x1: 24, y1: 38, x2: 40, y2: 38 }],
   },
+  'two-way-threat': {
+    group: 'performance',
+    paths: ['M22 10V36M22 10L16 18M22 10L28 18', 'M42 54V28M42 54L36 46M42 54L48 46'],
+  },
+  'quad-force': {
+    group: 'performance',
+    paths: ['M20 20H44V44H20Z'],
+    circles: [
+      { cx: 20, cy: 20, r: 5, fill: true }, { cx: 44, cy: 20, r: 5, fill: true },
+      { cx: 20, cy: 44, r: 5, fill: true }, { cx: 44, cy: 44, r: 5, fill: true },
+    ],
+  },
+  'complete-athlete': {
+    group: 'performance',
+    paths: ['M24 8H40L56 24V40L40 56H24L8 40V24Z'],
+    circles: [{ cx: 32, cy: 32, r: 6, fill: true }],
+  },
   'twenty-mph-club': { group: 'club', text: '20', textSize: 25, paths: ['M10 48C19 39 16 27 24 20', 'M54 16C45 25 48 37 40 45'] },
   'nineteen-mph-club': { group: 'club', text: '19', textSize: 25, paths: ['M9 43H20', 'M44 21H56', 'M7 50H24'] },
   'four-fifty-club': { group: 'club', text: '4.50', textSize: 17, paths: ['M12 17H52', 'M12 48H52'] },
