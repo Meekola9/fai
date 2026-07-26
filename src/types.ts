@@ -140,9 +140,14 @@ export interface FilmAnnotationPoint {
   x: number // 0-1 across the frame width
   y: number // 0-1 down the frame height
   t?: number // optional seconds from the play's start, for trails / speed
+  /** Whether the coach placed this point or the browser tracker generated it. */
+  source?: 'manual' | 'auto'
+  /** 0-1 visual match confidence for automatic points. */
+  confidence?: number
 }
 
 export type FilmAnnotationKind = 'route' | 'trail' | 'zone' | 'arrow'
+export type TrackingTeam = 'ours' | 'opponent'
 
 /** A route line, defender trail, coverage zone, or pointer drawn over film. */
 export interface FilmAnnotation {
@@ -156,6 +161,12 @@ export interface FilmAnnotation {
   tracking?: boolean
   /** Unit assignment used to color and group a timed player track. */
   trackingSide?: PlaySide
+  /** Whether the tracked player belongs to our team or the opponent. */
+  trackingTeam?: TrackingTeam
+  /** Position/formation label such as X, Z, LT, Mike, or Boundary CB. */
+  formationRole?: string
+  /** Coach marked this individual route as finished. */
+  trackingComplete?: boolean
   points: FilmAnnotationPoint[]
 }
 
