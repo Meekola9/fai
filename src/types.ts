@@ -152,6 +152,10 @@ export interface FilmAnnotation {
   athleteId?: string
   label?: string
   color?: string
+  /** True when this trail is a coach-assisted timed player track. */
+  tracking?: boolean
+  /** Unit assignment used to color and group a timed player track. */
+  trackingSide?: PlaySide
   points: FilmAnnotationPoint[]
 }
 
