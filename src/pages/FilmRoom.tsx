@@ -73,6 +73,8 @@ function FilmStage({
   activeTrackId,
   currentTime,
   onTimeChange,
+  onDurationChange,
+  onPlayingChange,
   onCommitPath,
   onCommitTrackPoint,
   canDraw,
@@ -85,6 +87,8 @@ function FilmStage({
   activeTrackId?: string
   currentTime: number
   onTimeChange: (time: number) => void
+  onDurationChange: (duration: number) => void
+  onPlayingChange: (playing: boolean) => void
   onCommitPath: (points: FilmAnnotationPoint[]) => void
   onCommitTrackPoint: (point: FilmAnnotationPoint, time: number) => void
   canDraw: boolean
@@ -233,9 +237,20 @@ function FilmStage({
           className="absolute inset-0 h-full w-full bg-black"
           controls
           playsInline
-          onLoadedMetadata={(event) => onTimeChange(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget
+            onTimeChange(video.currentTime)
+            onDurationChange(Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0)
+          }}
+          onDurationChange={(event) => {
+            const duration = event.currentTarget.duration
+            onDurationChange(Number.isFinite(duration) && duration > 0 ? duration : 0)
+          }}
           onTimeUpdate={(event) => onTimeChange(event.currentTarget.currentTime)}
           onSeeked={(event) => onTimeChange(event.currentTarget.currentTime)}
+          onPlay={() => onPlayingChange(true)}
+          onPause={() => onPlayingChange(false)}
+          onEnded={() => onPlayingChange(false)}
         />
         <canvas
           ref={canvasRef}
@@ -352,6 +367,8 @@ export default function FilmRoom() {
   const [trackLabel, setTrackLabel] = useState('')
   const [trackSide, setTrackSide] = useState<PlaySide>('offense')
   const [videoTime, setVideoTime] = useState(0)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [videoPlaying, setVideoPlaying] = useState(false)
   const [trackingMessage, setTrackingMessage] = useState<string>()
 
   const [opponentFilter, setOpponentFilter] = useState('')
@@ -404,6 +421,8 @@ export default function FilmRoom() {
     }
     setSourceLabel(file.name)
     setVideoTime(0)
+    setVideoDuration(0)
+    setVideoPlaying(false)
     setForm((prev) => ({ ...prev, filmLabel: prev.filmLabel || file.name }))
   }
 
@@ -424,6 +443,9 @@ export default function FilmRoom() {
         objectUrlRef.current = null
       }
       streamRef.current = stream
+      setVideoTime(0)
+      setVideoDuration(0)
+      setVideoPlaying(false)
       const video = videoRef.current
       if (video) {
         video.src = ''
@@ -477,20 +499,36 @@ export default function FilmRoom() {
     setTrackingMessage(`Keyframe saved at ${formatTrackTime(time)}. Advance the clip and correct the player again.`)
   }
 
-  function stepFrame(direction: -1 | 1) {
+  function seekVideo(nextTime: number) {
     const video = videoRef.current
-    if (!video) return
-    video.pause()
+    if (!video || !Number.isFinite(nextTime)) return
     const duration = Number.isFinite(video.duration) && video.duration > 0
       ? video.duration
-      : Number.POSITIVE_INFINITY
-    const next = Math.max(0, Math.min(duration, (video.currentTime || 0) + direction * TRACK_FRAME_SECONDS))
+      : videoDuration
+    const upper = duration > 0 ? duration : Math.max(0, nextTime)
+    const next = Math.max(0, Math.min(upper, nextTime))
+    video.pause()
     try {
       video.currentTime = next
     } catch {
       return
     }
     setVideoTime(next)
+  }
+
+  function seekBy(seconds: number) {
+    seekVideo((videoRef.current?.currentTime ?? videoTime) + seconds)
+  }
+
+  function togglePlayback() {
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) void video.play().catch(() => undefined)
+    else video.pause()
+  }
+
+  function stepFrame(direction: -1 | 1) {
+    seekBy(direction * TRACK_FRAME_SECONDS)
   }
 
   function removeCurrentKeyframe() {
@@ -517,6 +555,7 @@ export default function FilmRoom() {
     setActiveTrackId(undefined)
     setTrackingMessage(undefined)
     setVideoTime(0)
+    setVideoPlaying(false)
   }
 
   function savePlay() {
@@ -603,10 +642,62 @@ export default function FilmRoom() {
             activeTrackId={activeTrackId}
             currentTime={videoTime}
             onTimeChange={setVideoTime}
+            onDurationChange={setVideoDuration}
+            onPlayingChange={setVideoPlaying}
             onCommitPath={commitPath}
             onCommitTrackPoint={commitTrackPoint}
             canDraw={canEdit}
           />
+          <div className="rounded-xl border border-line bg-panel-2/40 p-3" aria-label="Video scrub controls">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => seekBy(-5)}
+                className="min-h-11 rounded-lg border border-line bg-panel px-3 text-xs font-black text-chalk disabled:opacity-40"
+                disabled={videoDuration <= 0}
+                aria-label="Back 5 seconds"
+              >
+                −5s
+              </button>
+              <button
+                type="button"
+                onClick={togglePlayback}
+                className="grid min-h-11 min-w-12 place-items-center rounded-lg border border-fai/40 bg-fai/10 px-3 text-sm font-black text-fai"
+                aria-label={videoPlaying ? 'Pause video' : 'Play video'}
+              >
+                {videoPlaying ? 'Ⅱ' : '▶'}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, videoDuration)}
+                step={0.01}
+                value={videoDuration > 0 ? Math.min(videoTime, videoDuration) : 0}
+                onPointerDown={() => videoRef.current?.pause()}
+                onChange={(event) => seekVideo(Number(event.target.value))}
+                disabled={videoDuration <= 0}
+                aria-label="Scrub video"
+                aria-valuetext={`${formatTrackTime(videoTime)} of ${formatTrackTime(videoDuration)}`}
+                className="h-11 min-w-0 flex-1 cursor-pointer accent-fai disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ touchAction: 'pan-y' }}
+              />
+              <button
+                type="button"
+                onClick={() => seekBy(5)}
+                className="min-h-11 rounded-lg border border-line bg-panel px-3 text-xs font-black text-chalk disabled:opacity-40"
+                disabled={videoDuration <= 0}
+                aria-label="Forward 5 seconds"
+              >
+                +5s
+              </button>
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3 text-[11px] font-bold text-muted">
+              <span>Drag the bar to scrub anywhere in the clip.</span>
+              <span className="shrink-0 text-fai nums" data-testid="video-time-display">
+                {formatTrackTime(videoTime)} / {videoDuration > 0 ? formatTrackTime(videoDuration) : sourceLabel === 'Live screen capture' ? 'LIVE' : '0:00.00'}
+              </span>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
               <>
