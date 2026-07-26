@@ -1,4 +1,4 @@
-import { CATEGORIES } from '../data/constants'
+import { CATEGORIES, CATEGORY_SHORT } from '../data/constants'
 import {
   flyTimeToMph,
   isSpeedSkillGroup,
@@ -127,6 +127,56 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Score 75 or higher in at least five measured categories.',
   },
 
+  // Averaged composite traits — one badge each, tiered by the mean of a fixed
+  // stat set: 65+ bronze, 75+ silver, 85+ gold, 90+ elite.
+  {
+    id: 'avg-burner', name: 'Burner', icon: '🔥', tier: 'gold', group: 'performance', priority: 83,
+    description: 'Straight-line speed: the athlete’s Speed and Acceleration average high together.',
+    earnedBy: 'Average of Speed and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-explosive', name: 'Explosive Athlete', icon: '💥', tier: 'gold', group: 'performance', priority: 82,
+    description: 'Lower-body explosion: the athlete’s Jump, Power, and Acceleration average high together.',
+    earnedBy: 'Average of Jump, Power, and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-twitch', name: 'Twitched Up', icon: '⚡', tier: 'gold', group: 'performance', priority: 81,
+    description: 'Short-area suddenness: the athlete’s Change of Direction and Acceleration average high together.',
+    earnedBy: 'Average of Change of Direction and Acceleration — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-functional-strong', name: 'Functional Strong', icon: '🏋️', tier: 'silver', group: 'performance', priority: 76,
+    description: 'Applied force: the athlete’s Strength and Power average high together.',
+    earnedBy: 'Average of Strength and Power — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-motor', name: 'Motor', icon: '🫀', tier: 'silver', group: 'performance', priority: 75,
+    description: 'Repeat-effort engine: the athlete’s Conditioning and Pursuit average high together.',
+    earnedBy: 'Average of Conditioning and Pursuit — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+  {
+    id: 'avg-freak', name: 'Freak', icon: '🧬', tier: 'elite', group: 'performance', priority: 95,
+    description: 'The complete package: every measured category averages high together.',
+    earnedBy: 'Average of all eight categories (full battery) — 65+ bronze, 75+ silver, 85+ gold, 90+ elite.',
+  },
+
+  // Coverage counts — how many categories clear a band -----------------------
+  {
+    id: 'two-way-threat', name: 'Two-Way Threat', icon: '🔀', tier: 'gold', group: 'performance', priority: 80,
+    description: 'The athlete grades strong across a wide slice of the battery, not just one trait.',
+    earnedBy: 'Score 80 or higher in at least four measured categories.',
+  },
+  {
+    id: 'quad-force', name: 'Quad Force', icon: '🌀', tier: 'legend', group: 'performance', priority: 97,
+    description: 'Four separate athletic categories grade at a rare, near-perfect level.',
+    earnedBy: 'Score 90 or higher in at least four measured categories.',
+  },
+  {
+    id: 'complete-athlete', name: 'Complete Athlete', icon: '🛡️', tier: 'elite', group: 'performance', priority: 91,
+    description: 'A full testing battery with no soft spot anywhere on the card.',
+    earnedBy: 'Measure all eight categories and score 70 or higher in every one.',
+  },
+
   // Absolute test clubs ------------------------------------------------------
   {
     id: 'twenty-mph-club', name: '20 MPH Club', icon: '🌪️', tier: 'legend', group: 'club', priority: 98,
@@ -164,9 +214,9 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Record a vertical jump of at least 35 inches.',
   },
   {
-    id: 'clean-machine', name: 'Clean Machine', icon: '🏋️', tier: 'gold', group: 'club', priority: 81,
-    description: 'The athlete repeatedly moved body weight in the hang clean with quality work capacity.',
-    earnedBy: 'Complete at least 12 valid hang-clean repetitions at body weight.',
+    id: 'power-cleaner', name: 'Power Cleaner', icon: '🏋️', tier: 'gold', group: 'club', priority: 81,
+    description: 'The athlete moves high-end explosive load through the power clean.',
+    earnedBy: 'Record a Power Clean max of at least 225 lb (measured, or the FAI-estimated max).',
   },
   {
     id: 'shuttle-technician', name: 'Shuttle Technician', icon: '↔️', tier: 'elite', group: 'club', priority: 89,
@@ -242,6 +292,29 @@ export const PLAYER_BADGE_CATALOG = catalog([
 const DEFINITION_BY_ID: ReadonlyMap<string, PlayerBadgeDefinition> = new Map(
   PLAYER_BADGE_CATALOG.map((definition) => [definition.id, definition] as const),
 )
+
+/** Composite badges scored on the average of a fixed category set. */
+export const AVERAGE_BADGE_TRAITS: Readonly<Record<string, readonly Category[]>> = {
+  'avg-burner': ['Speed', 'Acceleration'],
+  'avg-explosive': ['Jump', 'Power', 'Acceleration'],
+  'avg-twitch': ['Change of Direction', 'Acceleration'],
+  'avg-functional-strong': ['Strength', 'Power'],
+  'avg-motor': ['Conditioning', 'Pursuit'],
+  'avg-freak': CATEGORIES,
+}
+
+const AVERAGE_TIER_BANDS: readonly (readonly [number, BadgeTier])[] = [
+  [90, 'elite'],
+  [85, 'gold'],
+  [75, 'silver'],
+  [65, 'bronze'],
+]
+
+/** Tier an averaged composite earns, or undefined below the bronze floor. */
+export function averageBadgeTier(average: number): BadgeTier | undefined {
+  for (const [min, tier] of AVERAGE_TIER_BANDS) if (average >= min) return tier
+  return undefined
+}
 
 function definition(id: string): PlayerBadgeDefinition {
   const item = DEFINITION_BY_ID.get(id)
@@ -378,6 +451,25 @@ export function playerBadgesFor({
     add(earned, 'five-tool-athlete', `${highCategories.length} categories at 75+`)
   }
 
+  // Averaged composite badges — tiered by the mean of their fixed stat set.
+  for (const [id, traits] of Object.entries(AVERAGE_BADGE_TRAITS)) {
+    if (!traits.every((category) => categoryAvailable(current, category))) continue
+    const mean = traits.reduce((sum, category) => sum + current.categories[category], 0) / traits.length
+    const tier = averageBadgeTier(mean)
+    if (!tier) continue
+    const label = traits.map((category) => CATEGORY_SHORT[category]).join('·')
+    earned.push({ ...definition(id), tier, evidence: `${label} avg ${Math.round(mean)}` })
+  }
+
+  // Coverage counts — how many measured categories clear a band.
+  const in80s = categories.filter((category) => current.categories[category] >= 80)
+  if (in80s.length >= 4) add(earned, 'two-way-threat', `${in80s.length} categories at 80+`)
+  const in90s = categories.filter((category) => current.categories[category] >= 90)
+  if (in90s.length >= 4) add(earned, 'quad-force', `${in90s.length} categories at 90+`)
+  if (categories.length >= CATEGORIES.length && values.every((value) => value >= 70)) {
+    add(earned, 'complete-athlete', 'All eight categories at 70+')
+  }
+
   const fly = current.metrics.bestFly
   if (typeof fly === 'number' && fly > 0) {
     const mph = flyTimeToMph(fly)
@@ -399,8 +491,8 @@ export function playerBadgesFor({
   if (typeof broad === 'number' && broad >= 120) add(earned, 'ten-foot-club', `${broad.toFixed(0)}in broad jump`)
   const vertical = current.metrics.verticalJump
   if (typeof vertical === 'number' && vertical >= 35) add(earned, 'thirty-five-inch-club', `${vertical.toFixed(1)}in vertical jump`)
-  const clean = current.metrics.hangCleanReps
-  if (typeof clean === 'number' && clean >= 12) add(earned, 'clean-machine', `${clean.toFixed(0)} body-weight hang-clean reps`)
+  const powerClean = current.metrics.powerCleanMax
+  if (typeof powerClean === 'number' && powerClean >= 225) add(earned, 'power-cleaner', `${powerClean.toFixed(0)} lb power clean`)
   const shuttle = current.metrics.best20Shuttle
   if (typeof shuttle === 'number' && shuttle <= 4.35) add(earned, 'shuttle-technician', `${shuttle.toFixed(2)}s 20-yard shuttle`)
   const lateral = current.metrics.bestLatShuttle

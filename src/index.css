@@ -208,3 +208,26 @@ textarea {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* Archetype nameplate — the player's identity as a shining title.     */
+/* ------------------------------------------------------------------ */
+@keyframes fai-nameplate-sheen {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.archetype-title {
+  color: transparent;
+  background-image: linear-gradient(115deg, #ffffff 0%, #eaf7c9 22%, var(--color-fai) 55%, var(--color-gold) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 22px rgba(198, 242, 78, 0.42)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  animation: fai-nameplate-sheen 6s ease-in-out infinite;
+}
+.archetype-stat-val {
+  text-shadow: 0 0 16px rgba(198, 242, 78, 0.38);
+}
+@media (prefers-reduced-motion: reduce) {
+  .archetype-title { animation: none; }
+}

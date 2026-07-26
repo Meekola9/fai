@@ -5,6 +5,7 @@ import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '
 import { strengths, weaknesses } from '../lib/progress'
 import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
+import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
 import { athleteGameDayBadgeSummary, type AthleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
 import { CATEGORIES, CATEGORY_SHORT } from '../data/constants'
@@ -265,6 +266,10 @@ export default function AthleteProfile() {
         strongestTrait={strong[0] ? `${strong[0]} ${positionCurrent.categories[strong[0]].toFixed(0)}` : undefined}
         statusLabel={rankEligible ? 'Official 2026 score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
       />
+
+      {positionArchetype && (
+        <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />
+      )}
 
       <Card className="p-4">
         <div className="flex flex-wrap items-center gap-2">
