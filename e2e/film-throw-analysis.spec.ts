@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 
+// Verifies that mph is only produced after release/arrival timing and air distance are supplied.
 test('coach can mark throw timing, calculate speed, and chart release mechanics', async ({ page }) => {
   await page.goto('/#/film')
   await expect(page.getByRole('heading', { name: /Film Room/i })).toBeVisible({ timeout: 15000 })
