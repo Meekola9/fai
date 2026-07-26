@@ -20,4 +20,10 @@ test('coach can create a player track and place a timed keyframe', async ({ page
 
   await expect(page.getByText(/Active: Boundary WR · 1 confirmed/)).toBeVisible()
   await expect(page.getByText(/Manual point saved at/)).toBeVisible()
+  const stats = page.getByLabel('Live tracking stats')
+  await expect(stats.getByText('Camera shift')).toBeVisible()
+  await expect(stats.getByText('Camera zoom')).toBeVisible()
+  await expect(stats.getByText('Motion blur')).toBeVisible()
+  await expect(stats.getByText('Player scale')).toBeVisible()
+  await expect(stats.getByText('Tracking mode')).toBeVisible()
 })

@@ -442,6 +442,12 @@ export default function FilmRoom() {
   const [autoStatus, setAutoStatus] = useState<AutoTrackingStatus>('idle')
   const [autoConfidence, setAutoConfidence] = useState(0)
   const [autoFrameCount, setAutoFrameCount] = useState(0)
+  const [autoCameraDx, setAutoCameraDx] = useState(0)
+  const [autoCameraDy, setAutoCameraDy] = useState(0)
+  const [autoCameraScale, setAutoCameraScale] = useState(1)
+  const [autoBlurLevel, setAutoBlurLevel] = useState(0)
+  const [autoPlayerScale, setAutoPlayerScale] = useState(1)
+  const [autoMotionCompensated, setAutoMotionCompensated] = useState(false)
   const [autoArmed, setAutoArmed] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(0)
@@ -544,6 +550,12 @@ export default function FilmRoom() {
       t: mediaTime,
       source: 'auto',
       confidence: sample.confidence,
+      cameraDx: sample.camera.dx,
+      cameraDy: sample.camera.dy,
+      cameraScale: sample.camera.scale,
+      blurLevel: sample.blurLevel,
+      playerScale: sample.playerScale,
+      motionCompensated: sample.compensated,
     }
     setPending((current) => current.map((annotation) =>
       annotation.id === trackId
@@ -553,15 +565,26 @@ export default function FilmRoom() {
     setVideoTime(mediaTime)
     setAutoConfidence(sample.confidence)
     setAutoFrameCount((count) => count + 1)
+    setAutoCameraDx(sample.camera.dx)
+    setAutoCameraDy(sample.camera.dy)
+    setAutoCameraScale(sample.camera.scale)
+    setAutoBlurLevel(sample.blurLevel)
+    setAutoPlayerScale(sample.playerScale)
+    setAutoMotionCompensated(sample.compensated)
 
-    lowConfidenceFramesRef.current = sample.confidence < 0.48
+    // Motion-blurred Hudl pans often produce a few soft frames even when the
+    // compensated route remains coherent. Give those frames a wider recovery
+    // window without allowing a sustained low-confidence drift.
+    const lowConfidenceThreshold = sample.blurLevel >= 0.55 ? 0.38 : 0.48
+    const allowedLowConfidenceFrames = sample.blurLevel >= 0.55 ? 7 : 4
+    lowConfidenceFramesRef.current = sample.confidence < lowConfidenceThreshold
       ? lowConfidenceFramesRef.current + 1
       : 0
-    if (lowConfidenceFramesRef.current >= 4) {
+    if (lowConfidenceFramesRef.current >= allowedLowConfidenceFrames) {
       setAutoArmed(true)
       stopAutoFollow(
         'lost',
-        `Tracking confidence fell to ${Math.round(sample.confidence * 100)}%. Tap the player once to correct and continue.`,
+        `Tracking confidence fell to ${Math.round(sample.confidence * 100)}%${sample.blurLevel >= 0.55 ? ' during a blurred camera move' : ''}. Tap the player once to correct and continue.`,
       )
       return
     }
@@ -608,6 +631,12 @@ export default function FilmRoom() {
     lowConfidenceFramesRef.current = 0
     setAutoFrameCount(0)
     setAutoConfidence(1)
+    setAutoCameraDx(0)
+    setAutoCameraDy(0)
+    setAutoCameraScale(1)
+    setAutoBlurLevel(0)
+    setAutoPlayerScale(1)
+    setAutoMotionCompensated(false)
     setAutoArmed(false)
     setAutoStatus('running')
     setTrackingMessage('Auto-follow is running. FAI will stop and ask for a correction if confidence drops.')
@@ -841,6 +870,12 @@ export default function FilmRoom() {
     setAutoArmed(false)
     setAutoFrameCount(0)
     setAutoConfidence(0)
+    setAutoCameraDx(0)
+    setAutoCameraDy(0)
+    setAutoCameraScale(1)
+    setAutoBlurLevel(0)
+    setAutoPlayerScale(1)
+    setAutoMotionCompensated(false)
     setFormationStartTime(undefined)
     setTrackingMessage(undefined)
     setVideoTime(0)
@@ -1153,13 +1188,18 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 </div>
               </div>
               {activeTrack && activeStats && (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Live tracking stats">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-11" aria-label="Live tracking stats">
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Status</div><div className="text-xs font-black text-fai">{autoStatus}</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Confidence</div><div className="text-xs font-black text-chalk nums">{Math.round((autoStatus === 'running' ? autoConfidence : activeStats.averageConfidence) * 100)}%</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Auto frames</div><div className="text-xs font-black text-chalk nums">{Math.max(autoFrameCount, activeStats.autoFrames)}</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Duration</div><div className="text-xs font-black text-chalk nums">{activeStats.durationSec.toFixed(2)}s</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Screen distance</div><div className="text-xs font-black text-chalk nums">{activeStats.screenDistancePct.toFixed(1)}%</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Corrections</div><div className="text-xs font-black text-chalk nums">{activeStats.manualCorrections}</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Camera shift</div><div className="text-xs font-black text-chalk nums">{(Math.hypot(autoCameraDx, autoCameraDy) * 100).toFixed(1)}%</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Camera zoom</div><div className="text-xs font-black text-chalk nums">{autoCameraScale.toFixed(3)}×</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Motion blur</div><div className="text-xs font-black text-chalk nums">{Math.round(autoBlurLevel * 100)}%</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Player scale</div><div className="text-xs font-black text-chalk nums">{autoPlayerScale.toFixed(2)}×</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Tracking mode</div><div className={`text-xs font-black ${autoMotionCompensated ? 'text-up' : 'text-muted'}`}>{autoMotionCompensated ? 'compensated' : 'local'}</div></div>
                 </div>
               )}
               <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-panel-2/40 px-3 py-2 text-[11px] font-bold text-muted">
