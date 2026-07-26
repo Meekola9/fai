@@ -9,6 +9,7 @@ import type {
   FilmPlay,
   PlayCall,
   PlaySide,
+  TrackingTeam,
 } from '../types'
 import {
   CONCEPTS_BY_CALL,
@@ -31,7 +32,9 @@ import {
   trackPositionAt,
   trackTrailAt,
   upsertTrackKeyframe,
+  summarizePlayerTrack,
 } from '../lib/filmTracking'
+import { BrowserPlayerAutoTracker } from '../lib/filmAutoTracking'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -53,6 +56,11 @@ const KIND_LABEL: Record<FilmAnnotationKind, string> = {
 
 type FormState = Partial<FilmPlay>
 type FilmToolMode = 'draw' | 'track'
+type AutoTrackingStatus = 'idle' | 'armed' | 'ready' | 'running' | 'lost' | 'complete' | 'error'
+type FrameCallbackVideo = HTMLVideoElement & {
+  requestVideoFrameCallback?: (callback: (now: number, metadata: { mediaTime: number }) => void) => number
+  cancelVideoFrameCallback?: (handle: number) => void
+}
 
 const EMPTY_FORM: FormState = {
   side: 'offense',
@@ -343,6 +351,60 @@ function TendencyTable({ title, groups }: { title: string; groups: TendencyGroup
   )
 }
 
+
+function FormationBoard({ tracks }: { tracks: FilmAnnotation[] }) {
+  const located = tracks
+    .map((track) => ({ track, start: trackKeyframes(track.points)[0] }))
+    .filter((item): item is { track: FilmAnnotation; start: FilmAnnotationPoint & { t: number } } => Boolean(item.start))
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-[#12331f]" data-testid="formation-board">
+      <div className="flex items-center justify-between border-b border-white/15 bg-black/20 px-3 py-2">
+        <div className="text-xs font-black uppercase tracking-wider text-white">Formation + route map</div>
+        <div className="text-[11px] font-bold text-white/70">{located.length}/11 located</div>
+      </div>
+      <div className="relative aspect-video overflow-hidden">
+        <div className="absolute inset-x-0 top-1/2 border-t-2 border-white/50" />
+        {[20, 40, 60, 80].map((position) => (
+          <div key={position} className="absolute inset-y-0 border-l border-white/20" style={{ left: `${position}%` }} />
+        ))}
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 56.25" preserveAspectRatio="none" aria-hidden="true">
+          {located.map(({ track }) => {
+            const route = trackKeyframes(track.points)
+            if (route.length < 2) return null
+            return (
+              <polyline
+                key={`route-${track.id}`}
+                points={route.map((point) => `${point.x * 100},${point.y * 56.25}`).join(' ')}
+                fill="none"
+                stroke={track.color ?? TRACK_COLORS[track.trackingSide ?? 'offense']}
+                strokeWidth="0.65"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.85"
+              />
+            )
+          })}
+        </svg>
+        {located.map(({ track, start }) => (
+          <div
+            key={track.id}
+            data-testid="formation-player"
+            className="absolute grid h-8 min-w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white bg-black/85 px-1 text-[9px] font-black text-white shadow-lg"
+            style={{ left: `${start.x * 100}%`, top: `${start.y * 100}%` }}
+            title={track.label ?? track.formationRole ?? 'Tracked player'}
+          >
+            {(track.formationRole || track.label || '?').slice(0, 5)}
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-white/15 bg-black/20 px-3 py-2 text-[10px] leading-relaxed text-white/65">
+        Starting dots form the alignment. Lines show each saved route in the camera view.
+      </div>
+    </div>
+  )
+}
+
 const selectClass =
   'rounded-lg border border-line bg-panel px-3 py-2 text-sm font-semibold text-chalk outline-none focus:border-fai'
 const inputClass = selectClass + ' placeholder:text-muted'
@@ -352,6 +414,14 @@ export default function FilmRoom() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const objectUrlRef = useRef<string | null>(null)
+  const autoTrackerRef = useRef<BrowserPlayerAutoTracker | null>(null)
+  const autoFrameRequestRef = useRef<number | undefined>(undefined)
+  const autoTimerRef = useRef<number | undefined>(undefined)
+  const autoRunningRef = useRef(false)
+  const activeTrackIdRef = useRef<string | undefined>(undefined)
+  const autoLastMediaTimeRef = useRef(-1)
+  const lowConfidenceFramesRef = useRef(0)
+  const nextTrackIdRef = useRef(0)
 
   const [sourceLabel, setSourceLabel] = useState<string>('')
   const [captureError, setCaptureError] = useState<string>()
@@ -365,7 +435,14 @@ export default function FilmRoom() {
   const [activeTrackId, setActiveTrackId] = useState<string>()
   const [trackAthleteId, setTrackAthleteId] = useState('')
   const [trackLabel, setTrackLabel] = useState('')
+  const [trackRole, setTrackRole] = useState('')
+  const [trackTeam, setTrackTeam] = useState<TrackingTeam>('opponent')
   const [trackSide, setTrackSide] = useState<PlaySide>('offense')
+  const [formationStartTime, setFormationStartTime] = useState<number>()
+  const [autoStatus, setAutoStatus] = useState<AutoTrackingStatus>('idle')
+  const [autoConfidence, setAutoConfidence] = useState(0)
+  const [autoFrameCount, setAutoFrameCount] = useState(0)
+  const [autoArmed, setAutoArmed] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(0)
   const [videoPlaying, setVideoPlaying] = useState(false)
@@ -393,14 +470,178 @@ export default function FilmRoom() {
   const conceptOptions = form.call ? CONCEPTS_BY_CALL[form.call] ?? [] : []
   const playerTracks = pending.filter(isPlayerTrack)
   const activeTrack = playerTracks.find((track) => track.id === activeTrackId)
+  const formationTracks = playerTracks.filter((track) =>
+    (track.trackingTeam ?? 'opponent') === trackTeam && (track.trackingSide ?? 'offense') === trackSide,
+  )
+  const formationLocated = formationTracks.filter((track) => trackKeyframes(track.points).length > 0)
+  const completedRoutes = formationTracks.filter((track) => track.trackingComplete).length
+  const activeStats = activeTrack ? summarizePlayerTrack(activeTrack.points) : undefined
+
+  useEffect(() => {
+    activeTrackIdRef.current = activeTrackId
+  }, [activeTrackId])
 
   // Release any object URL / capture stream when the page unmounts.
   useEffect(() => {
+    const video = videoRef.current as FrameCallbackVideo | null
     return () => {
+      if (autoFrameRequestRef.current !== undefined) video?.cancelVideoFrameCallback?.(autoFrameRequestRef.current)
+      if (autoTimerRef.current !== undefined) window.clearTimeout(autoTimerRef.current)
+      autoRunningRef.current = false
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
       streamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
+
+
+  function cancelAutoLoop() {
+    const video = videoRef.current as FrameCallbackVideo | null
+    if (autoFrameRequestRef.current !== undefined) {
+      video?.cancelVideoFrameCallback?.(autoFrameRequestRef.current)
+      autoFrameRequestRef.current = undefined
+    }
+    if (autoTimerRef.current !== undefined) {
+      window.clearTimeout(autoTimerRef.current)
+      autoTimerRef.current = undefined
+    }
+  }
+
+  function stopAutoFollow(
+    status: AutoTrackingStatus = 'ready',
+    message?: string,
+    pauseVideo = true,
+  ) {
+    autoRunningRef.current = false
+    cancelAutoLoop()
+    if (pauseVideo) videoRef.current?.pause()
+    setAutoStatus(status)
+    if (message) setTrackingMessage(message)
+  }
+
+  function processAutoFrame(mediaTime: number) {
+    if (!autoRunningRef.current) return
+    const video = videoRef.current
+    const tracker = autoTrackerRef.current
+    const trackId = activeTrackIdRef.current
+    if (!video || !tracker || !trackId) {
+      stopAutoFollow('error', 'Auto-follow stopped because the active player or video was unavailable.')
+      return
+    }
+    if (mediaTime <= autoLastMediaTimeRef.current + 0.002) {
+      scheduleAutoFrame()
+      return
+    }
+    autoLastMediaTimeRef.current = mediaTime
+    const sample = tracker.trackCurrentFrame()
+    if (!sample) {
+      setAutoArmed(true)
+      stopAutoFollow('lost', 'FAI could not read the next frame. Tap the player to correct and automatically resume.')
+      return
+    }
+
+    const point: FilmAnnotationPoint = {
+      ...sample.point,
+      t: mediaTime,
+      source: 'auto',
+      confidence: sample.confidence,
+    }
+    setPending((current) => current.map((annotation) =>
+      annotation.id === trackId
+        ? { ...annotation, points: upsertTrackKeyframe(annotation.points, mediaTime, point) }
+        : annotation,
+    ))
+    setVideoTime(mediaTime)
+    setAutoConfidence(sample.confidence)
+    setAutoFrameCount((count) => count + 1)
+
+    lowConfidenceFramesRef.current = sample.confidence < 0.48
+      ? lowConfidenceFramesRef.current + 1
+      : 0
+    if (lowConfidenceFramesRef.current >= 4) {
+      setAutoArmed(true)
+      stopAutoFollow(
+        'lost',
+        `Tracking confidence fell to ${Math.round(sample.confidence * 100)}%. Tap the player once to correct and continue.`,
+      )
+      return
+    }
+    if (video.ended || (Number.isFinite(video.duration) && video.currentTime >= video.duration)) {
+      stopAutoFollow('complete', 'Auto-follow reached the end of the clip.')
+      return
+    }
+    scheduleAutoFrame()
+  }
+
+  function scheduleAutoFrame() {
+    if (!autoRunningRef.current) return
+    const video = videoRef.current as FrameCallbackVideo | null
+    if (!video) return
+    if (video.requestVideoFrameCallback) {
+      autoFrameRequestRef.current = video.requestVideoFrameCallback((_now, metadata) => {
+        autoFrameRequestRef.current = undefined
+        processAutoFrame(metadata.mediaTime)
+      })
+      return
+    }
+    autoTimerRef.current = window.setTimeout(() => {
+      autoTimerRef.current = undefined
+      processAutoFrame(video.currentTime)
+    }, 34)
+  }
+
+  function startAutoFollowFromPoint(point: Pick<FilmAnnotationPoint, 'x' | 'y'>, time: number) {
+    const video = videoRef.current
+    if (!video || !activeTrackIdRef.current) {
+      setTrackingMessage('Load a clip and select a player track before starting auto-follow.')
+      return
+    }
+    cancelAutoLoop()
+    const tracker = new BrowserPlayerAutoTracker(video)
+    if (!tracker.initialize(point)) {
+      setAutoStatus('error')
+      setTrackingMessage('FAI could not lock onto that frame. Wait for the video to load, then tap the player again.')
+      return
+    }
+    autoTrackerRef.current = tracker
+    autoRunningRef.current = true
+    autoLastMediaTimeRef.current = time - 0.001
+    lowConfidenceFramesRef.current = 0
+    setAutoFrameCount(0)
+    setAutoConfidence(1)
+    setAutoArmed(false)
+    setAutoStatus('running')
+    setTrackingMessage('Auto-follow is running. FAI will stop and ask for a correction if confidence drops.')
+    scheduleAutoFrame()
+    void video.play().catch(() => {
+      stopAutoFollow('error', 'Playback was blocked. Press Play, then start auto-follow again.')
+    })
+  }
+
+  function startAutoFollow() {
+    const video = videoRef.current
+    if (!video || !activeTrack) {
+      setTrackingMessage('Start or select a player track first.')
+      return
+    }
+    const position = trackPositionAt(activeTrack.points, video.currentTime)
+      ?? trackKeyframes(activeTrack.points).at(-1)
+    if (!position) {
+      setTrackingMessage('Tap the player on the video once before starting auto-follow.')
+      return
+    }
+    startAutoFollowFromPoint(position, video.currentTime)
+  }
+
+  function armAutoFollow() {
+    if (!activeTrack) {
+      setTrackingMessage('Start or select a player track first.')
+      return
+    }
+    stopAutoFollow('armed', undefined, true)
+    setAutoArmed(true)
+    setAutoStatus('armed')
+    setTrackingMessage('Auto-follow armed. Tap the player at the current frame; FAI will begin following immediately.')
+  }
 
   function stopStream() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -408,6 +649,8 @@ export default function FilmRoom() {
   }
 
   function loadFile(file: File) {
+    stopAutoFollow('idle', undefined, false)
+    setAutoArmed(false)
     setCaptureError(undefined)
     stopStream()
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
@@ -427,6 +670,8 @@ export default function FilmRoom() {
   }
 
   async function startScreenCapture() {
+    stopAutoFollow('idle', undefined, false)
+    setAutoArmed(false)
     setCaptureError(undefined)
     const media = navigator.mediaDevices as MediaDevices & {
       getDisplayMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>
@@ -471,18 +716,35 @@ export default function FilmRoom() {
   }
 
   function createTrack() {
-    const athlete = roster.find((item) => item.id === trackAthleteId)
-    const label = trackLabel.trim() || athlete?.name || `Player ${playerTracks.length + 1}`
+    if (formationTracks.length >= 11) {
+      setTrackingMessage('This team/unit already has 11 player tracks. Delete or change one before adding another.')
+      return
+    }
+    stopAutoFollow('idle', undefined, false)
+    setAutoArmed(false)
+    const athlete = trackTeam === 'ours' ? roster.find((item) => item.id === trackAthleteId) : undefined
+    const role = trackRole.trim()
+    const label = trackLabel.trim() || athlete?.name || role || `Player ${formationTracks.length + 1}`
+    let trackId: string
+    do {
+      nextTrackIdRef.current += 1
+      trackId = `track-local-${nextTrackIdRef.current}`
+    } while (playerTracks.some((item) => item.id === trackId))
     const track = createPlayerTrack({
-      id: `track-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: trackId,
       athleteId: athlete?.id,
       label,
       side: trackSide,
+      team: trackTeam,
+      role,
     })
     setPending((current) => [...current, track])
     setActiveTrackId(track.id)
     setTrackLabel('')
-    setTrackingMessage(`Tracking ${label}. Pause on a clear frame, then tap the player.`)
+    setTrackRole('')
+    setAutoStatus('idle')
+    if (formationStartTime !== undefined) seekVideo(formationStartTime)
+    setTrackingMessage(`Player ${formationTracks.length + 1} of 11 ready: ${label}. Arm auto-follow, then tap the player.`)
   }
 
   function commitTrackPoint(point: FilmAnnotationPoint, time: number) {
@@ -490,16 +752,25 @@ export default function FilmRoom() {
       setTrackingMessage('Start or select a player track before placing a keyframe.')
       return
     }
+    if (autoRunningRef.current) stopAutoFollow('ready', undefined, false)
+    const manualPoint: FilmAnnotationPoint = { ...point, t: time, source: 'manual', confidence: 1 }
     setPending((current) => current.map((annotation) =>
       annotation.id === activeTrackId
-        ? { ...annotation, points: upsertTrackKeyframe(annotation.points, time, point) }
+        ? { ...annotation, points: upsertTrackKeyframe(annotation.points, time, manualPoint) }
         : annotation,
     ))
     setVideoTime(time)
-    setTrackingMessage(`Keyframe saved at ${formatTrackTime(time)}. Advance the clip and correct the player again.`)
+    setAutoConfidence(1)
+    if (autoArmed) {
+      window.setTimeout(() => startAutoFollowFromPoint(manualPoint, time), 0)
+    } else {
+      setAutoStatus('ready')
+      setTrackingMessage(`Manual point saved at ${formatTrackTime(time)}. Start auto-follow or advance and correct manually.`)
+    }
   }
 
   function seekVideo(nextTime: number) {
+    if (autoRunningRef.current) stopAutoFollow('ready', 'Auto-follow paused because the video was scrubbed.', false)
     const video = videoRef.current
     if (!video || !Number.isFinite(nextTime)) return
     const duration = Number.isFinite(video.duration) && video.duration > 0
@@ -541,8 +812,21 @@ export default function FilmRoom() {
     setTrackingMessage(`Removed the keyframe nearest ${formatTrackTime(videoTime)}, when one existed.`)
   }
 
+  function finishActiveRoute() {
+    if (!activeTrackId) return
+    stopAutoFollow('complete', undefined, true)
+    setAutoArmed(false)
+    setPending((current) => current.map((annotation) =>
+      annotation.id === activeTrackId ? { ...annotation, trackingComplete: true } : annotation,
+    ))
+    const label = activeTrack?.label ?? 'Player route'
+    setTrackingMessage(`${label} saved in this breakdown. Start the next player; Save Play persists all routes.`)
+    if (formationStartTime !== undefined) seekVideo(formationStartTime)
+  }
+
   function deleteActiveTrack() {
     if (!activeTrackId) return
+    stopAutoFollow('idle', undefined, false)
     setPending((current) => current.filter((annotation) => annotation.id !== activeTrackId))
     setActiveTrackId(undefined)
     setTrackingMessage('Player track removed.')
@@ -553,6 +837,11 @@ export default function FilmRoom() {
     setPending([])
     setEditingId(null)
     setActiveTrackId(undefined)
+    stopAutoFollow('idle', undefined, false)
+    setAutoArmed(false)
+    setAutoFrameCount(0)
+    setAutoConfidence(0)
+    setFormationStartTime(undefined)
     setTrackingMessage(undefined)
     setVideoTime(0)
     setVideoPlaying(false)
@@ -582,6 +871,11 @@ export default function FilmRoom() {
     setPending(annotations)
     const firstTrack = annotations.find(isPlayerTrack)
     setActiveTrackId(firstTrack?.id)
+    if (firstTrack) {
+      setTrackTeam(firstTrack.trackingTeam ?? 'opponent')
+      setTrackSide(firstTrack.trackingSide ?? 'offense')
+      setFormationStartTime(trackKeyframes(firstTrack.points)[0]?.t)
+    }
     setToolMode(firstTrack ? 'track' : 'draw')
     setTrackingMessage(firstTrack ? 'Saved player tracking loaded. Select a player and continue correcting keyframes.' : undefined)
     setOpponentFilter('')
@@ -617,8 +911,8 @@ export default function FilmRoom() {
           Film <span className="text-fai">Room</span>
         </h1>
         <div className="mt-1 text-xs text-muted">
-          Break down film, tag formations &amp; plays, coach-track players with timed keyframes,
-          chart routes and trails, and build the opponent tendency report.
+          Select an 11-player unit, auto-follow one athlete at a time, save every route,
+          and generate a screenshot-ready formation and route map.
         </div>
       </div>
 
@@ -751,78 +1045,99 @@ export default function FilmRoom() {
             <div className="space-y-4 rounded-xl border border-fai/30 bg-fai/5 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-black text-chalk">Coach-assisted player tracking</div>
-                  <div className="mt-1 max-w-2xl text-[11px] leading-relaxed text-muted">
-                    Start a player, pause on a clear frame, then tap the player on the video. Add corrections as the play develops; FAI interpolates movement between confirmed keyframes.
-                  </div>
+                  <div className="text-sm font-black text-chalk">11-player auto-follow and formation builder</div>
+<div className="mt-1 max-w-2xl text-[11px] leading-relaxed text-muted">
+Set the pre-snap frame, create one player, arm auto-follow, and tap that player once. FAI follows frame-by-frame until confidence drops. Finish the route, rewind, and repeat until all 11 are mapped.
+</div>
                 </div>
-                <Pill tone="gold">30 fps step</Pill>
+                <Pill tone={formationLocated.length === 11 ? 'fai' : 'gold'}>{formationLocated.length}/11 located</Pill>
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <select value={trackTeam} onChange={(event) => setTrackTeam(event.target.value as TrackingTeam)} className={selectClass} aria-label="Formation team">
+                  <option value="opponent">Opponent</option>
+                  <option value="ours">Our team</option>
+                </select>
+                <select value={trackSide} onChange={(event) => setTrackSide(event.target.value as PlaySide)} className={selectClass} aria-label="Formation unit">
+                  <option value="offense">Offense</option>
+                  <option value="defense">Defense</option>
+                  <option value="special">Special teams</option>
+                </select>
+                <button type="button" onClick={() => { setFormationStartTime(videoTime); setTrackingMessage(`Formation start set at ${formatTrackTime(videoTime)}.`) }} className="rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-black text-gold">
+                  Set formation start
+                </button>
+                <button type="button" onClick={() => formationStartTime !== undefined && seekVideo(formationStartTime)} disabled={formationStartTime === undefined} className="rounded-lg border border-line px-3 py-2 text-xs font-black text-chalk disabled:opacity-40">
+                  Return to start {formationStartTime !== undefined ? formatTrackTime(formationStartTime) : ''}
+                </button>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 <select
                   value={trackAthleteId}
                   onChange={(event) => setTrackAthleteId(event.target.value)}
                   className={selectClass}
                   aria-label="Tracked roster athlete"
                 >
-                  <option value="">Generic / opponent player</option>
-                  {roster.map((athlete) => (
+                  <option value="">{trackTeam === 'ours' ? 'Unassigned roster athlete' : 'Opponent / generic player'}</option>
+                  {trackTeam === 'ours' && roster.map((athlete) => (
                     <option key={athlete.id} value={athlete.id}>{athlete.name}</option>
                   ))}
                 </select>
                 <input
+                  value={trackRole}
+                  onChange={(event) => setTrackRole(event.target.value)}
+                  placeholder="Position: X, LT, Mike…"
+                  className={inputClass}
+                  aria-label="Formation position"
+                />
+                <input
                   value={trackLabel}
                   onChange={(event) => setTrackLabel(event.target.value)}
-                  placeholder="Label or jersey (optional)"
+                  placeholder="Name or jersey (optional)"
                   className={inputClass}
                   aria-label="Player track label"
                 />
-                <select
-                  value={trackSide}
-                  onChange={(event) => setTrackSide(event.target.value as PlaySide)}
-                  className={selectClass}
-                  aria-label="Player track side"
-                >
-                  <option value="offense">Offense</option>
-                  <option value="defense">Defense</option>
-                  <option value="special">Special teams</option>
-                </select>
                 <button
                   type="button"
                   onClick={createTrack}
-                  className="rounded-lg bg-fai px-4 py-2 text-sm font-black text-ink"
+                  disabled={formationTracks.length >= 11}
+                  className="rounded-lg bg-fai px-4 py-2 text-sm font-black text-ink disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Start player track
+                  {formationTracks.length >= 11 ? 'Unit full — 11/11' : `Add player ${formationTracks.length + 1}/11`}
                 </button>
               </div>
 
-              {playerTracks.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {playerTracks.map((track) => {
+              {formationTracks.length > 0 ? (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {formationTracks.map((track) => {
                     const count = trackKeyframes(track.points).length
                     return (
                       <button
                         key={track.id}
                         type="button"
-                        onClick={() => setActiveTrackId(track.id)}
+                        onClick={() => { stopAutoFollow('ready', undefined, false); setAutoArmed(false); setActiveTrackId(track.id) }}
                         className={`rounded-xl border px-3 py-2 text-left ${activeTrackId === track.id ? 'border-fai bg-panel text-chalk' : 'border-line bg-panel-2/40 text-muted'}`}
                         aria-label={`Select track ${track.label ?? 'player'}`}
                       >
                         <span className="mr-2" style={{ color: track.color }}>●</span>
-                        <span className="text-xs font-black">{track.label ?? 'Tracked player'}</span>
-                        <span className="ml-2 text-[10px]">{count} {count === 1 ? 'keyframe' : 'keyframes'}</span>
+                        <span className="text-xs font-black">{track.formationRole ? `${track.formationRole} · ` : ''}{track.label ?? 'Tracked player'}</span>
+                        <span className="ml-2 text-[10px]">{count} points {track.trackingComplete ? '· saved ✓' : ''}</span>
                       </button>
                     )
                   })}
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-line p-4 text-center text-xs text-muted">
-                  No players tracked yet. Create the first player above.
+                  No players in this team/unit yet. Add player 1 of 11 above.
                 </div>
               )}
 
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel p-3">
+                <button type="button" onClick={autoArmed ? () => { setAutoArmed(false); setAutoStatus('ready') } : armAutoFollow} disabled={!activeTrack || autoStatus === 'running'} className="rounded-lg border border-fai/50 bg-fai/10 px-3 py-2 text-xs font-black text-fai disabled:opacity-40">
+                  {autoArmed ? 'Cancel auto arm' : 'Arm auto-follow'}
+                </button>
+                <button type="button" onClick={startAutoFollow} disabled={!activeTrack || autoStatus === 'running' || trackKeyframes(activeTrack.points).length === 0} className="rounded-lg border border-up/40 bg-up/10 px-3 py-2 text-xs font-black text-up disabled:opacity-40">▶ Auto follow now</button>
+                <button type="button" onClick={() => stopAutoFollow('ready', 'Auto-follow paused.')} disabled={autoStatus !== 'running'} className="rounded-lg border border-down/40 px-3 py-2 text-xs font-black text-down disabled:opacity-40">■ Stop</button>
                 <button type="button" onClick={() => stepFrame(-1)} className="rounded-lg border border-line px-3 py-2 text-xs font-black text-chalk" aria-label="Previous frame">− 1 frame</button>
                 <div className="min-w-20 text-center text-sm font-black text-fai nums">{formatTrackTime(videoTime)}</div>
                 <button type="button" onClick={() => stepFrame(1)} className="rounded-lg border border-line px-3 py-2 text-xs font-black text-chalk" aria-label="Next frame">+ 1 frame</button>
@@ -832,10 +1147,26 @@ export default function FilmRoom() {
                     : 'Select or start a player, then tap the player on the video.'}
                 </div>
                 <div className="ml-auto flex flex-wrap gap-2">
-                  <button type="button" onClick={removeCurrentKeyframe} disabled={!activeTrack} className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-muted disabled:opacity-40">Remove current keyframe</button>
+                  <button type="button" onClick={finishActiveRoute} disabled={!activeTrack || !activeStats?.confirmedPoints} className="rounded-lg border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-black text-gold disabled:opacity-40">Finish &amp; save route</button>
+                  <button type="button" onClick={removeCurrentKeyframe} disabled={!activeTrack} className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-muted disabled:opacity-40">Remove current point</button>
                   <button type="button" onClick={deleteActiveTrack} disabled={!activeTrack} className="rounded-lg border border-down/40 px-3 py-2 text-xs font-bold text-down disabled:opacity-40">Delete player track</button>
                 </div>
               </div>
+              {activeTrack && activeStats && (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6" aria-label="Live tracking stats">
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Status</div><div className="text-xs font-black text-fai">{autoStatus}</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Confidence</div><div className="text-xs font-black text-chalk nums">{Math.round((autoStatus === 'running' ? autoConfidence : activeStats.averageConfidence) * 100)}%</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Auto frames</div><div className="text-xs font-black text-chalk nums">{Math.max(autoFrameCount, activeStats.autoFrames)}</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Duration</div><div className="text-xs font-black text-chalk nums">{activeStats.durationSec.toFixed(2)}s</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Screen distance</div><div className="text-xs font-black text-chalk nums">{activeStats.screenDistancePct.toFixed(1)}%</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Corrections</div><div className="text-xs font-black text-chalk nums">{activeStats.manualCorrections}</div></div>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-panel-2/40 px-3 py-2 text-[11px] font-bold text-muted">
+                <span>{completedRoutes}/11 routes finished</span>
+                <span className={formationLocated.length === 11 ? 'text-up' : 'text-gold'}>{formationLocated.length === 11 ? 'Formation ready ✓' : `${11 - formationLocated.length} locations remaining`}</span>
+              </div>
+              <FormationBoard tracks={formationTracks} />
               {trackingMessage && <div className="text-xs font-bold text-gold">{trackingMessage}</div>}
             </div>
           )}

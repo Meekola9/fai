@@ -5,41 +5,24 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feature/film-auto-follow-formation
-          fetch-depth: 0
-      - name: Apply Film Room auto-follow feature
-        run: |
-          set -o pipefail
-          python scripts/relax_auto_follow_markers.py
-          python scripts/add_film_auto_follow.py 2>&1 | tee patch.log
-          python scripts/fix_auto_follow_lint.py
-          python scripts/fix_auto_follow_test_pattern.py
-          python scripts/fix_auto_follow_types.py
-          python scripts/fix_auto_follow_browser_tests.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install dependencies
         run: npm install
       - name: Lint
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee lint.log
-      - name: Unit tests
+        run: npm run lint
+      - name: Test
         run: |
           set -o pipefail
           npm test 2>&1 | tee test.log
-      - name: Production build
+      - name: Build
         run: |
           set -o pipefail
           npm run build 2>&1 | tee build.log
@@ -47,40 +30,21 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-auto-follow-validation
+          name: fai-validation-diagnostics
           path: |
-            patch.log
-            lint.log
             test.log
             build.log
           if-no-files-found: ignore
           retention-days: 14
-      - name: Install Chromium
+      - name: Install mobile browser
         run: npx playwright install --with-deps chromium
       - name: Phone app acceptance
         run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
-      - name: Film tracking, formation, scrubbing, and route health
-        run: npx playwright test e2e/film-formation-builder.spec.ts e2e/film-tracking.spec.ts e2e/film-scrubbing.spec.ts e2e/route-health.spec.ts
-      - name: Commit validated feature
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f scripts/add_film_auto_follow.py
-          rm -f scripts/relax_auto_follow_markers.py
-          rm -f scripts/fix_auto_follow_lint.py
-          rm -f scripts/fix_auto_follow_test_pattern.py
-          rm -f scripts/fix_auto_follow_types.py
-          rm -f scripts/fix_auto_follow_browser_tests.py
-          git add -A
-          git commit -m "Add one-player auto-follow and 11-player formation builder"
-          git push origin HEAD:feature/film-auto-follow-formation
-      - name: Upload browser diagnostics on failure
+      - name: Upload mobile diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-auto-follow-browser
+          name: fai-mobile-diagnostics
           path: |
             playwright-report/
             test-results/

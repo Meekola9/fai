@@ -2,6 +2,7 @@ import type {
   FilmAnnotation,
   FilmAnnotationPoint,
   PlaySide,
+  TrackingTeam,
 } from '../types'
 
 export const TRACK_FRAME_SECONDS = 1 / 30
@@ -35,6 +36,8 @@ export function createPlayerTrack(input: {
   athleteId?: string
   label: string
   side: PlaySide
+  team?: TrackingTeam
+  role?: string
 }): FilmAnnotation {
   return {
     id: input.id,
@@ -44,6 +47,9 @@ export function createPlayerTrack(input: {
     color: TRACK_COLORS[input.side],
     tracking: true,
     trackingSide: input.side,
+    trackingTeam: input.team ?? 'opponent',
+    formationRole: input.role?.trim() || undefined,
+    trackingComplete: false,
     points: [],
   }
 }
@@ -58,6 +64,10 @@ export function trackKeyframes(
       x: clampUnit(point.x),
       y: clampUnit(point.y),
       t: cleanTime(point.t),
+      source: point.source,
+      confidence: typeof point.confidence === 'number' && Number.isFinite(point.confidence)
+        ? clampUnit(point.confidence)
+        : undefined,
     }))
     .sort((a, b) => a.t - b.t)
 
@@ -74,7 +84,7 @@ export function trackKeyframes(
 export function upsertTrackKeyframe(
   points: readonly FilmAnnotationPoint[],
   timeSec: number,
-  point: Pick<FilmAnnotationPoint, 'x' | 'y'>,
+  point: Pick<FilmAnnotationPoint, 'x' | 'y'> & Partial<Pick<FilmAnnotationPoint, 'source' | 'confidence'>>,
   tolerance = TRACK_KEYFRAME_TOLERANCE,
 ): FilmAnnotationPoint[] {
   const nextTime = cleanTime(timeSec)
@@ -82,6 +92,8 @@ export function upsertTrackKeyframe(
     x: clampUnit(point.x),
     y: clampUnit(point.y),
     t: nextTime,
+    source: point.source,
+    confidence: typeof point.confidence === 'number' ? clampUnit(point.confidence) : undefined,
   }
   const existing = trackKeyframes(points)
   const matchIndex = existing.findIndex((item) => Math.abs(item.t - nextTime) <= tolerance)
@@ -155,4 +167,45 @@ export function formatTrackTime(timeSec: number): string {
   const minutes = Math.floor(safe / 60)
   const seconds = safe - minutes * 60
   return `${minutes}:${seconds.toFixed(2).padStart(5, '0')}`
+}
+
+
+export interface PlayerTrackStats {
+  confirmedPoints: number
+  autoFrames: number
+  manualCorrections: number
+  durationSec: number
+  screenDistancePct: number
+  averageConfidence: number
+}
+
+/** Live measurements that do not pretend screen pixels are calibrated yards. */
+export function summarizePlayerTrack(points: readonly FilmAnnotationPoint[]): PlayerTrackStats {
+  const keyframes = trackKeyframes(points)
+  let distance = 0
+  let confidenceTotal = 0
+  let confidenceCount = 0
+  let manualPoints = 0
+  let autoFrames = 0
+  for (let index = 0; index < keyframes.length; index += 1) {
+    const point = keyframes[index]
+    if (point.source === 'auto') autoFrames += 1
+    if (point.source === 'manual') manualPoints += 1
+    if (point.source === 'auto' && typeof point.confidence === 'number') {
+      confidenceTotal += point.confidence
+      confidenceCount += 1
+    }
+    if (index > 0) {
+      const previous = keyframes[index - 1]
+      distance += Math.hypot(point.x - previous.x, point.y - previous.y)
+    }
+  }
+  return {
+    confirmedPoints: keyframes.length,
+    autoFrames,
+    manualCorrections: Math.max(0, manualPoints - 1),
+    durationSec: keyframes.length > 1 ? keyframes[keyframes.length - 1].t - keyframes[0].t : 0,
+    screenDistancePct: distance * 100,
+    averageConfidence: confidenceCount > 0 ? confidenceTotal / confidenceCount : 0,
+  }
 }
