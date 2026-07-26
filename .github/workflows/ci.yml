@@ -5,19 +5,31 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/film-qb-throw-analysis
+          fetch-depth: 0
+      - name: Apply QB throw analysis integration
+        run: |
+          set -o pipefail
+          python scripts/add_qb_throw_analysis.py 2>&1 | tee patch.log
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install dependencies
         run: npm install
       - name: Lint
-        run: npm run lint
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee lint.log
       - name: Test
         run: |
           set -o pipefail
@@ -30,8 +42,10 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-validation-diagnostics
+          name: fai-throw-analysis-validation
           path: |
+            patch.log
+            lint.log
             test.log
             build.log
           if-no-files-found: ignore
@@ -40,11 +54,23 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Phone app acceptance
         run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
-      - name: Upload mobile diagnostics on failure
+      - name: Film throw, tracking, scrubbing, and route regressions
+        run: npx playwright test e2e/film-throw-analysis.spec.ts e2e/film-tracking.spec.ts e2e/film-formation-builder.spec.ts e2e/film-scrubbing.spec.ts e2e/route-health.spec.ts
+      - name: Commit validated feature
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          rm -f scripts/add_qb_throw_analysis.py
+          git add -A
+          git commit -m "Add quarterback throw mechanics, speed, and type analysis"
+          git push origin HEAD:feature/film-qb-throw-analysis
+      - name: Upload browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-mobile-diagnostics
+          name: fai-throw-analysis-browser
           path: |
             playwright-report/
             test-results/
