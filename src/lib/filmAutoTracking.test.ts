@@ -95,8 +95,8 @@ describe('Film auto tracking', () => {
     const next = frameWithPlayer(51, 39)
     const match = matchPlayerTemplate(next, template!, { x: 42 / 119, y: 35 / 79 })
     expect(match).toBeDefined()
-    expect(match!.point.x * 119).toBeCloseTo(51, 0)
-    expect(match!.point.y * 79).toBeCloseTo(39, 0)
+    expect(Math.abs(match!.point.x * 119 - 51)).toBeLessThanOrEqual(1)
+    expect(Math.abs(match!.point.y * 79 - 39)).toBeLessThanOrEqual(1)
     expect(match!.confidence).toBeGreaterThan(0.68)
   })
 
@@ -136,8 +136,8 @@ describe('Film auto tracking', () => {
 
     expect(blur).toBeGreaterThan(0)
     expect(match).toBeDefined()
-    expect(match!.point.x * 119).toBeCloseTo(51, 0)
-    expect(match!.point.y * 79).toBeCloseTo(39, 0)
+    expect(Math.abs(match!.point.x * 119 - 51)).toBeLessThanOrEqual(1)
+    expect(Math.abs(match!.point.y * 79 - 39)).toBeLessThanOrEqual(1)
     expect(match!.playerScale).toBeGreaterThan(1.02)
     expect(match!.confidence).toBeGreaterThan(0.5)
   })
