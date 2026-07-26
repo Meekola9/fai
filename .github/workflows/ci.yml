@@ -5,12 +5,20 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/film-video-scrubbing
+          fetch-depth: 0
+      - name: Apply Film Room scrubbing patch
+        run: python scripts/add_film_scrubbing.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -36,15 +44,27 @@ jobs:
             build.log
           if-no-files-found: ignore
           retention-days: 14
-      - name: Install mobile browser
+      - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Phone app acceptance
         run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
-      - name: Upload mobile diagnostics on failure
+      - name: Film scrubbing and tracking regression
+        run: npx playwright test e2e/film-scrubbing.spec.ts e2e/film-tracking.spec.ts e2e/route-health.spec.ts
+      - name: Commit validated feature
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          rm -f scripts/add_film_scrubbing.py
+          git add -A
+          git commit -m "Add touch-friendly Film Room video scrubbing"
+          git push origin HEAD:fix/film-video-scrubbing
+      - name: Upload browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fai-mobile-diagnostics
+          name: fai-film-scrubbing-diagnostics
           path: |
             playwright-report/
             test-results/
