@@ -2,6 +2,26 @@ import { useId } from 'react'
 import { BADGE_ART } from '../lib/badgeArt'
 import type { BadgeGroup, BadgeTier, PlayerBadgeDefinition } from '../lib/badges'
 
+// Generated NBA-2K-style medallion art, keyed by badge id. Files are optional:
+// any badge without one falls back to the hand-built vector mark below, so the
+// wall always renders. Drop `src/assets/badges/<badge-id>.webp` in to light one
+// up (see scripts/fetch-badge-art.mjs). Signature (per-archetype) and averaged
+// (per-tier) badges intentionally stay on the recolorable vector renderer.
+const BADGE_IMAGE_BY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(
+    import.meta.glob('../assets/badges/*.webp', {
+      eager: true,
+      query: '?url',
+      import: 'default',
+    }) as Record<string, string>,
+  ).map(([path, url]) => [path.split('/').pop()!.replace(/\.webp$/, ''), url]),
+)
+
+function imageArtFor(badge: PlayerBadgeDefinition): string | undefined {
+  if (badge.group === 'signature' || badge.id.startsWith('avg-')) return undefined
+  return BADGE_IMAGE_BY_ID[badge.id]
+}
+
 const TIER_PALETTE: Record<BadgeTier, {
   edge: string
   light: string
@@ -201,6 +221,23 @@ export function BadgeArtwork({
   const markerCount = TIER_RANK[badge.tier]
   const reactId = useId().replace(/:/g, '')
   const id = `badge-${reactId}-${badge.id.replace(/[^a-z0-9]/gi, '-')}`
+
+  const image = imageArtFor(badge)
+  if (image) {
+    return (
+      <img
+        src={image}
+        width={size}
+        height={size}
+        alt={`${badge.name} ${badge.tier} badge artwork`}
+        loading="lazy"
+        className="block object-contain"
+        style={{
+          filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.55)) drop-shadow(0 0 ${Math.round(size * 0.11)}px ${palette.glow})`,
+        }}
+      />
+    )
+  }
 
   return (
     <svg
