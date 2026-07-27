@@ -69,10 +69,10 @@ export const ARCHETYPE_CATALOG: readonly ArchetypeDefinition[] = [
   // Quarterback
   { id: 'qb-field-general', name: 'Field General', group: 'QB', role: 'QB', description: 'A balanced quarterback testing profile with no major athletic category separating from the rest; film must confirm command and processing.', primary: balancedTraits, balanced: true },
   { id: 'qb-gunslinger', name: 'Gunslinger', group: 'QB', role: 'QB', description: 'A powerful quarterback testing profile led by strength, power, and jump output; arm talent still requires film confirmation.', primary: ['Power', 'Strength', 'Jump'], size: 'heavy' },
-  { id: 'qb-point-guard', name: 'Point Guard QB', group: 'QB', role: 'QB', description: 'A mobile quarterback profile led by change of direction, acceleration, and repeat-effort conditioning.', primary: ['Change of Direction', 'Acceleration', 'Conditioning'], size: 'light' },
+  { id: 'qb-point-guard', name: 'Floor General', group: 'QB', role: 'QB', description: 'A mobile quarterback profile led by change of direction, acceleration, and repeat-effort conditioning.', primary: ['Change of Direction', 'Acceleration', 'Conditioning'], size: 'light' },
   { id: 'qb-escape-artist', name: 'Escape Artist', group: 'QB', role: 'QB', description: 'A quarterback whose speed, short-area movement, and acceleration create the strongest athletic signature.', primary: ['Speed', 'Change of Direction', 'Acceleration'], size: 'light' },
   { id: 'qb-bulldozer', name: 'Bulldozer QB', group: 'QB', role: 'QB', description: 'A heavier quarterback profile built around relative strength, explosive power, and acceleration.', primary: ['Strength', 'Power', 'Acceleration'], size: 'heavy' },
-  { id: 'qb-raw-cannon', name: 'Raw Cannon', group: 'QB', role: 'QB', description: 'A raw explosive quarterback profile led by jump, power, and speed; throwing traits are not measured by FAI.', primary: ['Jump', 'Power', 'Speed'], height: 'tall' },
+  { id: 'qb-raw-cannon', name: 'Live Arm', group: 'QB', role: 'QB', description: 'A raw explosive quarterback profile led by jump, power, and speed; throwing traits are not measured by FAI.', primary: ['Jump', 'Power', 'Speed'], height: 'tall' },
   { id: 'qb-rhythm-passer', name: 'Rhythm Passer', group: 'QB', role: 'QB', description: 'A steady quarterback testing profile led by conditioning, acceleration, and pursuit-style repeat movement.', primary: ['Conditioning', 'Acceleration', 'Pursuit'], size: 'middle' },
 
   // Running back
@@ -107,7 +107,7 @@ export const ARCHETYPE_CATALOG: readonly ArchetypeDefinition[] = [
   { id: 'ol-puller', name: 'Puller', group: 'OL', role: 'OL', description: 'A mobile lineman profile led by acceleration, change of direction, and pursuit movement.', primary: ['Acceleration', 'Change of Direction', 'Pursuit'], size: 'light' },
   { id: 'ol-pass-pro-technician', name: 'Pass Pro Technician', group: 'OL', role: 'OL', description: 'A testing proxy for controlled movement led by change of direction, acceleration, and strength; technique requires film.', primary: ['Change of Direction', 'Acceleration', 'Strength'], size: 'middle' },
   { id: 'ol-phone-booth-brawler', name: 'Phone Booth Brawler', group: 'OL', role: 'OL', description: 'A compact interior profile led by strength, power, and conditioning.', primary: ['Strength', 'Power', 'Conditioning'], size: 'heavy', height: 'short' },
-  { id: 'ol-clay-frame', name: 'Clay Frame', group: 'OL', role: 'OL', description: 'A developmental offensive-line testing profile with a usable frame but no dominant measured category yet.', primary: balancedTraits, height: 'tall', developmental: true },
+  { id: 'ol-clay-frame', name: 'Project Tackle', group: 'OL', role: 'OL', description: 'A developmental offensive-line testing profile with a usable frame but no dominant measured category yet.', primary: balancedTraits, height: 'tall', developmental: true },
   { id: 'ol-space-eater', name: 'Space Eater', group: 'OL', role: 'OL', description: 'A large trench profile built around strength, conditioning, and power.', primary: ['Strength', 'Conditioning', 'Power'], size: 'heavy' },
 
   // Defensive line
@@ -132,7 +132,7 @@ export const ARCHETYPE_CATALOG: readonly ArchetypeDefinition[] = [
   { id: 'lb-coverage-backer', name: 'Coverage Backer', group: 'LB', role: 'LB', description: 'A space-linebacker testing profile led by change of direction, speed, and acceleration.', primary: ['Change of Direction', 'Speed', 'Acceleration'], size: 'light' },
   { id: 'lb-green-dot', name: 'Green Dot', group: 'LB', role: 'LB', description: 'A balanced linebacker testing profile; communication and diagnostic skill require film and practice evaluation.', primary: balancedTraits, balanced: true },
   { id: 'lb-blitz-specialist', name: 'Blitz Specialist', group: 'LB', role: 'LB', description: 'An explosive linebacker profile led by acceleration, power, and jump output.', primary: ['Acceleration', 'Power', 'Jump'] },
-  { id: 'lb-undersized-missile', name: 'Undersized Missile', group: 'LB', role: 'LB', description: 'A lighter high-velocity linebacker profile led by acceleration, pursuit, and speed.', primary: ['Acceleration', 'Pursuit', 'Speed'], size: 'light' },
+  { id: 'lb-undersized-missile', name: 'Guided Missile', group: 'LB', role: 'LB', description: 'A lighter high-velocity linebacker profile led by acceleration, pursuit, and speed.', primary: ['Acceleration', 'Pursuit', 'Speed'], size: 'light' },
 
   // Cornerback
   { id: 'cb-press-bully', name: 'Press Bully', group: 'DB', role: 'CB', description: 'A physical corner profile led by strength, power, and acceleration; press technique requires film.', primary: ['Strength', 'Power', 'Acceleration'], size: 'heavy' },

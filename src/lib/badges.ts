@@ -77,7 +77,7 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Score 85 or higher in the Acceleration category.',
   },
   {
-    id: 'skywalker', name: 'Skywalker', icon: '🪽', tier: 'elite', group: 'performance', priority: 84,
+    id: 'skywalker', name: 'Hang Time', icon: '🪽', tier: 'elite', group: 'performance', priority: 84,
     description: 'Vertical explosiveness is a defining part of the testing profile.',
     earnedBy: 'Score 85 or higher in the Jump category.',
   },
@@ -199,7 +199,7 @@ export const PLAYER_BADGE_CATALOG = catalog([
     earnedBy: 'Run a verified 40-yard dash from 4.51 through 4.75 seconds.',
   },
   {
-    id: 'big-man-burst', name: 'Big Man Burst', icon: '🚂', tier: 'elite', group: 'club', priority: 91,
+    id: 'big-man-burst', name: 'Freight Train', icon: '🚂', tier: 'elite', group: 'club', priority: 91,
     description: 'An offensive or defensive lineman produced high-end short-area acceleration.',
     earnedBy: 'For OL or DL: run a verified 10-yard dash in 1.85 seconds or faster.',
   },
