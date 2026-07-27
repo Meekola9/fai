@@ -88,10 +88,10 @@ function resultFor(
 const coachNames = [
   'Field General',
   'Gunslinger',
-  'Point Guard QB',
+  'Floor General',
   'Escape Artist',
   'Bulldozer QB',
-  'Raw Cannon',
+  'Live Arm',
   'Rhythm Passer',
   'Downhill Hammer',
   'One-Cut Slasher',
@@ -118,7 +118,7 @@ const coachNames = [
   'Puller',
   'Pass Pro Technician',
   'Phone Booth Brawler',
-  'Clay Frame',
+  'Project Tackle',
   'Space Eater',
   'Gap Plugger',
   'Penetrator',
@@ -137,7 +137,7 @@ const coachNames = [
   'Coverage Backer',
   'Green Dot',
   'Blitz Specialist',
-  'Undersized Missile',
+  'Guided Missile',
   'Press Bully',
   'Off-Man Mirror',
   'Ball Hawk',
@@ -288,7 +288,7 @@ describe('player archetypes', () => {
     expect(receiver?.evidence.slice(0, 2).some((item) => item.startsWith('Strength'))).toBe(false)
   })
 
-  it('uses Clay Frame for a developmental offensive-line profile', () => {
+  it('uses Project Tackle for a developmental offensive-line profile', () => {
     const project = archetypeFor(resultFor('OL', {
       Speed: 22,
       Acceleration: 25,
@@ -300,7 +300,7 @@ describe('player archetypes', () => {
       Strength: 27,
     }, { weight: 255, height: 77, position: 'OT' }))
 
-    expect(project?.name).toBe('Clay Frame')
+    expect(project?.name).toBe('Project Tackle')
     expect(project?.role).toBe('OL')
   })
 
