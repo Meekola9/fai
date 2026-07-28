@@ -5,7 +5,6 @@
 import type {
   AppData,
   Athlete,
-  Category,
   CategoryScores,
   ComputedSession,
   PositionGroup,
@@ -16,6 +15,7 @@ import {
   categoryWeightsFor,
   METRICS_BY_CATEGORY,
   metricWeightFor,
+  NEUTRAL_SCORE,
   REQUIRED_METRICS,
   SCORED_METRICS,
   scoreMetric,
@@ -31,7 +31,11 @@ export function clamp(value: number, low: number, high: number): number {
 }
 
 function emptyCategories(): CategoryScores {
-  return Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as CategoryScores
+  // A category with no usable test result is neutral—not zero and not omitted.
+  // Raw metrics remain undefined, so completion and missing-test UI stay honest.
+  return Object.fromEntries(
+    CATEGORIES.map((category) => [category, NEUTRAL_SCORE]),
+  ) as CategoryScores
 }
 
 function computeForGroup(
@@ -56,7 +60,6 @@ function computeForGroup(
   }
 
   const categories = emptyCategories()
-  const categoryHasData = new Map<Category, boolean>()
   for (const category of CATEGORIES) {
     const scoredMetrics = METRICS_BY_CATEGORY(category)
       .map((metric) => ({
@@ -65,7 +68,6 @@ function computeForGroup(
       }))
       .filter((item): item is { score: number; weight: number } => typeof item.score === 'number')
 
-    categoryHasData.set(category, scoredMetrics.length > 0)
     if (scoredMetrics.length > 0) {
       const weightedTotal = scoredMetrics.reduce((sum, item) => sum + item.score * item.weight, 0)
       const weightTotal = scoredMetrics.reduce((sum, item) => sum + item.weight, 0)
@@ -81,14 +83,11 @@ function computeForGroup(
     completionPct >= 100 ? 'complete' : completionPct >= 60 ? 'provisional' : 'insufficient'
 
   const categoryWeights = categoryWeightsFor(positionGroup)
-  const conditioningPresent = categoryHasData.get('Conditioning') === true
-  const denominator = conditioningPresent ? 1 : 1 - categoryWeights.Conditioning
   let weighted = 0
   for (const category of CATEGORIES) {
-    if (category === 'Conditioning' && !conditioningPresent) continue
     weighted += categories[category] * categoryWeights[category]
   }
-  const fai = denominator > 0 ? round1(clamp(weighted / denominator, 0, 100)) : 0
+  const fai = round1(clamp(weighted, 0, 100))
 
   return {
     session,

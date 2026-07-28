@@ -102,6 +102,8 @@ describe('FAI computation', () => {
     expect(computed[0].metrics.powerCleanMax).toBe(240)
     expect(computed[0].completionPct).toBe(100)
     expect(computed[0].scoreStatus).toBe('complete')
+    expect(computed[0].categories.Conditioning).toBe(50)
+    expect(computed[0].metrics.cond51015).toBeUndefined()
   })
 
   it('converts legacy body-weight clean reps into a Power Clean 1RM', () => {
@@ -173,6 +175,41 @@ describe('FAI computation', () => {
     expect(partial[0].scoreStatus).toBe('insufficient')
     expect(results[0].rankEligible).toBe(false)
     expect(results[0].teamRank).toBe(0)
+  })
+
+  it('defaults entirely missing categories to 50 without hiding missing tests', () => {
+    const partial = computeAll({
+      athletes: [athlete],
+      events: [event],
+      sessions: [session('neutral-missing', '2026-06-01', {
+        dash40_1: 4.7,
+        fly10_1: 1.55,
+      })],
+    })[0]
+
+    expect(partial.categories.Jump).toBe(50)
+    expect(partial.categories.Power).toBe(50)
+    expect(partial.categories.Pursuit).toBe(50)
+    expect(partial.categories['Change of Direction']).toBe(50)
+    expect(partial.categories.Conditioning).toBe(50)
+    expect(partial.categories.Strength).toBe(50)
+    expect(partial.metrics.verticalJump).toBeUndefined()
+    expect(partial.metrics.broadJump).toBeUndefined()
+    expect(partial.completionPct).toBeLessThan(60)
+    expect(partial.scoreStatus).toBe('insufficient')
+
+    const weights = categoryWeightsFor('WR')
+    const expectedFai = Math.round((
+      partial.categories.Speed * weights.Speed
+      + partial.categories.Acceleration * weights.Acceleration
+      + partial.categories.Jump * weights.Jump
+      + partial.categories.Power * weights.Power
+      + partial.categories.Pursuit * weights.Pursuit
+      + partial.categories['Change of Direction'] * weights['Change of Direction']
+      + partial.categories.Conditioning * weights.Conditioning
+      + partial.categories.Strength * weights.Strength
+    ) * 10) / 10
+    expect(partial.fai).toBe(expectedFai)
   })
 
   it('stacks the Playmaker and awareness boosts onto FAI while keeping the base', () => {

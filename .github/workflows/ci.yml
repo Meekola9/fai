@@ -5,20 +5,12 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feature/missing-category-neutral-50
-          fetch-depth: 0
-      - name: Apply neutral missing-category scoring
-        run: python scripts/apply_missing_category_50.py
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -48,17 +40,6 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Phone app acceptance
         run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
-      - name: Commit validated scoring change
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f scripts/diagnose_missing_score.py
-          rm -f scripts/apply_missing_category_50.py
-          git add -A
-          git commit -m "Default missing FAI categories to neutral 50"
-          git push origin HEAD:feature/missing-category-neutral-50
       - name: Upload mobile diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
