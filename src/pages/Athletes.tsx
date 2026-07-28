@@ -11,13 +11,20 @@ import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
 import { athleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { playerUsageDefinition } from '../lib/playerUsage'
-import { formatHeight } from '../data/constants'
+import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
 import { athletePositionLine, usageLabel } from '../data/positions'
 import Lineup from './Lineup'
 import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'
-import type { Athlete, AthleteResult } from '../types'
+import type { Athlete, AthleteResult, Category } from '../types'
 
 const ATHLETE_SEASON_ID = 'season-2026'
+
+/** Roster sort: overall, name, or any single FAI category (for building packages). */
+type SortKey = 'fai' | 'name' | Category
+
+function isCategorySort(sort: SortKey): sort is Category {
+  return sort !== 'fai' && sort !== 'name'
+}
 
 interface Row {
   athlete: Athlete
@@ -28,7 +35,7 @@ export default function Athletes() {
   const { data, computed, resultsForEvent, gradeLabelFor, canEdit } = useStore()
   const [view, setView] = usePageMemory<'roster' | 'lineup'>('fai:athletes:view', 'roster')
   const [filters, setFilters] = usePageMemory<FilterState>('fai:athletes:filters', EMPTY_FILTERS)
-  const [sort, setSort] = usePageMemory<'fai' | 'name'>('fai:athletes:sort', 'fai')
+  const [sort, setSort] = usePageMemory<SortKey>('fai:athletes:sort', 'fai')
   usePageScrollMemory('fai:athletes:scroll')
 
   const seasonResults = resultsForEvent(ATHLETE_SEASON_ID)
@@ -63,6 +70,10 @@ export default function Athletes() {
       if (!a.result) return 1
       if (!b.result) return -1
       if (sort === 'name') return a.athlete.name.localeCompare(b.athlete.name)
+      if (isCategorySort(sort)) {
+        const diff = b.result.current.categories[sort] - a.result.current.categories[sort]
+        return diff !== 0 ? diff : a.athlete.name.localeCompare(b.athlete.name)
+      }
       if (a.result.rankEligible !== b.result.rankEligible) return a.result.rankEligible ? -1 : 1
       return b.result.current.fai - a.result.current.fai
     })
@@ -100,11 +111,16 @@ export default function Athletes() {
         <div className="flex items-center gap-2">
           <select
             value={sort}
-            onChange={(event) => setSort(event.target.value as typeof sort)}
+            onChange={(event) => setSort(event.target.value as SortKey)}
             className="rounded-lg border border-line bg-panel px-3 py-1.5 text-sm font-semibold outline-none focus:border-fai"
           >
             <option value="fai">Sort: 2026 FAI</option>
             <option value="name">Sort: Name</option>
+            <optgroup label="Sort by category">
+              {CATEGORIES.map((category) => (
+                <option key={category} value={category}>Sort: {category}</option>
+              ))}
+            </optgroup>
           </select>
           {canEdit && (
             <Link to="/athletes/new" className="rounded-lg bg-fai px-4 py-1.5 text-sm font-bold text-ink hover:bg-fai/90">+ Add Athlete</Link>
@@ -139,6 +155,9 @@ export default function Athletes() {
                   <div className="min-w-0 flex-1">
                     <Link to={`/athletes/${athlete.id}`} className="block truncate text-base font-bold text-chalk hover:text-fai">{athlete.name}</Link>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                      {isCategorySort(sort) && result && (
+                        <Pill tone="gold">{CATEGORY_SHORT[sort]} {Math.round(result.current.categories[sort])}</Pill>
+                      )}
                       <Pill tone="fai">{athlete.positionGroup}</Pill>
                       {usage !== 'one-way' && (
                         <Pill tone={usage === 'iron-man' ? 'gold' : 'up'}>{usageLabel(usage)} · {usageDefinition.primaryPct}/{usageDefinition.secondaryPct}</Pill>
