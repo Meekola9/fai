@@ -138,6 +138,27 @@ export const DISTANCE_BUCKET_LABEL: Record<DistanceBucket, string> = {
   long: 'Long (7+)',
 }
 
+/** Where on the field the play started, from the scouted offense's view. */
+export type FieldZone = 'backed-up' | 'own' | 'opp' | 'red-zone'
+
+/** yardLine is 1–99 (own 1 … opponent 1); 80+ is inside the opponent 20. */
+export function fieldZone(yardLine?: number): FieldZone | undefined {
+  if (typeof yardLine !== 'number' || !Number.isFinite(yardLine)) return undefined
+  if (yardLine <= 20) return 'backed-up'
+  if (yardLine <= 50) return 'own'
+  if (yardLine < 80) return 'opp'
+  return 'red-zone'
+}
+
+export const FIELD_ZONE_LABEL: Record<FieldZone, string> = {
+  'backed-up': 'Backed up (own 1–20)',
+  own: 'Own territory (own 21–50)',
+  opp: 'Opponent territory (opp 49–21)',
+  'red-zone': 'Red zone (opp 20–1)',
+}
+
+const FIELD_ZONE_ORDER: FieldZone[] = ['backed-up', 'own', 'opp', 'red-zone']
+
 /** True for plays that move the chains — passes, runs, RPOs, screens. */
 function isScrimmagePlay(play: FilmPlay): boolean {
   return play.call !== undefined && play.call !== 'special'
@@ -216,6 +237,7 @@ export interface TendencyReport {
   runShare: number
   passShare: number
   byDownDistance: TendencyGroup[]
+  byFieldZone: TendencyGroup[]
   byFormation: TendencyGroup[]
   byPersonnel: TendencyGroup[]
 }
@@ -261,6 +283,17 @@ export function buildTendencyReport(
       return Number(da) - Number(db) || (bucketOrder[ba] ?? 9) - (bucketOrder[bb] ?? 9)
     })
 
+  // Field-zone groups, ordered from backed-up to the red zone.
+  const zoneGroups = new Map<FieldZone, FilmPlay[]>()
+  for (const play of plays) {
+    const zone = fieldZone(play.yardLine)
+    if (!zone) continue
+    zoneGroups.set(zone, [...(zoneGroups.get(zone) ?? []), play])
+  }
+  const byFieldZone = FIELD_ZONE_ORDER
+    .filter((zone) => zoneGroups.has(zone))
+    .map((zone) => summarizeGroup(zone, FIELD_ZONE_LABEL[zone], zoneGroups.get(zone)!))
+
   const byFormation = groupBy(plays, (p) => p.formation, (k) => labelFor('formation', k))
   const byPersonnel = groupBy(plays, (p) => p.personnel, (k) => labelFor('personnel', k))
 
@@ -269,6 +302,7 @@ export function buildTendencyReport(
     runShare: rated ? runCount / rated : 0,
     passShare: rated ? passCount / rated : 0,
     byDownDistance,
+    byFieldZone,
     byFormation,
     byPersonnel,
   }
