@@ -30,6 +30,43 @@ export function clamp(value: number, low: number, high: number): number {
   return Math.max(low, Math.min(high, value))
 }
 
+interface LinemanSizeProfile {
+  floor: number
+  targetMin: number
+  targetMax: number
+  taperEnd: number
+  maxBonus: number
+}
+
+const LINEMAN_SIZE_PROFILES: Partial<Record<PositionGroup, LinemanSizeProfile>> = {
+  OL: { floor: 255, targetMin: 285, targetMax: 340, taperEnd: 375, maxBonus: 8 },
+  DL: { floor: 235, targetMin: 260, targetMax: 325, taperEnd: 360, maxBonus: 8 },
+}
+
+/**
+ * Rewards legitimate line size without allowing body weight to hide poor movement.
+ * The bonus reaches full size credit inside the position's target range, tapers for
+ * extreme outliers, and is gated by the athlete's underlying athletic score.
+ */
+export function linemanSizeBonus(
+  rawFai: number,
+  weightLbs: number | undefined,
+  positionGroup: PositionGroup,
+): number {
+  const profile = LINEMAN_SIZE_PROFILES[positionGroup]
+  if (!profile || typeof weightLbs !== 'number' || !Number.isFinite(weightLbs)) return 0
+
+  const sizeCredit = weightLbs < profile.targetMin
+    ? clamp((weightLbs - profile.floor) / (profile.targetMin - profile.floor), 0, 1)
+    : weightLbs <= profile.targetMax
+      ? 1
+      : clamp((profile.taperEnd - weightLbs) / (profile.taperEnd - profile.targetMax), 0, 1)
+
+  // No meaningful boost below 35 FAI; full access to the bonus at 70+.
+  const movementGate = clamp((rawFai - 35) / 35, 0, 1)
+  return round1(profile.maxBonus * sizeCredit * movementGate)
+}
+
 function emptyCategories(): CategoryScores {
   // A category with no usable test result is neutral—not zero and not omitted.
   // Raw metrics remain undefined, so completion and missing-test UI stay honest.
@@ -87,7 +124,15 @@ function computeForGroup(
   for (const category of CATEGORIES) {
     weighted += categories[category] * categoryWeights[category]
   }
-  const fai = round1(clamp(weighted, 0, 100))
+
+  const rawFai = round1(clamp(weighted, 0, 100))
+  const weightLbs = session.weightLbsSnapshot ?? athlete.weightLbs
+  const sizeAdjustment = linemanSizeBonus(rawFai, weightLbs, positionGroup)
+  const fai = round1(clamp(rawFai + sizeAdjustment, 0, 100))
+
+  // Keep both values available to UI/reporting without changing stored session data.
+  metrics.rawFai = rawFai
+  metrics.sizeAdjustment = sizeAdjustment
 
   return {
     session,
