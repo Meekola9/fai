@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Trace scoring pipeline
+        run: python scripts/diagnose_missing_score.py | tee scoring-diagnostic.log
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -26,6 +28,12 @@ jobs:
         run: |
           set -o pipefail
           npm run build 2>&1 | tee build.log
+      - name: Upload scoring diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: scoring-pipeline-diagnostic
+          path: scoring-diagnostic.log
+          retention-days: 2
       - name: Upload validation diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
