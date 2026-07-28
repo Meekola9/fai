@@ -5,46 +5,47 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: assets/claude-badge-medallions
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       - name: Lint
         run: npm run lint
-      - name: Badge tests
-        run: npm test -- src/lib/badges.test.ts
-      - name: Build
-        run: npm run build
-      - name: Clean upload scaffolding and commit
-        shell: bash
+      - name: Test
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
-          rm -f \
-            .github/badge-upload-cleanup-note.txt \
-            .github/badge-upload-final-trigger.txt \
-            .github/badge-upload-note.txt \
-            .github/badge-upload-open-pr.txt \
-            .github/badge-upload-pr.txt \
-            .github/badge-upload-ready.txt \
-            .github/badge-upload-status.txt \
-            .github/badge-upload-trigger-last.txt \
-            .github/zzz-stop.txt \
-            BADGE_UPLOAD_README.tmp
-          git add -A
-          git commit -m "Remove temporary badge upload scaffolding"
-          git push origin HEAD:assets/claude-badge-medallions
+          set -o pipefail
+          npm test 2>&1 | tee test.log
+      - name: Build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+      - name: Upload validation diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fai-validation-diagnostics
+          path: |
+            test.log
+            build.log
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Install mobile browser
+        run: npx playwright install --with-deps chromium
+      - name: Phone app acceptance
+        run: npm run test:e2e -- e2e/mobile-pwa.spec.ts
+      - name: Upload mobile diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fai-mobile-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
