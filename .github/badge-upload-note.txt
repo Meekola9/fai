@@ -1,0 +1,1 @@
+The final validated commit will contain only src/assets/badges/*.webp.
