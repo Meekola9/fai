@@ -3,6 +3,7 @@ import type { FilmPlay } from '../types'
 import {
   buildTendencyReport,
   distanceBucket,
+  fieldZone,
   opponentsFromFilm,
   pathLength,
   routeDepth,
@@ -34,6 +35,29 @@ describe('film tendency engine', () => {
     expect(report.totalPlays).toBe(3) // special teams not counted as a scrimmage play
     expect(report.runShare).toBeCloseTo(2 / 3, 5)
     expect(report.passShare).toBeCloseTo(1 / 3, 5)
+  })
+
+  it('classifies field zones from the yard line', () => {
+    expect(fieldZone(5)).toBe('backed-up')
+    expect(fieldZone(20)).toBe('backed-up')
+    expect(fieldZone(35)).toBe('own')
+    expect(fieldZone(65)).toBe('opp')
+    expect(fieldZone(85)).toBe('red-zone')
+    expect(fieldZone(undefined)).toBeUndefined()
+  })
+
+  it('groups tendencies by field zone, backed-up first', () => {
+    const report = buildTendencyReport([
+      play({ yardLine: 8, call: 'run', gain: 2 }),
+      play({ yardLine: 12, call: 'run', gain: 3 }),
+      play({ yardLine: 85, call: 'pass', gain: 6 }),
+    ])
+    expect(report.byFieldZone[0].key).toBe('backed-up')
+    const backedUp = report.byFieldZone.find((g) => g.key === 'backed-up')
+    expect(backedUp?.plays).toBe(2)
+    expect(backedUp?.runShare).toBe(1)
+    const redZone = report.byFieldZone.find((g) => g.key === 'red-zone')
+    expect(redZone?.passShare).toBe(1)
   })
 
   it('treats screens as a pass-family call', () => {

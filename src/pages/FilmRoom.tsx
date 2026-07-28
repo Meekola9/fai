@@ -28,6 +28,7 @@ import {
   opponentsFromFilm,
   type TendencyGroup,
 } from '../lib/filmAnalysis'
+import { scoutingReportCsv, scoutingReportHtml } from '../lib/scoutingExport'
 import {
   TRACK_COLORS,
   TRACK_FRAME_SECONDS,
@@ -401,6 +402,18 @@ function FilmStage({
   )
 }
 
+/** Save a generated report string as a downloadable file. */
+function triggerDownload(content: string, mime: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: mime }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}
+
 function ShareBar({ group }: { group: TendencyGroup }) {
   const runPct = Math.round(group.runShare * 100)
   const passPct = 100 - runPct
@@ -574,6 +587,29 @@ export default function FilmRoom() {
     () => buildTendencyReport(data.filmPlays, { opponent: opponentFilter || undefined }),
     [data.filmPlays, opponentFilter],
   )
+
+  function downloadReport(format: 'csv' | 'html') {
+    const opponent = opponentFilter || undefined
+    const slug = (opponentFilter || 'all-film').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+    if (format === 'csv') {
+      triggerDownload(
+        scoutingReportCsv(report, opponent),
+        'text/csv;charset=utf-8',
+        `scouting-${slug}.csv`,
+      )
+      return
+    }
+    const html = scoutingReportHtml(report, opponent)
+    // Prefer opening the printable report in a new tab; fall back to a download
+    // when the browser blocks pop-ups.
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write(html)
+      win.document.close()
+    } else {
+      triggerDownload(html, 'text/html;charset=utf-8', `scouting-${slug}.html`)
+    }
+  }
   const recent = useMemo(
     () =>
       [...data.filmPlays]
@@ -1766,6 +1802,24 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
             <option key={opp} value={opp}>{opp}</option>
           ))}
         </select>
+        {report.totalPlays > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => downloadReport('csv')}
+              className="rounded-lg border border-line bg-panel px-3 py-2 text-xs font-black text-chalk hover:border-fai/40"
+            >
+              ⬇ Excel (CSV)
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadReport('html')}
+              className="rounded-lg border border-line bg-panel px-3 py-2 text-xs font-black text-chalk hover:border-fai/40"
+            >
+              ⬇ Report (HTML / PDF)
+            </button>
+          </>
+        )}
       </div>
 
       {report.totalPlays === 0 ? (
@@ -1774,7 +1828,10 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
         </Card>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          <TendencyTable title="By Down &amp; Distance" groups={report.byDownDistance} />
+          <div className="space-y-6">
+            <TendencyTable title="By Down &amp; Distance" groups={report.byDownDistance} />
+            <TendencyTable title="By Field Zone" groups={report.byFieldZone} />
+          </div>
           <div className="space-y-6">
             <TendencyTable title="By Formation" groups={report.byFormation} />
             <TendencyTable title="By Personnel" groups={report.byPersonnel} />
