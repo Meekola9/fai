@@ -485,17 +485,15 @@ function FilmStage({
 
   useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, throwAnalysis, activeThrowLandmark])
 
-  useEffect(() => {
-    if (!followPoint) return
-    setView((current) => followViewForAthlete(current, followPoint))
-  }, [followPoint])
-
-  const zoomed = view.zoom > 1.001
+  const displayView = followPoint
+    ? followViewForAthlete(view, followPoint, { smoothing: 1 })
+    : view
+  const zoomed = displayView.zoom > 1.001
   return (
     <div ref={outerRef} className="relative overflow-hidden rounded-xl border border-line bg-black" onWheel={handleWheel}>
       <div
         className="relative w-full"
-        style={{ aspectRatio: '16 / 9', transform: viewTransform(view), transformOrigin: '0 0', willChange: 'transform' }}
+        style={{ aspectRatio: '16 / 9', transform: viewTransform(displayView), transformOrigin: '0 0', willChange: 'transform' }}
       >
         <video
           ref={videoRef}
@@ -536,12 +534,12 @@ function FilmStage({
           min={MIN_FILM_ZOOM}
           max={MAX_FILM_ZOOM}
           step={0.1}
-          value={view.zoom}
+          value={displayView.zoom}
           onChange={(event) => zoomByStep(Number(event.target.value))}
           aria-label="Film zoom"
           className="h-5 w-24 cursor-pointer accent-fai"
         />
-        <span className="w-9 text-right text-xs font-black nums text-white">{view.zoom.toFixed(1)}×</span>
+        <span className="w-9 text-right text-xs font-black nums text-white">{displayView.zoom.toFixed(1)}×</span>
         <button
           type="button"
           onClick={() => setView(IDENTITY_VIEW)}
