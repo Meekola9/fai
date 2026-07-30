@@ -29,6 +29,7 @@ import {
   type TendencyGroup,
 } from '../lib/filmAnalysis'
 import { scoutingReportCsv, scoutingReportHtml } from '../lib/scoutingExport'
+import { isEditableTarget, resolveFilmShortcut, shortcutSeconds } from '../lib/filmShortcuts'
 import {
   TRACK_COLORS,
   TRACK_FRAME_SECONDS,
@@ -1015,6 +1016,26 @@ export default function FilmRoom() {
     seekBy(direction * TRACK_FRAME_SECONDS)
   }
 
+  // Professional keyboard controls. Subscribed once; reads the latest playback
+  // handlers through a ref (kept fresh in an effect) so it never goes stale and
+  // never re-binds the listener during playback. Ignored while typing in a field.
+  const shortcutHandlersRef = useRef({ seekBy, togglePlayback })
+  useEffect(() => {
+    shortcutHandlersRef.current = { seekBy, togglePlayback }
+  })
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (isEditableTarget(event.target)) return
+      const shortcut = resolveFilmShortcut(event)
+      if (!shortcut) return
+      event.preventDefault()
+      if (shortcut.kind === 'toggle') shortcutHandlersRef.current.togglePlayback()
+      else shortcutHandlersRef.current.seekBy(shortcutSeconds(shortcut, TRACK_FRAME_SECONDS))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   function removeCurrentKeyframe() {
     if (!activeTrackId) return
     setPending((current) => current.map((annotation) =>
@@ -1214,6 +1235,12 @@ export default function FilmRoom() {
               >
                 +5s
               </button>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-wide text-muted/80">
+              <span className="rounded border border-line px-1.5 py-0.5">Space / K</span><span>play</span>
+              <span className="rounded border border-line px-1.5 py-0.5">← →</span><span>frame</span>
+              <span className="rounded border border-line px-1.5 py-0.5">⇧← ⇧→</span><span>10 frames</span>
+              <span className="rounded border border-line px-1.5 py-0.5">J / L</span><span>±1 sec</span>
             </div>
             <div className="mt-1 flex items-center justify-between gap-3 text-[11px] font-bold text-muted">
               <span>Drag the bar to scrub anywhere in the clip.</span>
