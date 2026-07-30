@@ -31,6 +31,15 @@ import {
 import { scoutingReportCsv, scoutingReportHtml } from '../lib/scoutingExport'
 import { isEditableTarget, resolveFilmShortcut, shortcutSeconds } from '../lib/filmShortcuts'
 import {
+  IDENTITY_VIEW,
+  MAX_FILM_ZOOM,
+  MIN_FILM_ZOOM,
+  panBy,
+  viewTransform,
+  zoomAt,
+  type FilmView,
+} from '../lib/filmZoom'
+import {
   TRACK_COLORS,
   TRACK_FRAME_SECONDS,
   createPlayerTrack,
@@ -164,12 +173,142 @@ function FilmStage({
   const drawingRef = useRef<FilmAnnotationPoint[] | null>(null)
   const [, forceTick] = useState(0)
 
+  // Independent Film Room zoom/pan. The transform is applied to the box holding
+  // both the video and the overlay canvas, so every overlay stays aligned.
+  const outerRef = useRef<HTMLDivElement>(null)
+  const [view, setView] = useState<FilmView>(IDENTITY_VIEW)
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>())
+  const gestureRef = useRef<{ mode: 'none' | 'pan'; dist: number; mid: { x: number; y: number } }>({
+    mode: 'none',
+    dist: 0,
+    mid: { x: 0, y: 0 },
+  })
+
+  function stageSize() {
+    const el = outerRef.current
+    return { w: el?.clientWidth ?? 1, h: el?.clientHeight ?? 1 }
+  }
+
+  /** Cursor position in untransformed container pixels. */
+  function containerPoint(event: { clientX: number; clientY: number }) {
+    const rect = outerRef.current?.getBoundingClientRect()
+    return { x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0) }
+  }
+
+  function handleWheel(event: React.WheelEvent) {
+    if (event.ctrlKey) event.preventDefault() // trackpad pinch
+    const { w, h } = stageSize()
+    const focal = containerPoint(event)
+    const factor = Math.exp(-event.deltaY * 0.0015)
+    setView((current) => zoomAt(current, current.zoom * factor, focal.x, focal.y, w, h))
+  }
+
   function pointFrom(event: React.PointerEvent): FilmAnnotationPoint {
     const rect = (event.target as HTMLElement).getBoundingClientRect()
     return {
       x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
       y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
     }
+  }
+
+  function onStagePointerDown(event: React.PointerEvent) {
+    const cp = containerPoint(event)
+    const startingSecond = pointersRef.current.size === 1
+    pointersRef.current.set(event.pointerId, cp)
+
+    // Two fingers → pinch-zoom / pan; abandon any in-progress stroke.
+    if (startingSecond) {
+      drawingRef.current = null
+      const pts = [...pointersRef.current.values()]
+      gestureRef.current = {
+        mode: 'pan',
+        dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y),
+        mid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 },
+      }
+      ;(event.target as HTMLElement).setPointerCapture?.(event.pointerId)
+      return
+    }
+
+    // Mouse pan: middle button or Alt+drag.
+    if (event.pointerType === 'mouse' && (event.button === 1 || event.altKey)) {
+      gestureRef.current = { mode: 'pan', dist: 0, mid: cp }
+      ;(event.target as HTMLElement).setPointerCapture(event.pointerId)
+      return
+    }
+
+    // Otherwise the existing drawing / tracking behavior, unchanged.
+    if (!canDraw) return
+    const point = pointFrom(event)
+    if (toolMode === 'track') {
+      videoRef.current?.pause()
+      onCommitTrackPoint(point, videoRef.current?.currentTime ?? currentTime)
+      return
+    }
+    if (toolMode === 'throw') {
+      videoRef.current?.pause()
+      onCommitThrowPoint(point, videoRef.current?.currentTime ?? currentTime)
+      return
+    }
+    ;(event.target as HTMLElement).setPointerCapture(event.pointerId)
+    drawingRef.current = [point]
+    forceTick((n) => n + 1)
+  }
+
+  function onStagePointerMove(event: React.PointerEvent) {
+    const cp = containerPoint(event)
+    const { w, h } = stageSize()
+    if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, cp)
+
+    // Two-finger pinch-zoom + pan.
+    if (pointersRef.current.size >= 2) {
+      const pts = [...pointersRef.current.values()]
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }
+      const prev = gestureRef.current
+      setView((current) => {
+        let next = prev.dist > 0 ? zoomAt(current, current.zoom * (dist / prev.dist), mid.x, mid.y, w, h) : current
+        next = panBy(next, mid.x - prev.mid.x, mid.y - prev.mid.y, w, h)
+        return next
+      })
+      gestureRef.current = { mode: 'pan', dist, mid }
+      return
+    }
+
+    // Mouse / single-finger pan.
+    if (gestureRef.current.mode === 'pan') {
+      const prev = gestureRef.current.mid
+      setView((current) => panBy(current, cp.x - prev.x, cp.y - prev.y, w, h))
+      gestureRef.current = { mode: 'pan', dist: 0, mid: cp }
+      return
+    }
+
+    // Freehand drawing.
+    if (!canDraw || toolMode !== 'draw' || !drawingRef.current) return
+    drawingRef.current.push(pointFrom(event))
+    redraw()
+  }
+
+  function onStagePointerUp(event: React.PointerEvent) {
+    pointersRef.current.delete(event.pointerId)
+    if (pointersRef.current.size === 1) {
+      // One finger left after a pinch — keep panning from it.
+      const [remaining] = [...pointersRef.current.values()]
+      gestureRef.current = { mode: 'pan', dist: 0, mid: remaining }
+      return
+    }
+    const wasGesture = gestureRef.current.mode === 'pan'
+    gestureRef.current = { mode: 'none', dist: 0, mid: { x: 0, y: 0 } }
+    if (!wasGesture && canDraw && toolMode === 'draw' && drawingRef.current) {
+      const points = drawingRef.current
+      drawingRef.current = null
+      if (points.length >= 2) onCommitPath(points)
+      forceTick((n) => n + 1)
+    }
+  }
+
+  function zoomByStep(nextZoom: number) {
+    const { w, h } = stageSize()
+    setView((current) => zoomAt(current, nextZoom, w / 2, h / 2, w, h))
   }
 
   function redraw() {
@@ -327,9 +466,10 @@ function FilmStage({
     const canvas = canvasRef.current
     if (!canvas) return
     const resize = () => {
-      const rect = canvas.getBoundingClientRect()
-      canvas.width = Math.max(1, Math.round(rect.width))
-      canvas.height = Math.max(1, Math.round(rect.height))
+      // clientWidth/Height is the layout size, unaffected by the zoom transform,
+      // so the overlay backing store never balloons when the film is zoomed.
+      canvas.width = Math.max(1, canvas.clientWidth)
+      canvas.height = Math.max(1, canvas.clientHeight)
       redraw()
     }
     resize()
@@ -341,9 +481,13 @@ function FilmStage({
 
   useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, throwAnalysis, activeThrowLandmark])
 
+  const zoomed = view.zoom > 1.001
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-black">
-      <div className="relative w-full" style={{ aspectRatio: '16 / 9' }}>
+    <div ref={outerRef} className="relative overflow-hidden rounded-xl border border-line bg-black" onWheel={handleWheel}>
+      <div
+        className="relative w-full"
+        style={{ aspectRatio: '16 / 9', transform: viewTransform(view), transformOrigin: '0 0', willChange: 'transform' }}
+      >
         <video
           ref={videoRef}
           className="absolute inset-0 h-full w-full bg-black"
@@ -366,39 +510,43 @@ function FilmStage({
         />
         <canvas
           ref={canvasRef}
-          className={`absolute inset-0 h-full w-full ${canDraw ? (toolMode === 'track' ? 'cursor-cell' : toolMode === 'throw' ? 'cursor-copy' : 'cursor-crosshair') : 'pointer-events-none'}`}
+          className={`absolute inset-0 h-full w-full ${canDraw ? (toolMode === 'track' ? 'cursor-cell' : toolMode === 'throw' ? 'cursor-copy' : zoomed ? 'cursor-grab' : 'cursor-crosshair') : zoomed ? 'cursor-grab' : 'pointer-events-none'}`}
           style={{ touchAction: 'none' }}
-          onPointerDown={(event) => {
-            if (!canDraw) return
-            const point = pointFrom(event)
-            if (toolMode === 'track') {
-              videoRef.current?.pause()
-              onCommitTrackPoint(point, videoRef.current?.currentTime ?? currentTime)
-              return
-            }
-            if (toolMode === 'throw') {
-              videoRef.current?.pause()
-              onCommitThrowPoint(point, videoRef.current?.currentTime ?? currentTime)
-              return
-            }
-            ;(event.target as HTMLElement).setPointerCapture(event.pointerId)
-            drawingRef.current = [point]
-            forceTick((n) => n + 1)
-          }}
-          onPointerMove={(event) => {
-            if (!canDraw || toolMode !== 'draw' || !drawingRef.current) return
-            drawingRef.current.push(pointFrom(event))
-            redraw()
-          }}
-          onPointerUp={() => {
-            if (!canDraw || toolMode !== 'draw' || !drawingRef.current) return
-            const points = drawingRef.current
-            drawingRef.current = null
-            if (points.length >= 2) onCommitPath(points)
-            forceTick((n) => n + 1)
-          }}
+          onPointerDown={onStagePointerDown}
+          onPointerMove={onStagePointerMove}
+          onPointerUp={onStagePointerUp}
+          onPointerCancel={onStagePointerUp}
         />
       </div>
+
+      {/* Floating zoom control — lives outside the transformed box so it never scales. */}
+      <div className="absolute bottom-2 right-2 flex items-center gap-2 rounded-lg border border-white/15 bg-black/70 px-2.5 py-1.5 backdrop-blur-sm">
+        <span className="text-[10px] font-black uppercase tracking-wider text-white/60">Zoom</span>
+        <input
+          type="range"
+          min={MIN_FILM_ZOOM}
+          max={MAX_FILM_ZOOM}
+          step={0.1}
+          value={view.zoom}
+          onChange={(event) => zoomByStep(Number(event.target.value))}
+          aria-label="Film zoom"
+          className="h-5 w-24 cursor-pointer accent-fai"
+        />
+        <span className="w-9 text-right text-xs font-black nums text-white">{view.zoom.toFixed(1)}×</span>
+        <button
+          type="button"
+          onClick={() => setView(IDENTITY_VIEW)}
+          disabled={!zoomed}
+          className="rounded border border-white/15 px-2 py-0.5 text-[10px] font-black uppercase text-white/80 disabled:opacity-30"
+        >
+          Reset
+        </button>
+      </div>
+      {zoomed && (
+        <div className="pointer-events-none absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/70">
+          Alt-drag or two fingers to pan
+        </div>
+      )}
     </div>
   )
 }
