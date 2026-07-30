@@ -130,21 +130,21 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
     ? [
         { to: '/', label: 'Dashboard', icon: '⌂', end: true },
         { to: '/athletes', label: 'Athletes', icon: '◉' },
-        { to: '/film-library', label: 'Film', icon: '▶' },
+        { to: '/leaderboards', label: 'Rankings', icon: '★' },
         { to: '/login', label: 'Sign In', icon: '→' },
       ]
     : access.role === 'athlete'
       ? [
           { to: '/account/profile', label: 'My Profile', icon: '◉', end: true },
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
-          { to: '/film-library', label: 'Film', icon: '▶' },
           { to: '/development', label: 'Develop', icon: '◆' },
+          { to: '/stats', label: 'Guide', icon: '?' },
         ]
       : [
           { to: '/', label: 'Dashboard', icon: '⌂', end: true },
           { to: '/athletes', label: 'Athletes', icon: '◉' },
           ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: '+' }] : []),
-          { to: '/film-library', label: 'Film', icon: '▶' },
+          { to: '/leaderboards', label: 'Rankings', icon: '★' },
           { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: '•••' },
         ]
 
