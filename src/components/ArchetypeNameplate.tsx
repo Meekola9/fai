@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom'
 import { CATEGORY_SHORT } from '../data/constants'
 import type { Category } from '../types'
 import type { PlayerArchetype } from '../lib/archetypes'
+import { filmModelForArchetype } from '../lib/archetypeFilmLibrary'
 
 const CONFIDENCE_LABEL: Record<PlayerArchetype['confidence'], string> = {
   high: 'High match',
@@ -13,11 +15,6 @@ interface NameplateStat {
   value: string
 }
 
-/**
- * The archetype's lead traits already come pre-sorted as evidence strings
- * ("Speed 91", "Change of Direction 82"). Split each into a short label and the
- * overall it earned, so the nameplate shows only those numbers.
- */
 function parseEvidence(evidence: readonly string[]): NameplateStat[] {
   return evidence.map((entry) => {
     const cut = entry.lastIndexOf(' ')
@@ -30,11 +27,6 @@ function parseEvidence(evidence: readonly string[]): NameplateStat[] {
   })
 }
 
-/**
- * The player's archetype rendered as a shining name title — the name itself,
- * with the overalls of the stats that earned it directly underneath and nothing
- * else. Used on the athlete profile beneath the player card.
- */
 export function ArchetypeNameplate({
   archetype,
   positionLabel,
@@ -43,6 +35,7 @@ export function ArchetypeNameplate({
   positionLabel?: string
 }) {
   const stats = parseEvidence(archetype.evidence)
+  const filmModel = filmModelForArchetype(archetype.id)
 
   return (
     <section
@@ -71,6 +64,31 @@ export function ArchetypeNameplate({
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {filmModel && (
+        <div className="mx-auto mt-7 max-w-3xl rounded-2xl border border-fai/25 bg-fai/5 p-4 text-left">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-fai">You play most similarly to</div>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted">Professional model</div>
+              <div className="text-lg font-black text-chalk">{filmModel.professionalModel}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted">College model</div>
+              <div className="text-lg font-black text-chalk">{filmModel.collegeModel}</div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-muted">{filmModel.playStyle}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {filmModel.studyTopics.map((topic) => (
+              <span key={topic} className="rounded-md border border-line bg-ink/60 px-2 py-1 text-[10px] font-bold text-muted">{topic}</span>
+            ))}
+          </div>
+          <Link to={`/film-library?archetype=${encodeURIComponent(archetype.id)}`} className="mt-4 inline-flex rounded-lg border border-fai/40 bg-fai/10 px-3 py-2 text-xs font-black text-fai hover:bg-fai/15">
+            Open film study plan →
+          </Link>
         </div>
       )}
     </section>
