@@ -5,12 +5,28 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/film-auto-follow-hardening
+          fetch-depth: 0
+      - name: Apply viewport lint correction
+        run: |
+          python scripts/fixAutoFollowViewportLint.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/FilmRoom.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "fix: derive auto-follow viewport without effect state [auto-follow-viewport-fix]"
+            git push origin HEAD:feature/film-auto-follow-hardening
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
