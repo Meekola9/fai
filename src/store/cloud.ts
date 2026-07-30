@@ -4,6 +4,7 @@ import type {
   AwarenessResult,
   FilmAnnotation,
   FilmPlay,
+  FilmSource,
   PlayCall,
   PlaySide,
   FieldHash,
@@ -79,13 +80,14 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult, playResult, filmResult, awarenessResult] =
+  const [athleteResult, eventResult, sessionResult, playResult, filmResult, sourceResult, awarenessResult] =
     await Promise.all([
       db.from('athletes').select('*').eq('team_id', teamId),
       db.from('testing_events').select('*').eq('team_id', teamId),
       db.from('test_sessions').select('*').eq('team_id', teamId),
       db.from('play_events').select('*').eq('team_id', teamId),
       db.from('film_plays').select('*').eq('team_id', teamId),
+      db.from('film_sources').select('*').eq('team_id', teamId),
       db.from('awareness_results').select('*').eq('team_id', teamId),
     ])
 
@@ -173,7 +175,10 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
     : (filmResult.data ?? []).map((row) => ({
         id: String(row.id),
         filmLabel: optionalText(row.film_label),
+        filmSourceId: optionalText(row.film_source_id),
         videoTimeSec: optionalNumber(row.video_time_sec),
+        startTimeSec: optionalNumber(row.start_time_sec),
+        endTimeSec: optionalNumber(row.end_time_sec),
         opponent: optionalText(row.opponent),
         date: optionalText(row.play_date),
         side: optionalText(row.side) as PlaySide | undefined,
@@ -197,6 +202,17 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         createdAt: optionalText(row.created_at),
       }))
 
+  const filmSources: FilmSource[] = sourceResult.error
+    ? []
+    : (sourceResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        label: String(row.label),
+        kind: String(row.kind) as FilmSource['kind'],
+        date: optionalText(row.source_date),
+        opponent: optionalText(row.opponent),
+        createdAt: optionalText(row.created_at),
+      }))
+
   const awarenessResults: AwarenessResult[] = awarenessResult.error
     ? []
     : (awarenessResult.data ?? []).map((row) => ({
@@ -211,7 +227,7 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
       }))
 
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions, plays, filmPlays, awarenessResults }),
+    normalizeAppData({ athletes, events, sessions, plays, filmPlays, filmSources, awarenessResults }),
   )
 }
 
@@ -398,7 +414,10 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
       team_id: teamId,
       id: film.id,
       film_label: nullable(film.filmLabel),
+      film_source_id: nullable(film.filmSourceId),
       video_time_sec: nullable(film.videoTimeSec),
+      start_time_sec: nullable(film.startTimeSec),
+      end_time_sec: nullable(film.endTimeSec),
       opponent: nullable(film.opponent),
       play_date: nullable(film.date),
       side: nullable(film.side),
@@ -429,6 +448,29 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     await deleteMissing('film_plays', teamId, oldFilm, new Set((data.filmPlays ?? []).map((film) => film.id)))
   } catch {
     // film_plays table not provisioned yet — skip film sync this save.
+  }
+
+  // Master source films sync separately and non-fatally, same as film plays.
+  try {
+    const sourceRows = (data.filmSources ?? []).map((source) => ({
+      team_id: teamId,
+      id: source.id,
+      label: source.label,
+      kind: source.kind,
+      source_date: nullable(source.date),
+      opponent: nullable(source.opponent),
+      created_at: source.createdAt ?? now,
+    }))
+    const oldSources = await existingIds('film_sources', teamId)
+    if (sourceRows.length > 0) {
+      const { error } = await db
+        .from('film_sources')
+        .upsert(sourceRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save film sources')
+    }
+    await deleteMissing('film_sources', teamId, oldSources, new Set((data.filmSources ?? []).map((source) => source.id)))
+  } catch {
+    // film_sources table not provisioned yet — skip source sync this save.
   }
 
   // Awareness quiz results sync separately and non-fatally. A coach save upserts

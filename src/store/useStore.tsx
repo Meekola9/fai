@@ -13,6 +13,7 @@ import type {
   AwarenessResult,
   ComputedSession,
   FilmPlay,
+  FilmSource,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -125,6 +126,8 @@ interface StoreContextValue {
   addFilmPlays: (films: FilmPlay[]) => void
   updateFilmPlay: (film: FilmPlay) => void
   deleteFilmPlay: (id: string) => void
+  /** Create a master source film (game / practice / scrimmage); returns its id. */
+  addFilmSource: (source: Omit<FilmSource, 'id' | 'createdAt'>) => string
   /** Record an awareness-quiz result for the given athlete (athlete self-service). */
   submitAwarenessResult: (
     result: Omit<AwarenessResult, 'id' | 'createdAt'>,
@@ -141,6 +144,7 @@ const EMPTY: Required<AppData> = {
   events: [],
   plays: [],
   filmPlays: [],
+  filmSources: [],
   awarenessResults: [],
 }
 
@@ -698,6 +702,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }))
       return id
     },
+    addFilmSource(source) {
+      const id = newId('filmsrc')
+      const createdAt = new Date().toISOString()
+      mutate((current) => ({
+        ...current,
+        filmSources: [...current.filmSources, { ...source, id, createdAt }],
+      }))
+      return id
+    },
     addFilmPlays(films) {
       mutate((current) => {
         const existingIds = new Set(current.filmPlays.map((film) => film.id))
@@ -836,6 +849,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // CSV import never carries plays, film, or quiz results — keep them.
           plays: current.plays,
           filmPlays: current.filmPlays,
+          filmSources: current.filmSources,
           awarenessResults: current.awarenessResults,
         })
       })

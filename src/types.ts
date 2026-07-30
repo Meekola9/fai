@@ -239,13 +239,36 @@ export type PlaySide = 'offense' | 'defense' | 'special'
 export type PlayCall = 'run' | 'pass' | 'rpo' | 'screen' | 'special'
 export type FieldHash = 'L' | 'M' | 'R'
 
+/** What a master source film is — a game, practice, or scrimmage. */
+export type FilmSourceKind = 'game' | 'practice' | 'scrimmage' | 'other'
+
+/**
+ * One master source film. The video itself is never persisted — only this
+ * lightweight record, so a coach can group every play cut from one game or
+ * practice. Plays reference it by id and store timestamps, never a copy of the
+ * video.
+ */
+export interface FilmSource {
+  id: string
+  label: string
+  kind: FilmSourceKind
+  date?: string
+  opponent?: string
+  createdAt?: string
+}
+
 /** One tagged play broken down from film. */
 export interface FilmPlay {
   id: string
   /** Human label for the film source, e.g. "vs Central — Q1" or a file name. */
   filmLabel?: string
+  /** The master source film this play was cut from, when created that way. */
+  filmSourceId?: string
   /** Seek point (seconds) within the loaded film, so a coach can jump back. */
   videoTimeSec?: number
+  /** Clip in/out points within the source film (seconds). */
+  startTimeSec?: number
+  endTimeSec?: number
 
   // Game context
   opponent?: string
@@ -301,6 +324,7 @@ export interface AppData {
   events?: TestingEvent[]
   plays?: PlayEvent[]
   filmPlays?: FilmPlay[]
+  filmSources?: FilmSource[]
   awarenessResults?: AwarenessResult[]
 }
 

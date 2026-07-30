@@ -208,6 +208,7 @@ export function consolidateAthleteAliases(input: AppData): Required<AppData> {
     sessions: [...sessionById.values()],
     plays,
     filmPlays,
+    filmSources: data.filmSources,
     awarenessResults,
   })
 }

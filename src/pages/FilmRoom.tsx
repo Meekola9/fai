@@ -7,6 +7,7 @@ import type {
   FilmAnnotationKind,
   FilmAnnotationPoint,
   FilmPlay,
+  FilmSourceKind,
   PlayCall,
   PlaySide,
   TrackingTeam,
@@ -679,7 +680,7 @@ const selectClass =
 const inputClass = selectClass + ' placeholder:text-muted'
 
 export default function FilmRoom() {
-  const { data, canEdit, addFilmPlay, updateFilmPlay, deleteFilmPlay } = useStore()
+  const { data, canEdit, addFilmPlay, updateFilmPlay, deleteFilmPlay, addFilmSource } = useStore()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const objectUrlRef = useRef<string | null>(null)
@@ -698,6 +699,11 @@ export default function FilmRoom() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pending, setPending] = useState<FilmAnnotation[]>([])
+  // Full-film workflow: one master source, many timestamp-only plays.
+  const [selectedSourceId, setSelectedSourceId] = useState('')
+  const [clip, setClip] = useState<{ start?: number; end?: number }>({})
+  const [newSourceLabel, setNewSourceLabel] = useState('')
+  const [newSourceKind, setNewSourceKind] = useState<FilmSourceKind>('game')
   const [drawKind, setDrawKind] = useState<FilmAnnotationKind>('route')
   const [drawAthleteId, setDrawAthleteId] = useState('')
   const [toolMode, setToolMode] = useState<FilmToolMode>('draw')
@@ -1214,10 +1220,24 @@ export default function FilmRoom() {
     setTrackingMessage('Player track removed.')
   }
 
+  function createSource() {
+    const label = newSourceLabel.trim() || sourceLabel || 'Untitled film'
+    const id = addFilmSource({ label, kind: newSourceKind })
+    setSelectedSourceId(id)
+    setNewSourceLabel('')
+  }
+
+  function markClip(which: 'start' | 'end') {
+    const time = videoRef.current?.currentTime
+    if (typeof time !== 'number' || !Number.isFinite(time)) return
+    setClip((current) => ({ ...current, [which]: Math.round(time * 10) / 10 }))
+  }
+
   function resetForm() {
     setForm(EMPTY_FORM)
     setPending([])
     setEditingId(null)
+    setClip({})
     setActiveTrackId(undefined)
     stopAutoFollow('idle', undefined, false)
     setAutoArmed(false)
@@ -1240,10 +1260,16 @@ export default function FilmRoom() {
   function savePlay() {
     const video = videoRef.current
     const time = video && Number.isFinite(video.currentTime) ? video.currentTime : undefined
+    const startSec = clip.start ?? (editingId ? form.startTimeSec : undefined)
     const payload: Omit<FilmPlay, 'id' | 'createdAt'> = {
       ...form,
       filmLabel: form.filmLabel || sourceLabel || undefined,
-      videoTimeSec: editingId ? form.videoTimeSec : time && time > 0 ? Math.round(time * 10) / 10 : undefined,
+      filmSourceId: selectedSourceId || form.filmSourceId || undefined,
+      startTimeSec: startSec,
+      endTimeSec: clip.end ?? (editingId ? form.endTimeSec : undefined),
+      videoTimeSec: editingId
+        ? form.videoTimeSec
+        : startSec ?? (time && time > 0 ? Math.round(time * 10) / 10 : undefined),
       annotations: pending.length > 0 ? pending : undefined,
     }
     if (editingId) {
@@ -1280,8 +1306,9 @@ export default function FilmRoom() {
 
   function jumpTo(play: FilmPlay) {
     const video = videoRef.current
-    if (video && typeof play.videoTimeSec === 'number' && !video.srcObject) {
-      video.currentTime = play.videoTimeSec
+    const target = play.startTimeSec ?? play.videoTimeSec
+    if (video && typeof target === 'number' && !video.srcObject) {
+      video.currentTime = target
       void video.play().catch(() => undefined)
     }
   }
@@ -1424,6 +1451,61 @@ export default function FilmRoom() {
             {sourceLabel && <Pill tone="fai">{sourceLabel}</Pill>}
             {captureError && <span className="text-xs text-down">{captureError}</span>}
           </div>
+
+          {canEdit && (
+            <div className="space-y-2 rounded-xl border border-line bg-panel-2/30 p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Master film</span>
+                <select
+                  value={selectedSourceId}
+                  onChange={(event) => setSelectedSourceId(event.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">No source — single clip</option>
+                  {data.filmSources.map((source) => (
+                    <option key={source.id} value={source.id}>{source.label} · {source.kind}</option>
+                  ))}
+                </select>
+                <input
+                  value={newSourceLabel}
+                  onChange={(event) => setNewSourceLabel(event.target.value)}
+                  placeholder="New film name (e.g. vs Central)"
+                  className="min-w-0 flex-1 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-sm text-chalk placeholder:text-muted/60"
+                />
+                <select
+                  value={newSourceKind}
+                  onChange={(event) => setNewSourceKind(event.target.value as FilmSourceKind)}
+                  className={selectClass}
+                >
+                  <option value="game">Game</option>
+                  <option value="practice">Practice</option>
+                  <option value="scrimmage">Scrimmage</option>
+                  <option value="other">Other</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={createSource}
+                  className="rounded-lg border border-fai/40 bg-fai/10 px-3 py-1.5 text-xs font-black text-fai"
+                >
+                  + Add film
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Play clip</span>
+                <button type="button" onClick={() => markClip('start')} className="rounded-lg border border-line bg-panel px-3 py-1.5 text-xs font-black text-chalk">◧ Mark start</button>
+                <button type="button" onClick={() => markClip('end')} className="rounded-lg border border-line bg-panel px-3 py-1.5 text-xs font-black text-chalk">Mark end ◨</button>
+                <span className="text-xs font-bold text-muted nums">
+                  {typeof clip.start === 'number' ? formatTrackTime(clip.start) : '—'}
+                  {' → '}
+                  {typeof clip.end === 'number' ? formatTrackTime(clip.end) : '—'}
+                </span>
+                {(clip.start !== undefined || clip.end !== undefined) && (
+                  <button type="button" onClick={() => setClip({})} className="text-[11px] font-bold text-muted underline">clear</button>
+                )}
+                <span className="text-[10px] text-muted/70">Save Play stores the range; jump back anytime.</span>
+              </div>
+            </div>
+          )}
 
           {canEdit && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel-2/30 p-2">
@@ -2047,13 +2129,15 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                   )}
                   {canEdit && (
                     <div className="ml-auto flex items-center gap-1">
-                      {typeof play.videoTimeSec === 'number' && (
+                      {(typeof play.startTimeSec === 'number' || typeof play.videoTimeSec === 'number') && (
                         <button
                           type="button"
                           onClick={() => jumpTo(play)}
+                          title="Jump to this play in the source film"
                           className="rounded-md border border-line px-2 py-0.5 text-xs font-bold text-muted hover:border-fai/40 hover:text-chalk"
                         >
-                          ⤳ {Math.round(play.videoTimeSec)}s
+                          ▶ {Math.round((play.startTimeSec ?? play.videoTimeSec) as number)}s
+                          {typeof play.endTimeSec === 'number' ? `–${Math.round(play.endTimeSec)}s` : ''}
                         </button>
                       )}
                       <button
