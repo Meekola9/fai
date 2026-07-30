@@ -486,7 +486,7 @@ function FilmStage({
   useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, throwAnalysis, activeThrowLandmark])
 
   const displayView = followPoint
-    ? followViewForAthlete(view, followPoint, { smoothing: 1 })
+    ? followViewForAthlete(view, followPoint, { smoothing: 1, width: stageSize().w, height: stageSize().h })
     : view
   const zoomed = displayView.zoom > 1.001
   return (
