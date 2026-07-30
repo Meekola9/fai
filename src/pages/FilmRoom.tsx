@@ -53,7 +53,8 @@ import {
   upsertTrackKeyframe,
   summarizePlayerTrack,
 } from '../lib/filmTracking'
-import { BrowserPlayerAutoTracker } from '../lib/filmAutoTracking'
+import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
+import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
 import {
   THROW_FAMILIES,
   THROW_LANDMARKS,
@@ -142,6 +143,7 @@ function FilmStage({
   drawColor,
   toolMode,
   activeTrackId,
+  followPoint,
   throwAnalysis,
   activeThrowLandmark,
   currentTime,
@@ -159,6 +161,7 @@ function FilmStage({
   drawColor: string
   toolMode: FilmToolMode
   activeTrackId?: string
+  followPoint?: Pick<FilmAnnotationPoint, 'x' | 'y'>
   throwAnalysis?: ThrowAnalysis
   activeThrowLandmark?: ThrowLandmark
   currentTime: number
@@ -482,6 +485,11 @@ function FilmStage({
 
   useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, throwAnalysis, activeThrowLandmark])
 
+  useEffect(() => {
+    if (!followPoint) return
+    setView((current) => followViewForAthlete(current, followPoint))
+  }, [followPoint])
+
   const zoomed = view.zoom > 1.001
   return (
     <div ref={outerRef} className="relative overflow-hidden rounded-xl border border-line bg-black" onWheel={handleWheel}>
@@ -684,7 +692,7 @@ export default function FilmRoom() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const objectUrlRef = useRef<string | null>(null)
-  const autoTrackerRef = useRef<BrowserPlayerAutoTracker | null>(null)
+  const autoTrackerRef = useRef<LockedBrowserPlayerAutoTracker | null>(null)
   const autoFrameRequestRef = useRef<number | undefined>(undefined)
   const autoTimerRef = useRef<number | undefined>(undefined)
   const autoRunningRef = useRef(false)
@@ -723,6 +731,7 @@ export default function FilmRoom() {
   const [autoBlurLevel, setAutoBlurLevel] = useState(0)
   const [autoPlayerScale, setAutoPlayerScale] = useState(1)
   const [autoMotionCompensated, setAutoMotionCompensated] = useState(false)
+  const [autoFollowPoint, setAutoFollowPoint] = useState<Pick<FilmAnnotationPoint, 'x' | 'y'>>()
   const [autoArmed, setAutoArmed] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(0)
@@ -844,13 +853,29 @@ export default function FilmRoom() {
       return
     }
     autoLastMediaTimeRef.current = mediaTime
-    const sample = tracker.trackCurrentFrame()
-    if (!sample) {
+    const result = tracker.trackCurrentFrame()
+    if (!result) {
       setAutoArmed(true)
       stopAutoFollow('lost', 'FAI could not read the next frame. Tap the player to correct and automatically resume.')
       return
     }
+    if (tracker.lockedTrackId !== trackId) {
+      stopAutoFollow('error', 'Auto-follow stopped because the selected athlete track changed unexpectedly.')
+      return
+    }
+    if (result.decision.action === 'recover') {
+      setAutoStatus('running')
+      setTrackingMessage('FAI is recovering the locked athlete with an expanded search. Identity will not switch.')
+      scheduleAutoFrame()
+      return
+    }
+    if (result.decision.action === 'pause-for-correction' || !result.sample) {
+      setAutoArmed(true)
+      stopAutoFollow('lost', `${result.decision.reason ?? 'The locked athlete could not be confirmed.'} Tap the player once to correct and continue.`)
+      return
+    }
 
+    const sample = result.sample
     const point: FilmAnnotationPoint = {
       ...sample.point,
       t: mediaTime,
@@ -868,6 +893,7 @@ export default function FilmRoom() {
         ? { ...annotation, points: upsertTrackKeyframe(annotation.points, mediaTime, point) }
         : annotation,
     ))
+    setAutoFollowPoint(sample.point)
     setVideoTime(mediaTime)
     setAutoConfidence(sample.confidence)
     setAutoFrameCount((count) => count + 1)
@@ -877,23 +903,6 @@ export default function FilmRoom() {
     setAutoBlurLevel(sample.blurLevel)
     setAutoPlayerScale(sample.playerScale)
     setAutoMotionCompensated(sample.compensated)
-
-    // Motion-blurred Hudl pans often produce a few soft frames even when the
-    // compensated route remains coherent. Give those frames a wider recovery
-    // window without allowing a sustained low-confidence drift.
-    const lowConfidenceThreshold = sample.blurLevel >= 0.55 ? 0.38 : 0.48
-    const allowedLowConfidenceFrames = sample.blurLevel >= 0.55 ? 7 : 4
-    lowConfidenceFramesRef.current = sample.confidence < lowConfidenceThreshold
-      ? lowConfidenceFramesRef.current + 1
-      : 0
-    if (lowConfidenceFramesRef.current >= allowedLowConfidenceFrames) {
-      setAutoArmed(true)
-      stopAutoFollow(
-        'lost',
-        `Tracking confidence fell to ${Math.round(sample.confidence * 100)}%${sample.blurLevel >= 0.55 ? ' during a blurred camera move' : ''}. Tap the player once to correct and continue.`,
-      )
-      return
-    }
     if (video.ended || (Number.isFinite(video.duration) && video.currentTime >= video.duration)) {
       stopAutoFollow('complete', 'Auto-follow reached the end of the clip.')
       return
@@ -925,8 +934,9 @@ export default function FilmRoom() {
       return
     }
     cancelAutoLoop()
-    const tracker = new BrowserPlayerAutoTracker(video)
-    if (!tracker.initialize(point)) {
+    const trackId = activeTrackIdRef.current
+    const tracker = new LockedBrowserPlayerAutoTracker(video)
+    if (!trackId || !tracker.initialize(trackId, point)) {
       setAutoStatus('error')
       setTrackingMessage('FAI could not lock onto that frame. Wait for the video to load, then tap the player again.')
       return
@@ -943,6 +953,7 @@ export default function FilmRoom() {
     setAutoBlurLevel(0)
     setAutoPlayerScale(1)
     setAutoMotionCompensated(false)
+    setAutoFollowPoint(point)
     setAutoArmed(false)
     setAutoStatus('running')
     setTrackingMessage('Auto-follow is running. FAI will stop and ask for a correction if confidence drops.')
@@ -1357,6 +1368,7 @@ export default function FilmRoom() {
             drawColor={KIND_COLOR[drawKind]}
             toolMode={toolMode}
             activeTrackId={activeTrackId}
+            followPoint={autoStatus === 'running' ? autoFollowPoint : undefined}
             throwAnalysis={throwAnalysis}
             activeThrowLandmark={activeThrowLandmark}
             currentTime={videoTime}
