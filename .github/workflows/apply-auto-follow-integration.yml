@@ -1,0 +1,192 @@
+name: Apply auto-follow integration
+
+on:
+  push:
+    branches:
+      - feature/film-auto-follow-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  patch-film-room:
+    if: ${{ !contains(github.event.head_commit.message, '[auto-follow-integration]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/film-auto-follow-hardening
+          fetch-depth: 0
+      - name: Patch FilmRoom runtime integration
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/pages/FilmRoom.tsx')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str):
+              global text
+              if old not in text:
+                  raise SystemExit(f'Missing patch target:\n{old[:240]}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import { BrowserPlayerAutoTracker } from '../lib/filmAutoTracking'",
+              "import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'\nimport { followViewForAthlete } from '../lib/filmAutoFollowViewport'",
+          )
+
+          replace_once(
+              "  activeTrackId,\n  throwAnalysis,",
+              "  activeTrackId,\n  followPoint,\n  throwAnalysis,",
+          )
+          replace_once(
+              "  activeTrackId?: string\n  throwAnalysis?: ThrowAnalysis",
+              "  activeTrackId?: string\n  followPoint?: Pick<FilmAnnotationPoint, 'x' | 'y'>\n  throwAnalysis?: ThrowAnalysis",
+          )
+
+          replace_once(
+              "  const zoomed = view.zoom > 1.001",
+              "  useEffect(() => {\n    if (!followPoint) return\n    setView((current) => followViewForAthlete(current, followPoint))\n  }, [followPoint])\n\n  const zoomed = view.zoom > 1.001",
+          )
+
+          replace_once(
+              "  const autoTrackerRef = useRef<BrowserPlayerAutoTracker | null>(null)",
+              "  const autoTrackerRef = useRef<LockedBrowserPlayerAutoTracker | null>(null)",
+          )
+          replace_once(
+              "  const [autoMotionCompensated, setAutoMotionCompensated] = useState(false)\n  const [autoArmed, setAutoArmed] = useState(false)",
+              "  const [autoMotionCompensated, setAutoMotionCompensated] = useState(false)\n  const [autoFollowPoint, setAutoFollowPoint] = useState<Pick<FilmAnnotationPoint, 'x' | 'y'>>()\n  const [autoArmed, setAutoArmed] = useState(false)",
+          )
+
+          old_process = """    const sample = tracker.trackCurrentFrame()
+    if (!sample) {
+      setAutoArmed(true)
+      stopAutoFollow('lost', 'FAI could not read the next frame. Tap the player to correct and automatically resume.')
+      return
+    }
+
+    const point: FilmAnnotationPoint = {
+      ...sample.point,
+      t: mediaTime,
+      source: 'auto',
+      confidence: sample.confidence,
+      cameraDx: sample.camera.dx,
+      cameraDy: sample.camera.dy,
+      cameraScale: sample.camera.scale,
+      blurLevel: sample.blurLevel,
+      playerScale: sample.playerScale,
+      motionCompensated: sample.compensated,
+    }
+    setPending((current) => current.map((annotation) =>
+      annotation.id === trackId
+        ? { ...annotation, points: upsertTrackKeyframe(annotation.points, mediaTime, point) }
+        : annotation,
+    ))
+    setVideoTime(mediaTime)
+    setAutoConfidence(sample.confidence)
+    setAutoFrameCount((count) => count + 1)
+    setAutoCameraDx(sample.camera.dx)
+    setAutoCameraDy(sample.camera.dy)
+    setAutoCameraScale(sample.camera.scale)
+    setAutoBlurLevel(sample.blurLevel)
+    setAutoPlayerScale(sample.playerScale)
+    setAutoMotionCompensated(sample.compensated)
+
+    // Motion-blurred Hudl pans often produce a few soft frames even when the
+    // compensated route remains coherent. Give those frames a wider recovery
+    // window without allowing a sustained low-confidence drift.
+    const lowConfidenceThreshold = sample.blurLevel >= 0.55 ? 0.38 : 0.48
+    const allowedLowConfidenceFrames = sample.blurLevel >= 0.55 ? 7 : 4
+    lowConfidenceFramesRef.current = sample.confidence < lowConfidenceThreshold
+      ? lowConfidenceFramesRef.current + 1
+      : 0
+    if (lowConfidenceFramesRef.current >= allowedLowConfidenceFrames) {
+      setAutoArmed(true)
+      stopAutoFollow(
+        'lost',
+        `Tracking confidence fell to ${Math.round(sample.confidence * 100)}%${sample.blurLevel >= 0.55 ? ' during a blurred camera move' : ''}. Tap the player once to correct and continue.`,
+      )
+      return
+    }
+"""
+          new_process = """    const result = tracker.trackCurrentFrame()
+    if (!result) {
+      setAutoArmed(true)
+      stopAutoFollow('lost', 'FAI could not read the next frame. Tap the player to correct and automatically resume.')
+      return
+    }
+    if (tracker.lockedTrackId !== trackId) {
+      stopAutoFollow('error', 'Auto-follow stopped because the selected athlete track changed unexpectedly.')
+      return
+    }
+    if (result.decision.action === 'recover') {
+      setAutoStatus('running')
+      setTrackingMessage('FAI is recovering the locked athlete with an expanded search. Identity will not switch.')
+      scheduleAutoFrame()
+      return
+    }
+    if (result.decision.action === 'pause-for-correction' || !result.sample) {
+      setAutoArmed(true)
+      stopAutoFollow('lost', `${result.decision.reason ?? 'The locked athlete could not be confirmed.'} Tap the player once to correct and continue.`)
+      return
+    }
+
+    const sample = result.sample
+    const point: FilmAnnotationPoint = {
+      ...sample.point,
+      t: mediaTime,
+      source: 'auto',
+      confidence: sample.confidence,
+      cameraDx: sample.camera.dx,
+      cameraDy: sample.camera.dy,
+      cameraScale: sample.camera.scale,
+      blurLevel: sample.blurLevel,
+      playerScale: sample.playerScale,
+      motionCompensated: sample.compensated,
+    }
+    setPending((current) => current.map((annotation) =>
+      annotation.id === trackId
+        ? { ...annotation, points: upsertTrackKeyframe(annotation.points, mediaTime, point) }
+        : annotation,
+    ))
+    setAutoFollowPoint(sample.point)
+    setVideoTime(mediaTime)
+    setAutoConfidence(sample.confidence)
+    setAutoFrameCount((count) => count + 1)
+    setAutoCameraDx(sample.camera.dx)
+    setAutoCameraDy(sample.camera.dy)
+    setAutoCameraScale(sample.camera.scale)
+    setAutoBlurLevel(sample.blurLevel)
+    setAutoPlayerScale(sample.playerScale)
+    setAutoMotionCompensated(sample.compensated)
+"""
+          replace_once(old_process, new_process)
+
+          replace_once(
+              "    const tracker = new BrowserPlayerAutoTracker(video)\n    if (!tracker.initialize(point)) {",
+              "    const trackId = activeTrackIdRef.current\n    const tracker = new LockedBrowserPlayerAutoTracker(video)\n    if (!trackId || !tracker.initialize(trackId, point)) {",
+          )
+
+          replace_once(
+              "    setAutoMotionCompensated(false)\n    setAutoArmed(false)",
+              "    setAutoMotionCompensated(false)\n    setAutoFollowPoint(point)\n    setAutoArmed(false)",
+          )
+
+          replace_once(
+              "            activeTrackId={activeTrackId}\n            throwAnalysis={throwAnalysis}",
+              "            activeTrackId={activeTrackId}\n            followPoint={autoStatus === 'running' ? autoFollowPoint : undefined}\n            throwAnalysis={throwAnalysis}",
+          )
+
+          path.write_text(text)
+          PY
+      - name: Commit integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/FilmRoom.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: wire locked auto-follow into Film Room [auto-follow-integration]"
+          git push origin HEAD:feature/film-auto-follow-hardening
