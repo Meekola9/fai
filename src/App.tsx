@@ -9,6 +9,7 @@ import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
+import FilmLibrary from './pages/FilmLibrary'
 import AwarenessQuiz from './pages/AwarenessQuiz'
 import PlayerDevelopment from './pages/PlayerDevelopment'
 import StatsGuide from './pages/StatsGuide'
@@ -36,6 +37,7 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
   { to: '/film', label: 'Film Room' },
+  { to: '/film-library', label: 'Film Library' },
   { to: '/development', label: 'Development' },
   { to: '/stats', label: 'Stats Guide' },
   { to: '/entry', label: 'Enter Testing' },
@@ -63,17 +65,14 @@ function Brand() {
   )
 }
 
-function navForAccount(
-  viewerMode: boolean,
-  role: string | undefined,
-  capabilities: ReturnType<typeof useAccountAccess>['capabilities'],
-): NavItem[] {
+function navForAccount(viewerMode: boolean, role: string | undefined, capabilities: ReturnType<typeof useAccountAccess>['capabilities']): NavItem[] {
   if (viewerMode) return PUBLIC_NAV
   if (role === 'athlete') {
     return [
       { to: '/account/profile', label: 'My Profile', end: true },
       { to: '/quiz', label: 'Awareness Quiz' },
       { to: '/leaderboards', label: 'Rankings' },
+      { to: '/film-library', label: 'Film Library' },
       { to: '/development', label: 'Development' },
       { to: '/stats', label: 'Stats Guide' },
     ]
@@ -86,10 +85,7 @@ function navForAccount(
   ]
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
-  nav.push(
-    { to: '/development', label: 'Development' },
-    { to: '/stats', label: 'Stats Guide' },
-  )
+  nav.push({ to: '/film-library', label: 'Film Library' }, { to: '/development', label: 'Development' }, { to: '/stats', label: 'Stats Guide' })
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
   if (capabilities.canManageRoster) nav.push({ to: '/import', label: 'Bulk Import' })
   if (capabilities.canManageData) nav.push({ to: '/data', label: 'Data' })
@@ -108,12 +104,7 @@ function Header() {
         <NavLink to={access.role === 'athlete' ? '/account/profile' : '/'} aria-label="FAI home"><Brand /></NavLink>
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${isActive ? 'bg-fai/15 text-fai' : 'text-muted hover:bg-panel-2 hover:text-chalk'}`}
-            >
+            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${isActive ? 'bg-fai/15 text-fai' : 'text-muted hover:bg-panel-2 hover:text-chalk'}`}>
               {item.label}
             </NavLink>
           ))}
@@ -124,10 +115,8 @@ function Header() {
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
-          <NavLink to="/development" className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted" aria-label="Open player development hub">DEV</NavLink>
-          <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted">
-            {access.role === 'athlete' ? 'ME' : 'GUIDES'}
-          </NavLink>
+          <NavLink to="/film-library" className="grid h-9 min-w-9 place-items-center rounded-lg border border-fai/30 bg-fai/10 px-2 text-[10px] font-black text-fai">FILM</NavLink>
+          <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted">{access.role === 'athlete' ? 'ME' : 'GUIDES'}</NavLink>
           {access.role !== 'athlete' && <NavLink to="/tv" className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame">TV</NavLink>}
         </div>
       </div>
@@ -141,21 +130,21 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
     ? [
         { to: '/', label: 'Dashboard', icon: '⌂', end: true },
         { to: '/athletes', label: 'Athletes', icon: '◉' },
-        { to: '/leaderboards', label: 'Rankings', icon: '★' },
+        { to: '/film-library', label: 'Film', icon: '▶' },
         { to: '/login', label: 'Sign In', icon: '→' },
       ]
     : access.role === 'athlete'
       ? [
           { to: '/account/profile', label: 'My Profile', icon: '◉', end: true },
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
+          { to: '/film-library', label: 'Film', icon: '▶' },
           { to: '/development', label: 'Develop', icon: '◆' },
-          { to: '/stats', label: 'Guide', icon: '?' },
         ]
       : [
           { to: '/', label: 'Dashboard', icon: '⌂', end: true },
           { to: '/athletes', label: 'Athletes', icon: '◉' },
           ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: '+' }] : []),
-          { to: '/leaderboards', label: 'Rankings', icon: '★' },
+          { to: '/film-library', label: 'Film', icon: '▶' },
           { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: '•••' },
         ]
 
@@ -234,22 +223,11 @@ function PermissionDenied({ message = 'Your FAI account does not have permission
 
 function PersistentFilmRoute({ active, children }: { active: boolean; children: React.ReactNode }) {
   const scrollTop = useRef(0)
-
   useLayoutEffect(() => {
-    if (active) {
-      window.requestAnimationFrame(() => {
-        window.scrollTo({ top: scrollTop.current, behavior: 'auto' })
-      })
-    } else {
-      scrollTop.current = window.scrollY
-    }
+    if (active) window.requestAnimationFrame(() => window.scrollTo({ top: scrollTop.current, behavior: 'auto' }))
+    else scrollTop.current = window.scrollY
   }, [active])
-
-  return (
-    <section hidden={!active} aria-hidden={!active}>
-      {children}
-    </section>
-  )
+  return <section hidden={!active} aria-hidden={!active}>{children}</section>
 }
 
 export default function App() {
@@ -285,6 +263,7 @@ export default function App() {
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
           <Route path="/film" element={null} />
+          <Route path="/film-library" element={<FilmLibrary />} />
           <Route path="/development" element={<PlayerDevelopment />} />
           <Route path="/archetypes" element={<PlayerDevelopment />} />
           <Route path="/badges" element={<PlayerDevelopment />} />
@@ -303,9 +282,7 @@ export default function App() {
           <Route path="/login" element={<Navigate to={isAthlete ? '/account/profile' : '/'} replace />} />
         </Routes>
         <PersistentFilmRoute active={isFilm}>
-          {viewerMode
-            ? <FilmRoom />
-            : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
+          {viewerMode ? <FilmRoom /> : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
         </PersistentFilmRoute>
       </main>
       <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">FAI — Football Athlete Index · {viewerMode ? 'Live team view · read only' : storageMode === 'cloud' ? 'Secure role-based cloud access with on-device backup' : 'Local-first with on-device backup'}</footer>
