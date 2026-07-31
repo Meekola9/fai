@@ -55,6 +55,7 @@ import {
 } from '../lib/filmTracking'
 import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
 import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
+import { shouldShowTrackLabel, tracksForFilmStage } from '../lib/filmTrackDisplay'
 import {
   THROW_FAMILIES,
   THROW_LANDMARKS,
@@ -143,6 +144,7 @@ function FilmStage({
   drawColor,
   toolMode,
   activeTrackId,
+  focusActiveTrack,
   followPoint,
   throwAnalysis,
   activeThrowLandmark,
@@ -161,6 +163,7 @@ function FilmStage({
   drawColor: string
   toolMode: FilmToolMode
   activeTrackId?: string
+  focusActiveTrack?: boolean
   followPoint?: Pick<FilmAnnotationPoint, 'x' | 'y'>
   throwAnalysis?: ThrowAnalysis
   activeThrowLandmark?: ThrowLandmark
@@ -367,7 +370,8 @@ function FilmStage({
       }
     }
 
-    for (const track of annotations.filter(isPlayerTrack)) {
+    const visiblePlayerTracks = tracksForFilmStage(annotations, { activeTrackId, focusActiveTrack })
+    for (const track of visiblePlayerTracks) {
       const color = track.color ?? TRACK_COLORS[track.trackingSide ?? 'offense']
       const trail = trackTrailAt(track.points, currentTime)
       const position = trackPositionAt(track.points, currentTime)
@@ -406,7 +410,7 @@ function FilmStage({
       ctx.stroke()
 
       const label = track.label?.trim()
-      if (label) {
+      if (label && shouldShowTrackLabel(track, { activeTrackId, focusActiveTrack })) {
         ctx.font = '700 12px system-ui, sans-serif'
         const labelWidth = ctx.measureText(label).width + 12
         const labelX = Math.min(width - labelWidth - 4, Math.max(4, px + radius + 5))
@@ -483,7 +487,7 @@ function FilmStage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, throwAnalysis, activeThrowLandmark])
+  useEffect(redraw, [annotations, drawColor, drawKind, currentTime, activeTrackId, focusActiveTrack, throwAnalysis, activeThrowLandmark])
 
   const followStageWidth = typeof window === 'undefined'
     ? 1
@@ -491,7 +495,7 @@ function FilmStage({
       ? Math.max(1, Math.min(window.innerWidth - 32, 1280) * 0.6)
       : Math.max(1, window.innerWidth - 24)
   const displayView = followPoint
-    ? followViewForAthlete(view, followPoint, { smoothing: 1, width: followStageWidth, height: followStageWidth * 9 / 16 })
+    ? followViewForAthlete(view, followPoint, { smoothing: 1, minimumZoom: 2.2, deadZone: 0.035, width: followStageWidth, height: followStageWidth * 9 / 16 })
     : view
   const zoomed = displayView.zoom > 1.001
   return (
@@ -735,6 +739,7 @@ export default function FilmRoom() {
   const [autoPlayerScale, setAutoPlayerScale] = useState(1)
   const [autoMotionCompensated, setAutoMotionCompensated] = useState(false)
   const [autoFollowPoint, setAutoFollowPoint] = useState<Pick<FilmAnnotationPoint, 'x' | 'y'>>()
+  const [showAllTracksDuringFollow, setShowAllTracksDuringFollow] = useState(false)
   const [autoArmed, setAutoArmed] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(0)
@@ -957,9 +962,10 @@ export default function FilmRoom() {
     setAutoPlayerScale(1)
     setAutoMotionCompensated(false)
     setAutoFollowPoint(point)
+    setShowAllTracksDuringFollow(false)
     setAutoArmed(false)
     setAutoStatus('running')
-    setTrackingMessage('Auto-follow is running. FAI will stop and ask for a correction if confidence drops.')
+    setTrackingMessage('Single-target auto-follow is running. Unrelated player labels and trails are hidden unless Show all tracks is enabled.')
     scheduleAutoFrame()
     void video.play().catch(() => {
       stopAutoFollow('error', 'Playback was blocked. Press Play, then start auto-follow again.')
@@ -987,6 +993,7 @@ export default function FilmRoom() {
       return
     }
     stopAutoFollow('armed', undefined, true)
+    setShowAllTracksDuringFollow(false)
     setAutoArmed(true)
     setAutoStatus('armed')
     setTrackingMessage('Auto-follow armed. Tap the player at the current frame; FAI will begin following immediately.')
@@ -1263,6 +1270,7 @@ export default function FilmRoom() {
     setAutoBlurLevel(0)
     setAutoPlayerScale(1)
     setAutoMotionCompensated(false)
+    setShowAllTracksDuringFollow(false)
     setFormationStartTime(undefined)
     setTrackingMessage(undefined)
     setActiveThrowLandmark('throwingShoulder')
@@ -1341,6 +1349,10 @@ export default function FilmRoom() {
     return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(digits)}${suffix}` : '—'
   }
 
+  const focusedAutoFollow = Boolean(activeTrackId)
+    && !showAllTracksDuringFollow
+    && (autoStatus === 'running' || autoStatus === 'armed' || autoStatus === 'lost')
+
   return (
     <div className="space-y-6">
       <div>
@@ -1371,6 +1383,7 @@ export default function FilmRoom() {
             drawColor={KIND_COLOR[drawKind]}
             toolMode={toolMode}
             activeTrackId={activeTrackId}
+            focusActiveTrack={focusedAutoFollow}
             followPoint={autoStatus === 'running' ? autoFollowPoint : undefined}
             throwAnalysis={throwAnalysis}
             activeThrowLandmark={activeThrowLandmark}
@@ -1804,6 +1817,16 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 </button>
                 <button type="button" onClick={startAutoFollow} disabled={!activeTrack || autoStatus === 'running' || trackKeyframes(activeTrack.points).length === 0} className="rounded-lg border border-up/40 bg-up/10 px-3 py-2 text-xs font-black text-up disabled:opacity-40">▶ Auto follow now</button>
                 <button type="button" onClick={() => stopAutoFollow('ready', 'Auto-follow paused.')} disabled={autoStatus !== 'running'} className="rounded-lg border border-down/40 px-3 py-2 text-xs font-black text-down disabled:opacity-40">■ Stop</button>
+                <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-line bg-panel-2/60 px-3 text-[11px] font-black text-muted">
+                  <input
+                    type="checkbox"
+                    checked={showAllTracksDuringFollow}
+                    onChange={(event) => setShowAllTracksDuringFollow(event.target.checked)}
+                    className="accent-fai"
+                  />
+                  Show all tracks
+                </label>
+                {focusedAutoFollow && <Pill tone="fai">Single-target view</Pill>}
                 <button type="button" onClick={() => stepFrame(-1)} className="rounded-lg border border-line px-3 py-2 text-xs font-black text-chalk" aria-label="Previous frame">− 1 frame</button>
                 <div className="min-w-20 text-center text-sm font-black text-fai nums">{formatTrackTime(videoTime)}</div>
                 <button type="button" onClick={() => stepFrame(1)} className="rounded-lg border border-line px-3 py-2 text-xs font-black text-chalk" aria-label="Next frame">+ 1 frame</button>
