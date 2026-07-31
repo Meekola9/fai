@@ -1,0 +1,29 @@
+name: Apply fieldhouse follow-up
+
+on:
+  push:
+    branches:
+      - feature/human-centered-design-and-deployment-roles
+
+permissions:
+  contents: write
+
+jobs:
+  apply-followup:
+    if: ${{ !contains(github.event.head_commit.message, '[fieldhouse-followup]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/human-centered-design-and-deployment-roles
+          fetch-depth: 0
+      - name: Apply follow-up integration
+        run: python scripts/applyFieldhouseFollowup.py
+      - name: Commit follow-up
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/pages/Athletes.tsx src/pages/AthleteProfile.tsx src/pages/Dashboard.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "refine: complete fieldhouse shell and deployment guide [fieldhouse-followup]"
+          git push origin HEAD:feature/human-centered-design-and-deployment-roles
