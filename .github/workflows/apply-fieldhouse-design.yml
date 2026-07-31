@@ -1,0 +1,29 @@
+name: Apply fieldhouse design
+
+on:
+  push:
+    branches:
+      - feature/human-centered-design-and-deployment-roles
+
+permissions:
+  contents: write
+
+jobs:
+  apply-design:
+    if: ${{ !contains(github.event.head_commit.message, '[fieldhouse-applied]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/human-centered-design-and-deployment-roles
+          fetch-depth: 0
+      - name: Apply design and deployment integration
+        run: python scripts/applyFieldhouseDesign.py
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/types.ts src/data/positions.ts src/pages/AthleteEditor.tsx src/pages/Athletes.tsx src/pages/AthleteProfile.tsx src/pages/Dashboard.tsx src/lib/playerUsage.test.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: apply fieldhouse design and deployment roles [fieldhouse-applied]"
+          git push origin HEAD:feature/human-centered-design-and-deployment-roles
