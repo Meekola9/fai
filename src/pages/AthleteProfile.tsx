@@ -14,6 +14,7 @@ import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
 import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 import { AthletePlayerCard } from '../components/AthletePlayerCard'
+import { PlayerUsageSummary } from '../components/PlayerUsageGuide'
 import { HomeDevelopmentPlan } from '../components/HomeDevelopmentPlan'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
@@ -185,6 +186,7 @@ export default function AthleteProfile() {
           weightLbs={athlete.weightLbs}
           statusLabel="No 2026 testing"
         />
+        <PlayerUsageSummary usage={athlete.usage} />
         <Card className="p-6">
           <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
             <div className="text-base font-bold text-chalk">No 2026 testing data yet</div>
@@ -266,6 +268,8 @@ export default function AthleteProfile() {
         strongestTrait={strong[0] ? `${strong[0]} ${positionCurrent.categories[strong[0]].toFixed(0)}` : undefined}
         statusLabel={rankEligible ? 'Official 2026 score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
       />
+
+      <PlayerUsageSummary usage={athlete.usage} />
 
       {positionArchetype && (
         <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />

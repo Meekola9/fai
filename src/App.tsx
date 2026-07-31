@@ -56,10 +56,10 @@ function Brand() {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-lg border border-fai/40 bg-fai/10 text-sm font-black tracking-tight text-fai">FAI</div>
+      <div className="brand-mark">FAI</div>
       <div className="hidden leading-tight min-[390px]:block">
         <div className="text-sm font-black tracking-tight text-chalk">Football Athlete Index</div>
-        <div className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-muted sm:block">{subtitle}</div>
+        <div className="hidden text-[10px] font-semibold text-muted sm:block">{subtitle}</div>
       </div>
     </div>
   )
@@ -99,12 +99,12 @@ function Header() {
   const nav = navForAccount(viewerMode, access.role, access.capabilities)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
+    <header className="app-header sticky top-0 z-40">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-3 sm:px-4">
         <NavLink to={access.role === 'athlete' ? '/account/profile' : '/'} aria-label="FAI home"><Brand /></NavLink>
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="nav-strip hidden md:flex">
           {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${isActive ? 'bg-fai/15 text-fai' : 'text-muted hover:bg-panel-2 hover:text-chalk'}`}>
+            <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}>
               {item.label}
             </NavLink>
           ))}
@@ -128,32 +128,32 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
   const access = useAccountAccess()
   const items: NavItem[] = viewerMode
     ? [
-        { to: '/', label: 'Dashboard', icon: '⌂', end: true },
-        { to: '/athletes', label: 'Athletes', icon: '◉' },
-        { to: '/leaderboards', label: 'Rankings', icon: '★' },
-        { to: '/login', label: 'Sign In', icon: '→' },
+        { to: '/', label: 'Dashboard', icon: 'DB', end: true },
+        { to: '/athletes', label: 'Athletes', icon: 'AT' },
+        { to: '/leaderboards', label: 'Rankings', icon: 'RK' },
+        { to: '/login', label: 'Sign In', icon: 'IN' },
       ]
     : access.role === 'athlete'
       ? [
-          { to: '/account/profile', label: 'My Profile', icon: '◉', end: true },
+          { to: '/account/profile', label: 'My Profile', icon: 'ME', end: true },
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
-          { to: '/development', label: 'Develop', icon: '◆' },
-          { to: '/stats', label: 'Guide', icon: '?' },
+          { to: '/development', label: 'Develop', icon: 'DV' },
+          { to: '/stats', label: 'Guide', icon: 'GD' },
         ]
       : [
           { to: '/', label: 'Dashboard', icon: '⌂', end: true },
           { to: '/athletes', label: 'Athletes', icon: '◉' },
-          ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: '+' }] : []),
+          ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: 'TE' }] : []),
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
-          { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: '•••' },
+          { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: 'MO' },
         ]
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-ink/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Mobile navigation">
+    <nav className="mobile-dock fixed inset-x-0 bottom-0 z-40 px-1 pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Mobile navigation">
       <div className={`mx-auto grid max-w-lg ${items.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
         {items.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-bold transition ${isActive ? 'text-fai' : 'text-muted active:bg-panel-2'}`}>
-            <span className="grid h-6 place-items-center text-lg font-black leading-none" aria-hidden="true">{item.icon}</span>
+          <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `flex min-h-16 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-bold transition ${isActive ? 'text-fai' : 'text-muted active:bg-panel-2'}`}>
+            <span className="grid h-6 place-items-center text-[10px] font-black tracking-[0.08em] leading-none" aria-hidden="true">{item.icon}</span>
             <span>{item.label}</span>
           </NavLink>
         ))}

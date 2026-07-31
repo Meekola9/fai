@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card } from '../components/ui'
+import { PlayerUsageGuide } from '../components/PlayerUsageGuide'
 import { POSITION_GROUPS, GRADES, parseHeight, formatHeight } from '../data/constants'
 import {
-  PLAYER_USAGE_OPTIONS,
   POSITION_OPTIONS,
   positionGroupFor,
   positionOptionFor,
@@ -18,6 +18,7 @@ import {
   athletePhotoPathFromPublicUrl,
 } from '../lib/athletePhoto'
 import { newId } from '../store/storage'
+import { playerUsageDefinition } from '../lib/playerUsage'
 import type { Athlete, PlayerUsage, PositionGroup } from '../types'
 
 const inputCls =
@@ -160,14 +161,15 @@ export default function AthleteEditor() {
 
   const primaryDetail = positionOptionFor(position)
   const secondaryDetail = positionOptionFor(secondaryPosition)
-  const usageDetail = PLAYER_USAGE_OPTIONS.find((option) => option.value === usage)
+  const usageDetail = playerUsageDefinition(usage)
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black tracking-tight">
-          {existing ? 'Edit Athlete' : 'Add Athlete'}
-        </h1>
+        <div>
+          <div className="page-kicker">Roster profile</div>
+          <h1 className="page-title">{existing ? 'Edit athlete' : 'Add athlete'}</h1>
+        </div>
         <Link to="/athletes" className="text-sm font-semibold text-muted hover:text-chalk">
           ← Back
         </Link>
@@ -261,13 +263,9 @@ export default function AthleteEditor() {
         </div>
 
         <div>
-          <label className={labelCls}>Player Deployment</label>
-          <select className={inputCls} value={usage} onChange={(e) => setUsage(e.target.value as PlayerUsage)}>
-            {PLAYER_USAGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-muted">{usageDetail?.description}</p>
+          <div className={labelCls}>Player deployment</div>
+          <p className="mt-1 mb-3 text-xs leading-relaxed text-muted">Choose the preparation model—not just the positions the athlete can physically play.</p>
+          <PlayerUsageGuide value={usage} onChange={setUsage} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -302,7 +300,7 @@ export default function AthleteEditor() {
             <div className="mb-3">
               <div className="text-sm font-black text-chalk">Secondary Side of the Ball</div>
               <p className="mt-1 text-xs text-muted">
-                This role appears on the roster and profile. FAI scoring still uses the primary group above.
+                {usageDetail.installScope} The FAI blend uses {usageDetail.primaryPct}% primary and {usageDetail.secondaryPct}% secondary.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

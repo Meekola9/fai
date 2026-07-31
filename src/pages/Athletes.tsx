@@ -10,9 +10,9 @@ import { athleteTimeline, positionScoreBreakdown } from '../lib/compute'
 import { archetypeFor } from '../lib/archetypes'
 import { playerBadgesFor } from '../lib/badges'
 import { athleteGameDayBadgeSummary } from '../lib/gameDayBadges'
-import { playerUsageDefinition } from '../lib/playerUsage'
+import { playerUsageDefinition, playerUsagePlanLine } from '../lib/playerUsage'
 import { CATEGORIES, CATEGORY_SHORT, formatHeight } from '../data/constants'
-import { athletePositionLine, usageLabel } from '../data/positions'
+import { athletePositionLine } from '../data/positions'
 import Lineup from './Lineup'
 import { usePageMemory, usePageScrollMemory } from '../hooks/usePageMemory'
 import type { Athlete, AthleteResult, Category } from '../types'
@@ -105,8 +105,9 @@ export default function Athletes() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Athletes <span className="text-muted">· {data.athletes.length}</span></h1>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wider text-fai">2026 season only</div>
+          <div className="page-kicker">2026 roster · {data.athletes.length} athletes</div>
+          <h1 className="page-title">Athlete personnel</h1>
+          <p className="page-intro">Build position groups, testing profiles, and game-plan deployment from one roster.</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -149,7 +150,7 @@ export default function Athletes() {
               ? positionScoreBreakdown(result.current.session, athlete, result.current.event)
               : undefined
             return (
-              <Card key={athlete.id} className="p-4 transition hover:border-fai/30">
+              <Card key={athlete.id} className="p-4 transition hover:border-[#555a4f]">
                 <div className="flex items-start gap-3">
                   <Avatar name={athlete.name} photoUrl={athlete.photoUrl} size={52} />
                   <div className="min-w-0 flex-1">
@@ -159,10 +160,9 @@ export default function Athletes() {
                         <Pill tone="gold">{CATEGORY_SHORT[sort]} {Math.round(result.current.categories[sort])}</Pill>
                       )}
                       <Pill tone="fai">{athlete.positionGroup}</Pill>
-                      {usage !== 'one-way' && (
-                        <Pill tone={usage === 'iron-man' ? 'gold' : 'up'}>{usageLabel(usage)} · {usageDefinition.primaryPct}/{usageDefinition.secondaryPct}</Pill>
-                      )}
-                      <span>{athletePositionLine(athlete)}</span>
+                      <Pill tone={usage === 'two-way' ? 'up' : usage === 'iron-man' ? 'gold' : 'default'}>{usageDefinition.shortLabel}</Pill>
+                      <span>{playerUsagePlanLine(usage)}</span>
+                      <span>· {athletePositionLine(athlete)}</span>
                       <span>· {gradeLabelFor(athlete)}</span>
                     </div>
                     <div className="mt-1 text-xs text-muted">

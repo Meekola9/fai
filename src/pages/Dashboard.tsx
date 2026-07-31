@@ -112,6 +112,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <header>
+        <div className="page-kicker">Program command center</div>
+        <h1 className="page-title">Coach dashboard</h1>
+        <p className="page-intro">A clear view of readiness, verified testing, roster coverage, and the athletes driving the program.</p>
+      </header>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card glow className="flex items-center gap-4 p-5">
           <FaiRing score={stats.avgFai} size={104} label="Team FAI" />
