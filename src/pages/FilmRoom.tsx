@@ -3,7 +3,6 @@ import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
 import HudlImportWizard from '../components/HudlImportWizard'
 import QbMechanicsPanel from '../components/QbMechanicsPanel'
-import QbMechanicsPanel from '../components/QbMechanicsPanel'
 import type {
   FilmAnnotation,
   FilmAnnotationKind,
