@@ -1,25 +1,26 @@
 @import 'tailwindcss';
 
 /* ------------------------------------------------------------------ */
-/* FAI combine-broadcast theme — dark, bold, high-contrast.            */
-/* Data-Dense Pro pushed toward Cinematic Dark: distinctive display    */
-/* type + an ownable "volt" accent (no Inter, no generic cyan).        */
+/* FAI Fieldhouse                                                       */
+/* A restrained coaching-and-performance system: flat surfaces, clear  */
+/* hierarchy, one signature accent, and typography that lets the data   */
+/* do the talking.                                                       */
 /* ------------------------------------------------------------------ */
 @theme {
-  --color-ink: #060809; /* deepest bg (neutral, not blue-black) */
-  --color-panel: #0e1115; /* card bg */
-  --color-panel-2: #171b21; /* raised card / hover */
-  --color-line: #242b33; /* borders */
-  --color-muted: #8b96a3; /* secondary text */
-  --color-chalk: #eef2f6; /* primary text */
+  --color-ink: #0b0c0b;
+  --color-panel: #141513;
+  --color-panel-2: #1b1d1a;
+  --color-line: #30332d;
+  --color-muted: #9ca097;
+  --color-chalk: #f1f2ec;
 
-  --color-fai: #c6f24e; /* signature volt */
-  --color-fai-2: #9bcc1f; /* deep volt (gradients / hover) */
-  --color-flame: #ff7a1a; /* secondary heat / low-score accent */
-  --color-up: #34d399; /* improvement (emerald — distinct from volt) */
-  --color-down: #f2555a; /* regression */
-  --color-flat: #6b7684; /* no change */
-  --color-gold: #fbbf24; /* #1 / leaders */
+  --color-fai: #c8f24a;
+  --color-fai-2: #9fc52f;
+  --color-flame: #ee8b4a;
+  --color-up: #65c58a;
+  --color-down: #df6b63;
+  --color-flat: #73786f;
+  --color-gold: #d7b85f;
 
   --font-sans: 'Space Grotesk Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -27,7 +28,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 html {
@@ -40,14 +41,20 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(1100px 520px at 50% -12%, rgba(198, 242, 78, 0.07) 0%, transparent 62%),
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
     var(--color-ink);
+  background-size: 100% 48px;
   color: var(--color-chalk);
   font-family: var(--font-sans);
   font-feature-settings: 'ss01', 'cv01';
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(200, 242, 74, 0.24);
+  color: var(--color-chalk);
 }
 
 button,
@@ -71,7 +78,15 @@ textarea {
   user-select: text;
 }
 
-/* Keep iOS from zooming the page when a testing field receives focus. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-fai);
+  outline-offset: 2px;
+}
+
 @media (max-width: 767px) {
   input,
   select,
@@ -84,150 +99,274 @@ textarea {
   }
 }
 
-/* Tabular numbers everywhere numbers are shown big. */
 .nums {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
-/* Thin custom scrollbar. */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-line);
+  background: #3b3e37;
+  border: 2px solid var(--color-ink);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* Slide transition used by TV mode. */
+/* ------------------------------------------------------------------ */
+/* App shell                                                            */
+/* ------------------------------------------------------------------ */
+.app-header {
+  border-bottom: 1px solid var(--color-line);
+  background: rgba(11, 12, 11, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+.brand-mark {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid rgba(200, 242, 74, 0.52);
+  border-radius: 0.65rem;
+  background: var(--color-fai);
+  color: #10120d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.nav-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.nav-item {
+  position: relative;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.72rem;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.nav-item:hover {
+  background: var(--color-panel-2);
+  color: var(--color-chalk);
+}
+
+.nav-item-active {
+  background: rgba(200, 242, 74, 0.1);
+  color: var(--color-chalk);
+}
+
+.nav-item-active::after {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.2rem;
+  left: 0.7rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-fai);
+  content: '';
+}
+
+.mobile-dock {
+  border-top: 1px solid var(--color-line);
+  background: rgba(11, 12, 11, 0.97);
+  backdrop-filter: blur(16px);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared page language                                                 */
+/* ------------------------------------------------------------------ */
+.page-kicker {
+  color: var(--color-fai);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.page-title {
+  margin-top: 0.25rem;
+  color: var(--color-chalk);
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.page-intro {
+  margin-top: 0.7rem;
+  max-width: 48rem;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* ------------------------------------------------------------------ */
+/* Player deployment                                                    */
+/* ------------------------------------------------------------------ */
+.deployment-card {
+  width: 100%;
+  min-height: 11.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.85rem;
+  background: var(--color-panel);
+  padding: 1rem;
+  color: inherit;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+button.deployment-card:hover {
+  border-color: #555a4f;
+  background: #181a17;
+  transform: translateY(-1px);
+}
+
+.deployment-card-selected {
+  border-color: rgba(200, 242, 74, 0.72);
+  background: rgba(200, 242, 74, 0.065);
+  box-shadow: inset 3px 0 0 var(--color-fai);
+}
+
+.deployment-card-title {
+  color: var(--color-chalk);
+  font-size: 1rem;
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.deployment-card-split {
+  margin-top: 0.2rem;
+  color: var(--color-fai);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.deployment-card-index {
+  color: #555a51;
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.deployment-card-copy {
+  margin: 0.85rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.deployment-card-detail {
+  margin-top: 0.8rem;
+  border-top: 1px solid var(--color-line);
+  padding-top: 0.75rem;
+  color: #c4c7bf;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.deployment-card-detail strong {
+  color: var(--color-chalk);
+}
+
+.deployment-summary {
+  border-left: 3px solid var(--color-fai);
+  background: #111210;
+  padding: 0.9rem 1rem;
+}
+
+.deployment-summary-kicker {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.deployment-summary-title {
+  margin-top: 0.2rem;
+  color: var(--color-chalk);
+  font-weight: 850;
+}
+
+.deployment-summary-split {
+  margin-top: 0.1rem;
+  color: var(--color-fai);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.deployment-summary p {
+  margin: 0.55rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion is functional and brief—not ambient decoration.              */
+/* ------------------------------------------------------------------ */
 @keyframes fai-fade {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.995);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.animate-slide {
-  animation: fai-fade 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-
-@keyframes fai-pop {
-  0% {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+.animate-slide,
 .animate-pop {
-  animation: fai-pop 0.4s ease-out both;
+  animation: fai-fade 0.28s ease-out both;
 }
 
-/* ------------------------------------------------------------------ */
-/* Playmakers / Havoc — Next-Gen-style broadcast graphics + electricity */
-/* ------------------------------------------------------------------ */
-
-/* Faded perspective field grid behind the meters. */
 .field-grid {
   background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 26px 26px;
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
-/* Lightning bolts flicker like live current. */
-@keyframes fai-flicker {
-  0%, 100% { opacity: 0; }
-  4% { opacity: 1; }
-  9% { opacity: 0.2; }
-  13% { opacity: 0.95; }
-  18% { opacity: 0.1; }
-  24% { opacity: 0.8; }
-  30% { opacity: 0; }
-}
-.animate-bolt {
-  animation: fai-flicker 1.6s steps(1, end) infinite;
-}
-
-/* Pulsing electric glow around the headline number. */
-@keyframes fai-volt {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
-}
-.animate-volt { animation: fai-volt 2.2s ease-in-out infinite; }
-
-/* Crackling charge running along the meter bar. */
-@keyframes fai-charge {
-  from { background-position: 0 0; }
-  to { background-position: 200% 0; }
-}
-.animate-charge {
-  background-image: linear-gradient(
-    100deg,
-    transparent 0%,
-    currentColor 45%,
-    #ffffff 50%,
-    currentColor 55%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: fai-charge 1.4s linear infinite;
-}
-
-/* Sweeping shine across progress bars. */
-@keyframes fai-shine {
-  from { transform: translateX(-120%); }
-  to { transform: translateX(320%); }
-}
-.animate-shine { animation: fai-shine 2.4s ease-in-out infinite; }
-
-/* Rising energy streaks for the playmaker surge. */
-@keyframes fai-surge {
-  0% { transform: translateY(110%); opacity: 0; }
-  20% { opacity: 1; }
-  100% { transform: translateY(-140%); opacity: 0; }
-}
-.animate-surge { animation: fai-surge 2.6s ease-in infinite; }
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-bolt, .animate-volt, .animate-charge, .animate-shine, .animate-surge {
-    animation: none;
-  }
-  .animate-bolt { opacity: 0.85; }
+.animate-bolt,
+.animate-volt,
+.animate-charge,
+.animate-shine,
+.animate-surge {
+  animation: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
-/* ------------------------------------------------------------------ */
-/* Archetype nameplate — the player's identity as a shining title.     */
-/* ------------------------------------------------------------------ */
-@keyframes fai-nameplate-sheen {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
+/* Archetype identity remains distinctive without animated chrome. */
 .archetype-title {
-  color: transparent;
-  background-image: linear-gradient(115deg, #ffffff 0%, #eaf7c9 22%, var(--color-fai) 55%, var(--color-gold) 100%);
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  filter: drop-shadow(0 0 22px rgba(198, 242, 78, 0.42)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
-  animation: fai-nameplate-sheen 6s ease-in-out infinite;
+  color: var(--color-chalk);
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  filter: none;
+  text-decoration: underline;
+  text-decoration-color: rgba(200, 242, 74, 0.7);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.16em;
 }
+
 .archetype-stat-val {
-  text-shadow: 0 0 16px rgba(198, 242, 78, 0.38);
+  text-shadow: none;
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .archetype-title { animation: none; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
