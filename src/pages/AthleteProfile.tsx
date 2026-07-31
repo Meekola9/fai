@@ -248,7 +248,7 @@ export default function AthleteProfile() {
   const weak = weaknesses(positionCurrent)
   const badges = playerBadgesFor({ result: displayResult, timeline })
   const radarSeries = [
-    { label: `${selectedGroup} view`, color: '#c6f24e', values: positionCurrent.categories as Record<Category, number> },
+    { label: `${selectedGroup} view`, color: '#c8f24a', values: positionCurrent.categories as Record<Category, number> },
   ]
 
   return (
@@ -281,8 +281,8 @@ export default function AthleteProfile() {
         <div className="flex flex-wrap items-center gap-2">
           <Pill tone="fai">2026 season</Pill>
           <Pill tone={rankEligible ? 'up' : 'gold'}>{rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}</Pill>
-          {displayResult.impactBoostPct > 0 && <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>}
-          {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>}
+          {displayResult.impactBoostPct > 0 && <Pill tone="fai">Playmaker +{displayResult.impactBoostPct}%</Pill>}
+          {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">Awareness +{displayResult.awarenessBoostPct}%</Pill>}
           {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>}
           {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && <Pill tone="gold">Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph</Pill>}
         </div>

@@ -109,7 +109,7 @@ function Header() {
             </NavLink>
           ))}
           <ConnectivityBadge />
-          {access.role !== 'athlete' && <NavLink to="/tv" className="ml-1 rounded-lg border border-flame/40 bg-flame/10 px-3 py-1.5 text-sm font-bold text-flame">TV Mode</NavLink>}
+          {access.role !== 'athlete' && <NavLink to="/tv" className="ml-1 rounded-md border border-line bg-panel px-3 py-1.5 text-sm font-bold text-chalk">TV Mode</NavLink>}
           {storageMode === 'cloud' && <button type="button" onClick={() => void signOut()} className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted">Sign out</button>}
           {viewerMode && <NavLink to="/login" className="ml-1 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted">Sign In</NavLink>}
         </nav>
@@ -197,7 +197,7 @@ function LoginScreen() {
     <div className="grid min-h-screen place-items-center bg-ink px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-line bg-panel p-6 shadow-2xl">
         <div className="mb-5 flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-xl border border-fai/40 bg-fai/10 text-lg font-black text-fai">FAI</div>
+          <div className="brand-mark">FAI</div>
           <div><h1 className="text-xl font-black text-chalk">{mode === 'create' ? 'Create FAI Account' : 'Sign In to FAI'}</h1><p className="text-sm text-muted">Athletes and staff use their own login</p></div>
         </div>
         <div className="mb-4 grid grid-cols-2 rounded-xl border border-line bg-ink p-1">

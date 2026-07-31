@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill } from '../components/ui'
+import { PlayerUsageGuide } from '../components/PlayerUsageGuide'
 import { PlayerBadgeStrip } from '../components/PlayerBadges'
 import { GameDayBadgeArtwork } from '../components/GameDayBadges'
 import { OverallRatingName } from '../components/OverallRatingName'
@@ -128,6 +129,12 @@ export default function Athletes() {
           )}
         </div>
       </div>
+
+      <details className="rounded-xl border border-line bg-panel px-4 py-3">
+        <summary className="cursor-pointer text-sm font-extrabold text-chalk">How FAI deployment roles work</summary>
+        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted">These labels describe meeting-room load, weekly installation, and game-plan responsibility. They are not a ranking of toughness or talent.</p>
+        <div className="mt-3"><PlayerUsageGuide compact /></div>
+      </details>
 
       <FilterBar events={[]} value={filters} onChange={setFilters} showEventFilter={false} />
 
