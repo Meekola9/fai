@@ -144,7 +144,7 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
           { to: '/', label: 'Dashboard', icon: 'DB', end: true },
           { to: '/athletes', label: 'Athletes', icon: 'AT' },
           ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: 'TE' }] : []),
-          { to: '/leaderboards', label: 'Rankings', icon: '★' },
+          { to: '/leaderboards', label: 'Rankings', icon: 'RK' },
           { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: 'MO' },
         ]
 

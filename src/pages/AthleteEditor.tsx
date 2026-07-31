@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { Avatar, Card } from '../components/ui'
 import { PlayerUsageGuide } from '../components/PlayerUsageGuide'
 import { PlayerUsageGuide } from '../components/PlayerUsageGuide'
+import { PlayerUsageGuide } from '../components/PlayerUsageGuide'
 import { POSITION_GROUPS, GRADES, parseHeight, formatHeight } from '../data/constants'
 import {
   POSITION_OPTIONS,
@@ -19,6 +20,7 @@ import {
   athletePhotoPathFromPublicUrl,
 } from '../lib/athletePhoto'
 import { newId } from '../store/storage'
+import { playerUsageDefinition } from '../lib/playerUsage'
 import { playerUsageDefinition } from '../lib/playerUsage'
 import { playerUsageDefinition } from '../lib/playerUsage'
 import type { Athlete, PlayerUsage, PositionGroup } from '../types'
