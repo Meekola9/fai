@@ -43,4 +43,11 @@ describe('qbMechanicsReportHtml', () => {
     expect(html).not.toContain('<script>alert(1)</script>')
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
   })
+
+  it('explains which inputs are needed when the report has no graded findings', () => {
+    const html = qbMechanicsReportHtml({ analysis: {} })
+    expect(html).toContain('Add plant and release timing plus release-frame landmarks')
+    expect(html).toContain('Data completeness')
+    expect(html).toContain('0%')
+  })
 })
