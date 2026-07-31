@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
 import HudlImportWizard from '../components/HudlImportWizard'
+import QbMechanicsPanel from '../components/QbMechanicsPanel'
 import type {
   FilmAnnotation,
   FilmAnnotationKind,
@@ -1712,6 +1713,13 @@ export default function FilmRoom() {
                 className={inputClass + ' min-h-20 w-full resize-y'}
               />
               {throwMetrics.timingWarning && <div className="rounded-lg border border-down/40 bg-down/5 p-2 text-xs font-bold text-down">{throwMetrics.timingWarning}</div>}
+              <QbMechanicsPanel
+                analysis={throwAnalysis}
+                currentPlayId={editingId}
+                filmLabel={form.filmLabel || sourceLabel || undefined}
+                opponent={form.opponent}
+                date={form.date}
+              />
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] text-muted">2D angles depend on the Hudl camera view and are not laboratory-grade 3D biomechanics.</span>
                 <button type="button" onClick={clearThrowBreakdown} disabled={!throwRecord} className="ml-auto rounded-lg border border-down/40 px-3 py-2 text-xs font-bold text-down disabled:opacity-40">Clear throw analysis</button>
