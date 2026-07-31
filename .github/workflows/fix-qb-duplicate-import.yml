@@ -1,0 +1,37 @@
+name: Fix QB duplicate import
+
+on:
+  push:
+    branches:
+      - feature/qb-mechanics-grading
+
+permissions:
+  contents: write
+
+jobs:
+  dedupe-import:
+    if: ${{ !contains(github.event.head_commit.message, '[dedupe-qb-import]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/qb-mechanics-grading
+          fetch-depth: 0
+      - name: Remove duplicate import
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/pages/FilmRoom.tsx')
+          text = path.read_text()
+          duplicate = "import QbMechanicsPanel from '../components/QbMechanicsPanel'\nimport QbMechanicsPanel from '../components/QbMechanicsPanel'\n"
+          text = text.replace(duplicate, "import QbMechanicsPanel from '../components/QbMechanicsPanel'\n")
+          path.write_text(text)
+          PY
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/FilmRoom.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: remove duplicate QB mechanics import [dedupe-qb-import]"
+          git push origin HEAD:feature/qb-mechanics-grading
