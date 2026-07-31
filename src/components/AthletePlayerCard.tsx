@@ -1,23 +1,7 @@
-import { useId } from 'react'
 import { formatHeight } from '../data/constants'
-import { overallRatingFor, type OverallRatingTone } from '../lib/overallRatings'
+import { overallRatingFor } from '../lib/overallRatings'
+import { playerUsageDefinition, playerUsagePlanLine } from '../lib/playerUsage'
 import type { Athlete } from '../types'
-
-interface CardTheme {
-  accent: string
-  deep: string
-  soft: string
-  edge: string
-}
-
-const CARD_THEME: Record<OverallRatingTone, CardTheme> = {
-  legend: { accent: '#a78bfa', deep: '#4c1d95', soft: '#f5d0fe', edge: '#e9d5ff' },
-  dawg: { accent: '#fbbf24', deep: '#92400e', soft: '#fef3c7', edge: '#fff1a8' },
-  difference: { accent: '#c6f24e', deep: '#3f6212', soft: '#ecfccb', edge: '#eaff9e' },
-  developing: { accent: '#34d399', deep: '#065f46', soft: '#d1fae5', edge: '#a7f3d0' },
-  building: { accent: '#94a3b8', deep: '#334155', soft: '#e2e8f0', edge: '#cbd5e1' },
-  'needs-work': { accent: '#fb7185', deep: '#881337', soft: '#ffe4e6', edge: '#fecdd3' },
-}
 
 export interface AthletePlayerCardProps {
   athlete: Athlete
@@ -59,15 +43,11 @@ export function AthletePlayerCard({
   strongestTrait,
   statusLabel,
 }: AthletePlayerCardProps) {
-  const gradientId = useId().replace(/:/g, '')
   const normalizedScore = typeof score === 'number' && Number.isFinite(score)
     ? Math.max(0, Math.min(100, score))
     : undefined
   const rating = overallRatingFor(normalizedScore ?? 0)
-  const theme = CARD_THEME[normalizedScore === undefined ? 'building' : rating.tone]
-  const nameParts = athlete.name.trim().split(/\s+/)
-  const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : ''
-  const lastName = nameParts.at(-1) ?? athlete.name
+  const usage = playerUsageDefinition(athlete.usage)
   const positionDetail = athlete.secondaryPosition
     ? `${athlete.position} / ${athlete.secondaryPosition}`
     : athlete.position
@@ -76,121 +56,91 @@ export function AthletePlayerCard({
     <section
       data-testid="athlete-player-card"
       aria-label={`${athlete.name} FAI player card`}
-      className="relative mx-auto aspect-[4/5] w-full max-w-[780px] isolate overflow-hidden rounded-[1.9rem] border border-white/15 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.68)]"
-      style={{
-        background: `radial-gradient(circle at 22% 12%, ${theme.soft} 0%, ${theme.accent} 24%, ${theme.deep} 54%, #050607 100%)`,
-        boxShadow: `0 28px 90px rgba(0,0,0,.68), 0 0 46px ${theme.accent}2d`,
-      }}
+      className="relative mx-auto w-full max-w-[980px] overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
     >
-      <div
-        className="absolute inset-[2.1%] overflow-hidden bg-[#080a0c]"
-        style={{ clipPath: 'polygon(4% 0, 94% 0, 100% 5%, 100% 93%, 94% 100%, 4% 100%, 0 95%, 0 5%)' }}
-      >
-        <svg viewBox="0 0 600 900" className="absolute inset-0 h-full w-full" aria-hidden="true">
-          <defs>
-            <linearGradient id={`${gradientId}-metal`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor={theme.soft} stopOpacity="0.24" />
-              <stop offset="0.28" stopColor={theme.accent} stopOpacity="0.62" />
-              <stop offset="0.6" stopColor={theme.deep} stopOpacity="0.92" />
-              <stop offset="1" stopColor="#030405" />
-            </linearGradient>
-            <linearGradient id={`${gradientId}-shine`} x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0" stopColor="#fff" stopOpacity="0" />
-              <stop offset="0.5" stopColor="#fff" stopOpacity="0.24" />
-              <stop offset="1" stopColor="#fff" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <rect width="600" height="900" fill={`url(#${gradientId}-metal)`} />
-          <path d="M0 0 390 0 260 200 0 330Z" fill={theme.soft} opacity="0.11" />
-          <path d="M260 200 470 220 600 480 300 420Z" fill={theme.accent} opacity="0.2" />
-          <path d="M0 330 300 420 170 720 0 610Z" fill="#020304" opacity="0.48" />
-          <path d="M300 420 600 480 600 900 420 760Z" fill={theme.deep} opacity="0.5" />
-          <path d="M-30 770 620 120" stroke={`url(#${gradientId}-shine)`} strokeWidth="90" opacity="0.62" />
-        </svg>
-
-        <div className="absolute inset-y-0 left-0 w-[59%] overflow-hidden border-r border-white/10">
-          <div
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${theme.deep}, #090b0d 68%)` }}
-          />
+      <div className="h-1 w-full bg-fai" aria-hidden="true" />
+      <div className="grid md:grid-cols-[280px_1fr]">
+        <div className="relative min-h-[290px] overflow-hidden border-b border-line bg-panel-2 md:border-b-0 md:border-r">
           {athlete.photoUrl ? (
             <img
               src={athlete.photoUrl}
               alt={athlete.name}
-              className="absolute inset-0 h-full w-full object-cover object-top contrast-[1.04] saturate-[1.04]"
+              className="absolute inset-0 h-full w-full object-cover object-top grayscale-[0.08]"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.14),transparent_38%)]">
-              <div
-                className="flex aspect-square h-[48%] items-center justify-center rounded-full border-[0.7rem] border-white/25 text-[clamp(3.8rem,13vw,8.8rem)] font-black tracking-[-0.08em] text-white/75"
-                style={{ boxShadow: `0 0 60px ${theme.accent}35` }}
-              >
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="grid h-36 w-36 place-items-center rounded-full border border-line bg-panel text-5xl font-black tracking-[-0.06em] text-chalk">
                 {initials(athlete.name)}
               </div>
             </div>
           )}
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_62%,rgba(7,9,10,0.95)_100%),linear-gradient(0deg,rgba(3,4,5,0.9)_0%,transparent_28%)]" />
-          <div className="absolute bottom-[3.5%] left-[5%] right-[7%] rounded-xl border border-white/15 bg-black/52 px-[4%] py-[3%] backdrop-blur-sm">
-            <div className="text-[clamp(.55rem,1.35vw,.82rem)] font-black uppercase tracking-[0.18em]" style={{ color: theme.soft }}>{gradeLabel}</div>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[clamp(.58rem,1.3vw,.82rem)] font-bold text-white/85">
-              <span>{formatHeight(athlete.heightIn)}</span>
-              <span>{weightLbs} lbs</span>
-              <span>{positionDetail}</span>
-            </div>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-5 pt-16">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60">{teamName ?? 'FAI Program'}</div>
+            <div className="mt-1 text-sm font-bold text-white">{gradeLabel}</div>
           </div>
         </div>
 
-        <div className="absolute inset-y-0 right-0 w-[48%] bg-black/16">
-          <div className="absolute left-[8%] right-[8%] top-[5%] flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col p-5 sm:p-7">
+          <div className="flex items-start justify-between gap-5">
             <div className="min-w-0">
-              <div className="text-[clamp(1.25rem,5vw,3.25rem)] font-black leading-none tracking-[-0.06em] text-white">{athlete.positionGroup}</div>
-              <div className="mt-1 max-w-[13rem] text-[clamp(.58rem,1.8vw,1.08rem)] font-semibold uppercase leading-tight tracking-[0.07em] text-white/86">{archetype ?? 'Awaiting testing'}</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-fai">Athlete dossier · {athlete.positionGroup}</div>
+              <h1 className="mt-2 break-words text-[clamp(2rem,6vw,4.4rem)] font-black leading-[0.9] tracking-[-0.065em] text-chalk">
+                {athlete.name}
+              </h1>
+              <div className="mt-3 text-sm font-extrabold text-chalk">{archetype ?? 'Profile building'}</div>
+              <div className="mt-1 text-xs text-muted">{positionDetail}</div>
             </div>
-            <div className="shrink-0 text-right">
-              <div
-                className="nums text-[clamp(3rem,10vw,6.7rem)] font-black leading-[0.78] tracking-[-0.08em] text-transparent"
-                style={{
-                  backgroundImage: `linear-gradient(150deg, #fff 0%, ${theme.edge} 30%, ${theme.accent} 62%, ${theme.deep} 100%)`,
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  filter: `drop-shadow(0 3px 0 rgba(0,0,0,.45)) drop-shadow(0 0 16px ${theme.accent}45)`,
-                }}
-              >
+
+            <div className="shrink-0 border-l border-line pl-5 text-right">
+              <div className="nums text-[clamp(3.2rem,9vw,6rem)] font-black leading-[0.78] tracking-[-0.08em] text-fai">
                 {normalizedScore === undefined ? '—' : Math.round(normalizedScore)}
               </div>
-              <div className="mt-2 text-[clamp(.45rem,1.15vw,.72rem)] font-black uppercase tracking-[0.22em]" style={{ color: theme.soft }}>
-                {normalizedScore === undefined ? 'Unrated' : 'FAI Overall'}
+              <div className="mt-2 text-[9px] font-bold uppercase tracking-[0.14em] text-muted">FAI overall</div>
+              <div className="mt-1 text-xs font-extrabold text-chalk">
+                {normalizedScore === undefined ? 'Unrated' : rating.label}
               </div>
             </div>
           </div>
 
-          <div className="absolute left-[9%] right-[7%] top-[28%]">
-            <h1 aria-label={athlete.name}>
-              {firstName && <span className="block text-[clamp(.75rem,2.5vw,1.65rem)] font-medium uppercase italic leading-none text-white/90">{firstName}</span>}
-              <span className="mt-1 block break-words text-[clamp(1.25rem,4.5vw,3rem)] font-black uppercase italic leading-[0.9] tracking-[-0.045em] text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]">{lastName}</span>
-            </h1>
-            <div className="mt-[7%] h-px w-[74%]" style={{ background: `linear-gradient(90deg, ${theme.edge}, transparent)` }} />
-            <div className="mt-[4%] text-[clamp(.5rem,1.2vw,.75rem)] font-black uppercase tracking-[0.18em] text-white/58">Rating class</div>
-            <div className="mt-1 text-[clamp(.68rem,1.75vw,1.05rem)] font-black uppercase leading-tight" style={{ color: theme.soft }}>
-              {normalizedScore === undefined ? 'Profile Building' : rating.label}
+          <div className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-line bg-line">
+            <div className="bg-panel-2 px-3 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Height</div>
+              <div className="mt-1 text-base font-black nums text-chalk">{formatHeight(athlete.heightIn)}</div>
             </div>
-            {strongestTrait && <div className="mt-[5%] inline-flex rounded-full border border-white/20 bg-black/30 px-[7%] py-[2.5%] text-[clamp(.52rem,1.25vw,.76rem)] font-black uppercase tracking-[0.11em] text-white/88">{strongestTrait}</div>}
+            <div className="bg-panel-2 px-3 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Weight</div>
+              <div className="mt-1 text-base font-black nums text-chalk">{weightLbs} lbs</div>
+            </div>
+            <div className="bg-panel-2 px-3 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Best trait</div>
+              <div className="mt-1 truncate text-base font-black text-chalk">{strongestTrait ?? 'Pending'}</div>
+            </div>
           </div>
 
-          <div className="absolute bottom-[4%] left-[7%] right-[6%]">
-            <div className="text-[clamp(.52rem,1.18vw,.72rem)] font-black uppercase tracking-[0.2em] text-white/55">Football Athlete Index</div>
-            <div className="mt-1 truncate text-[clamp(.68rem,1.6vw,1rem)] font-black uppercase tracking-[0.06em] text-white">{teamName ?? 'FAI Program'}</div>
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[clamp(.48rem,1.05vw,.66rem)] font-bold uppercase tracking-[0.09em] text-white/62">
-              {rankEligible && teamRank && teamCount ? <span>Team #{teamRank}/{teamCount}</span> : <span>{statusLabel ?? 'Development profile'}</span>}
-              {rankEligible && groupRank && groupCount && <span>{athlete.positionGroup} #{groupRank}/{groupCount}</span>}
+          <div className="mt-5 grid gap-4 sm:grid-cols-[0.9fr_1.1fr]">
+            <div className="border-l-[3px] border-fai bg-ink/45 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Deployment</div>
+              <div className="mt-1 text-sm font-black text-chalk">{usage.label}</div>
+              <div className="mt-1 text-xs font-bold text-fai">{playerUsagePlanLine(athlete.usage)}</div>
+            </div>
+            <div className="bg-panel-2 px-4 py-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Coach plan</div>
+              <div className="mt-1 text-xs leading-relaxed text-muted">{usage.gamePlan}</div>
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-wrap items-end justify-between gap-3 border-t border-line pt-5">
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted">Status</div>
+              <div className="mt-1 text-xs font-bold text-chalk">{statusLabel ?? 'Development profile'}</div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-[10px] font-bold text-muted">
+              {rankEligible && teamRank && teamCount ? <span>Team #{teamRank}/{teamCount}</span> : null}
+              {rankEligible && groupRank && groupCount ? <span>{athlete.positionGroup} #{groupRank}/{groupCount}</span> : null}
             </div>
           </div>
         </div>
-
-        <div className="pointer-events-none absolute inset-0 border border-white/18" style={{ clipPath: 'polygon(4% 0, 94% 0, 100% 5%, 100% 93%, 94% 100%, 4% 100%, 0 95%, 0 5%)' }} />
-        <div className="absolute left-[1.4%] top-[1.2%] text-[clamp(.42rem,1vw,.62rem)] font-black uppercase tracking-[0.28em] text-white/55">FAI · Athlete Card</div>
       </div>
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(125deg,transparent_0%,rgba(255,255,255,0.07)_38%,transparent_50%)]" />
     </section>
   )
 }
