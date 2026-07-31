@@ -1,0 +1,29 @@
+name: Apply Film Room single-target follow
+
+on:
+  push:
+    branches:
+      - fix/film-single-target-follow
+
+permissions:
+  contents: write
+
+jobs:
+  patch-film-room:
+    if: ${{ !contains(github.event.head_commit.message, '[single-target-follow]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/film-single-target-follow
+          fetch-depth: 0
+      - name: Apply focused auto-follow integration
+        run: python scripts/applyFilmSingleTargetFollow.py
+      - name: Commit Film Room integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/FilmRoom.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: focus Film Room on selected athlete [single-target-follow]"
+          git push origin HEAD:fix/film-single-target-follow
