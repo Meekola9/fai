@@ -136,13 +136,13 @@ function MobileNavigation({ viewerMode }: { viewerMode: boolean }) {
     : access.role === 'athlete'
       ? [
           { to: '/account/profile', label: 'My Profile', icon: 'ME', end: true },
-          { to: '/leaderboards', label: 'Rankings', icon: '★' },
+          { to: '/leaderboards', label: 'Rankings', icon: 'RK' },
           { to: '/development', label: 'Develop', icon: 'DV' },
           { to: '/stats', label: 'Guide', icon: 'GD' },
         ]
       : [
-          { to: '/', label: 'Dashboard', icon: '⌂', end: true },
-          { to: '/athletes', label: 'Athletes', icon: '◉' },
+          { to: '/', label: 'Dashboard', icon: 'DB', end: true },
+          { to: '/athletes', label: 'Athletes', icon: 'AT' },
           ...(access.capabilities.canManageTesting ? [{ to: '/entry', label: 'Test', icon: 'TE' }] : []),
           { to: '/leaderboards', label: 'Rankings', icon: '★' },
           { to: access.capabilities.canManageStaff ? '/staff' : '/data', label: 'More', icon: 'MO' },
