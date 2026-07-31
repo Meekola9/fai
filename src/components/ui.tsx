@@ -61,6 +61,7 @@ export function Pill({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function trendColor(trend: Trend): string {
   return trend === 'improved'
     ? 'text-up'
