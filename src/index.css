@@ -29,6 +29,8 @@ html,
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 html {
@@ -178,9 +180,18 @@ textarea:focus-visible {
 }
 
 .mobile-dock {
+  z-index: 100;
+  isolation: isolate;
+  pointer-events: auto;
   border-top: 1px solid var(--color-line);
-  background: rgba(11, 12, 11, 0.97);
+  background: rgba(11, 12, 11, 0.98);
   backdrop-filter: blur(16px);
+}
+
+.mobile-dock a {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 /* ------------------------------------------------------------------ */
