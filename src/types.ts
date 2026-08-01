@@ -45,9 +45,9 @@ export interface Athlete {
   /** Primary football position. This position group controls FAI benchmarking. */
   position: string
   positionGroup: PositionGroup
-  /** One-way, regular two-way, or near-full-time Iron Man deployment. */
+  /** Primary Specialist, Two-Way, or limited-package Iron Man deployment. */
   usage?: PlayerUsage
-  /** Optional second role for two-way and Iron Man players. */
+  /** Optional second role for Two-Way and Iron Man players. */
   secondaryPosition?: string
   secondaryPositionGroup?: PositionGroup
   heightIn: number

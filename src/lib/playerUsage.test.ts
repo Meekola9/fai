@@ -53,10 +53,12 @@ function dataFor(athlete: Athlete): AppData {
 }
 
 describe('player usage scoring', () => {
-  it('defines Two Way as 50/50 and Iron Man as 70/30', () => {
+  it('defines Two-Way as 50/50, Iron Man as 70/30, and Primary Specialist as 100/0', () => {
     expect(playerUsageDefinition('two-way')).toMatchObject({ primaryPct: 50, secondaryPct: 50 })
     expect(playerUsageDefinition('iron-man')).toMatchObject({ primaryPct: 70, secondaryPct: 30 })
-    expect(playerUsageDefinition('one-way')).toMatchObject({ primaryPct: 100, secondaryPct: 0 })
+    expect(playerUsageDefinition('one-way')).toMatchObject({ label: 'Primary Specialist', primaryPct: 100, secondaryPct: 0 })
+    expect(playerUsageDefinition('two-way').mentalProfile).toContain('two meeting rooms')
+    expect(playerUsageDefinition('iron-man').installScope).toContain('one or two formations')
   })
 
   it('blends a Two Way athlete evenly across both position scores', () => {

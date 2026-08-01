@@ -14,6 +14,7 @@ import { PlayerBadgeGallery } from '../components/PlayerBadges'
 import { GameDayBadgeAwardCard, GameDayBadgeCountChip } from '../components/GameDayBadges'
 import { awarenessBoostForScore, awarenessLevel, latestAwarenessFor } from '../lib/awarenessQuiz'
 import { AthletePlayerCard } from '../components/AthletePlayerCard'
+import { PlayerUsageSummary } from '../components/PlayerUsageGuide'
 import { HomeDevelopmentPlan } from '../components/HomeDevelopmentPlan'
 import { RadarChart, ScoreMeter } from '../components/charts'
 import { resolveFilm } from '../lib/film'
@@ -185,6 +186,7 @@ export default function AthleteProfile() {
           weightLbs={athlete.weightLbs}
           statusLabel="No 2026 testing"
         />
+        <PlayerUsageSummary usage={athlete.usage} />
         <Card className="p-6">
           <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
             <div className="text-base font-bold text-chalk">No 2026 testing data yet</div>
@@ -244,7 +246,7 @@ export default function AthleteProfile() {
   const weak = weaknesses(positionCurrent)
   const badges = playerBadgesFor({ result: displayResult, timeline })
   const radarSeries = [
-    { label: `${selectedGroup} view`, color: '#c6f24e', values: positionCurrent.categories as Record<Category, number> },
+    { label: `${selectedGroup} view`, color: '#c8f24a', values: positionCurrent.categories as Record<Category, number> },
   ]
 
   return (
@@ -267,6 +269,8 @@ export default function AthleteProfile() {
         statusLabel={rankEligible ? 'Official 2026 score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
       />
 
+      <PlayerUsageSummary usage={athlete.usage} />
+
       {positionArchetype && (
         <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />
       )}
@@ -275,8 +279,8 @@ export default function AthleteProfile() {
         <div className="flex flex-wrap items-center gap-2">
           <Pill tone="fai">2026 season</Pill>
           <Pill tone={rankEligible ? 'up' : 'gold'}>{rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}</Pill>
-          {displayResult.impactBoostPct > 0 && <Pill tone="fai">⚡ +{displayResult.impactBoostPct}% Playmaker</Pill>}
-          {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">🧠 +{displayResult.awarenessBoostPct}% Awareness IQ</Pill>}
+          {displayResult.impactBoostPct > 0 && <Pill tone="fai">Playmaker +{displayResult.impactBoostPct}%</Pill>}
+          {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">Awareness +{displayResult.awarenessBoostPct}%</Pill>}
           {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>}
           {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && <Pill tone="gold">Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph</Pill>}
         </div>

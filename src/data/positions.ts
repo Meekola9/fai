@@ -14,18 +14,18 @@ export const PLAYER_USAGE_OPTIONS: readonly {
 }[] = [
   {
     value: 'one-way',
-    label: 'One Way',
-    description: 'Primary position only.',
+    label: 'Primary Specialist',
+    description: 'A primary-side specialist who is exceptional there or is not needed in a second role.',
   },
   {
     value: 'two-way',
-    label: 'Two Way',
-    description: 'Regular offensive and defensive role.',
+    label: 'Two-Way',
+    description: 'Physically and mentally prepared to carry meaningful responsibility on both sides.',
   },
   {
     value: 'iron-man',
     label: 'Iron Man',
-    description: 'Expected to stay on the field for nearly every meaningful snap.',
+    description: 'Full primary role with a deliberately limited secondary package to protect mental clarity.',
   },
 ]
 
@@ -196,7 +196,7 @@ export function normalizePlayerUsage(value: unknown): PlayerUsage {
 }
 
 export function usageLabel(value?: PlayerUsage): string {
-  return PLAYER_USAGE_OPTIONS.find((option) => option.value === (value ?? 'one-way'))?.label ?? 'One Way'
+  return PLAYER_USAGE_OPTIONS.find((option) => option.value === (value ?? 'one-way'))?.label ?? 'Primary Specialist'
 }
 
 export function athletePositionLine(athlete: Athlete): string {
