@@ -24,6 +24,32 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Correct the two profile-summary replacements
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/applyDeploymentRecommendation.py')
+          text = path.read_text()
+          block = '''replace_once(
+              'src/pages/AthleteProfile.tsx',
+              "<PlayerUsageSummary usage={athlete.usage} />",
+              "<PlayerUsageSummary athlete={athlete} />",
+          )
+          replace_once(
+              'src/pages/AthleteProfile.tsx',
+              "<PlayerUsageSummary usage={athlete.usage} />",
+              "<PlayerUsageSummary athlete={athlete} />",
+          )'''
+          replacement = '''profile_path = Path('src/pages/AthleteProfile.tsx')
+          profile_text = profile_path.read_text()
+          old_summary = "<PlayerUsageSummary usage={athlete.usage} />"
+          if profile_text.count(old_summary) != 2:
+              raise SystemExit(f"AthleteProfile: expected two deployment summaries, found {profile_text.count(old_summary)}")
+          profile_path.write_text(profile_text.replace(old_summary, "<PlayerUsageSummary athlete={athlete} />"))'''
+          if block not in text:
+              raise SystemExit('Could not find duplicate profile replacement block')
+          path.write_text(text.replace(block, replacement, 1))
+          PY
       - name: Apply deployment recommendation implementation
         run: python scripts/applyDeploymentRecommendation.py
       - name: Install dependencies
