@@ -1,0 +1,42 @@
+name: Build deployment recommendation
+
+on:
+  push:
+    branches:
+      - feature/deployment-recommendation-and-iron-man-package
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message, '[deployment-built]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deployment-recommendation-and-iron-man-package
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply deployment recommendation implementation
+        run: python scripts/applyDeploymentRecommendation.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Commit validated implementation
+        run: |
+          rm -f scripts/applyDeploymentRecommendation.py .github/workflows/build-deployment-recommendation.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add deployment recommendation and Iron Man package editor [deployment-built]"
+          git push origin HEAD:feature/deployment-recommendation-and-iron-man-package
