@@ -7,6 +7,7 @@ import { signUpAccount } from './store/accounts'
 import Dashboard from './pages/Dashboard'
 import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
+import DeploymentBoard from './pages/DeploymentBoard'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
 import FilmLibrary from './pages/FilmLibrary'
@@ -83,6 +84,7 @@ function navForAccount(viewerMode: boolean, role: string | undefined, capabiliti
     { to: '/leaderboards', label: 'Leaderboards' },
     { to: '/athletes', label: 'Athletes' },
   ]
+  if (capabilities.canManageRoster || capabilities.canManageTesting || role === 'owner' || role === 'admin') nav.push({ to: '/deployment', label: 'Deployment' })
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
   nav.push({ to: '/film-library', label: 'Film Library' }, { to: '/development', label: 'Development' }, { to: '/stats', label: 'Stats Guide' })
@@ -261,6 +263,7 @@ export default function App() {
           <Route path="/" element={isAthlete ? <Navigate to="/account/profile" replace /> : <Dashboard />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
+          <Route path="/deployment" element={allowed(!viewerMode && staffOrPublic && (access.capabilities.canManageRoster || access.capabilities.canManageTesting || ownerOrAdmin), <DeploymentBoard />, 'Your coach role does not include deployment planning access.')} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
           <Route path="/film" element={null} />
           <Route path="/film-library" element={<FilmLibrary />} />

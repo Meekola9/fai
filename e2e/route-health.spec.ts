@@ -6,7 +6,7 @@ import { test, expect, type Page } from '@playwright/test'
 // renamed metric id) that unit tests and typechecking miss.
 
 const ROUTES = [
-  '/', '/leaderboards', '/athletes', '/playmakers', '/film', '/development',
+  '/', '/leaderboards', '/athletes', '/deployment', '/playmakers', '/film', '/development',
   '/stats', '/quiz', '/vertical', '/badges', '/archetypes', '/entry', '/import',
   '/data', '/staff', '/account/setup', '/tv',
 ]
@@ -48,7 +48,7 @@ test('desktop audit of all routes', async ({ page }) => {
 test('mobile audit of key routes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   const report: Awaited<ReturnType<typeof auditRoute>>[] = []
-  for (const route of ['/', '/leaderboards', '/athletes', '/import', '/quiz', '/development']) {
+  for (const route of ['/', '/leaderboards', '/athletes', '/deployment', '/import', '/quiz', '/development']) {
     report.push(await auditRoute(page, route))
   }
   console.log('MOBILE AUDIT\n' + report.map((r) => `${r.blank ? 'BLANK ' : 'ok    '} ${r.route}  (${r.chars} chars)${r.errors.length ? '\n   ' + r.errors.join('\n   ') : ''}`).join('\n'))
