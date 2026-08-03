@@ -111,5 +111,6 @@ describe('Iron Man package limits', () => {
     const decoded = decodeCloudPosition(encodeCloudPosition(athlete))
     expect(decoded.deploymentAssessment?.rosterNeed).toBe('rotation')
     expect(decoded.ironManPackage?.calls).toEqual(['Cloud', 'Sky'])
+    expect(decoded.ironManPackage?.secondarySnapCapPct).toBe(25)
   })
 })
