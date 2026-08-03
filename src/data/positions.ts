@@ -1,4 +1,12 @@
-import type { Athlete, PlayerUsage, PositionGroup } from '../types'
+import type {
+  Athlete,
+  DeploymentAssessment,
+  DeploymentRosterNeed,
+  IronManPackage,
+  IronManPackageStatus,
+  PlayerUsage,
+  PositionGroup,
+} from '../types'
 
 export interface PositionOption {
   value: string
@@ -210,6 +218,8 @@ interface PackedPosition {
   usage: PlayerUsage
   secondaryPosition?: string
   secondaryPositionGroup?: PositionGroup
+  deploymentAssessment?: DeploymentAssessment
+  ironManPackage?: IronManPackage
 }
 
 const CLOUD_META_PATTERN = /\s*\[\[FAI:([^\]]+)\]\]\s*$/
@@ -221,11 +231,13 @@ const CLOUD_META_PATTERN = /\s*\[\[FAI:([^\]]+)\]\]\s*$/
  */
 export function encodeCloudPosition(athlete: Athlete): string {
   const usage = athlete.usage ?? 'one-way'
-  if (usage === 'one-way' && !athlete.secondaryPosition) return athlete.position
+  if (usage === 'one-way' && !athlete.secondaryPosition && !athlete.deploymentAssessment && !athlete.ironManPackage) return athlete.position
   const payload = encodeURIComponent(JSON.stringify({
     usage,
     secondaryPosition: athlete.secondaryPosition,
     secondaryPositionGroup: athlete.secondaryPositionGroup,
+    deploymentAssessment: athlete.deploymentAssessment,
+    ironManPackage: athlete.ironManPackage,
   }))
   return `${athlete.position} [[FAI:${payload}]]`
 }
@@ -239,6 +251,8 @@ export function decodeCloudPosition(value: string): PackedPosition {
       usage?: unknown
       secondaryPosition?: unknown
       secondaryPositionGroup?: unknown
+      deploymentAssessment?: unknown
+      ironManPackage?: unknown
     }
     const secondaryPosition = typeof parsed.secondaryPosition === 'string'
       ? parsed.secondaryPosition
@@ -247,11 +261,55 @@ export function decodeCloudPosition(value: string): PackedPosition {
     const secondaryPositionGroup = secondaryPosition
       ? positionGroupFor(secondaryPosition, secondaryGroupRaw || 'ATH')
       : undefined
+    const assessmentRaw = parsed.deploymentAssessment && typeof parsed.deploymentAssessment === 'object'
+      ? parsed.deploymentAssessment as Record<string, unknown>
+      : undefined
+    const needValues: DeploymentRosterNeed[] = ['none', 'emergency', 'rotation', 'starter']
+    const rosterNeedRaw = String(assessmentRaw?.rosterNeed ?? 'none') as DeploymentRosterNeed
+    const deploymentAssessment: DeploymentAssessment | undefined = assessmentRaw
+      ? {
+          rosterNeed: needValues.includes(rosterNeedRaw) ? rosterNeedRaw : 'none',
+          coachMentalReadiness: typeof assessmentRaw.coachMentalReadiness === 'number'
+            ? assessmentRaw.coachMentalReadiness
+            : undefined,
+          assignmentReliability: typeof assessmentRaw.assignmentReliability === 'number'
+            ? assessmentRaw.assignmentReliability
+            : undefined,
+          updatedAt: typeof assessmentRaw.updatedAt === 'string' ? assessmentRaw.updatedAt : undefined,
+        }
+      : undefined
+
+    const packageRaw = parsed.ironManPackage && typeof parsed.ironManPackage === 'object'
+      ? parsed.ironManPackage as Record<string, unknown>
+      : undefined
+    const statusValues: IronManPackageStatus[] = ['planning', 'installing', 'ready', 'paused']
+    const statusRaw = String(packageRaw?.status ?? 'planning') as IronManPackageStatus
+    const ironManPackage: IronManPackage | undefined = packageRaw
+      ? {
+          status: statusValues.includes(statusRaw) ? statusRaw : 'planning',
+          formations: Array.isArray(packageRaw.formations)
+            ? packageRaw.formations.filter((item): item is string => typeof item === 'string')
+            : [],
+          calls: Array.isArray(packageRaw.calls)
+            ? packageRaw.calls.filter((item): item is string => typeof item === 'string')
+            : [],
+          responsibilities: typeof packageRaw.responsibilities === 'string'
+            ? packageRaw.responsibilities
+            : undefined,
+          secondarySnapCapPct: typeof packageRaw.secondarySnapCapPct === 'number'
+            ? packageRaw.secondarySnapCapPct
+            : 30,
+          reviewDate: typeof packageRaw.reviewDate === 'string' ? packageRaw.reviewDate : undefined,
+        }
+      : undefined
+
     return {
       position,
       usage: normalizePlayerUsage(parsed.usage),
       secondaryPosition,
       secondaryPositionGroup,
+      deploymentAssessment,
+      ironManPackage,
     }
   } catch {
     return { position, usage: 'one-way' }

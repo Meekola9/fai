@@ -186,7 +186,7 @@ export default function AthleteProfile() {
           weightLbs={athlete.weightLbs}
           statusLabel="No 2026 testing"
         />
-        <PlayerUsageSummary usage={athlete.usage} />
+        <PlayerUsageSummary athlete={athlete} />
         <Card className="p-6">
           <div className="rounded-xl border border-dashed border-line bg-panel-2/30 p-6 text-center">
             <div className="text-base font-bold text-chalk">No 2026 testing data yet</div>
@@ -269,7 +269,7 @@ export default function AthleteProfile() {
         statusLabel={rankEligible ? 'Official 2026 score' : `${current.scoreStatus} · ${current.completionPct}% complete`}
       />
 
-      <PlayerUsageSummary usage={athlete.usage} />
+      <PlayerUsageSummary athlete={athlete} />
 
       {positionArchetype && (
         <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />

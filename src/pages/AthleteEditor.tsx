@@ -19,7 +19,23 @@ import {
 } from '../lib/athletePhoto'
 import { newId } from '../store/storage'
 import { playerUsageDefinition } from '../lib/playerUsage'
-import type { Athlete, PlayerUsage, PositionGroup } from '../types'
+import { athleteTimeline, computeSessionForPositionGroup } from '../lib/compute'
+import { latestAwarenessFor } from '../lib/awarenessQuiz'
+import {
+  IRON_MAN_MAX_CALLS,
+  IRON_MAN_MAX_FORMATIONS,
+  deploymentAssessmentFromValues,
+  normalizeIronManPackage,
+  parseDeploymentPackageItems,
+  recommendDeployment,
+} from '../lib/deploymentRecommendation'
+import type {
+  Athlete,
+  DeploymentRosterNeed,
+  IronManPackageStatus,
+  PlayerUsage,
+  PositionGroup,
+} from '../types'
 
 const inputCls =
   'w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm font-semibold text-chalk outline-none placeholder:text-muted focus:border-fai'
@@ -40,7 +56,7 @@ function PositionSuggestions({ id }: { id: string }) {
 export default function AthleteEditor() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { data, teamId, addAthlete, updateAthlete, deleteAthlete } = useStore()
+  const { data, computed, teamId, addAthlete, updateAthlete, deleteAthlete } = useStore()
   const existing = id ? data.athletes.find((a) => a.id === id) : undefined
 
   const [name, setName] = useState(existing?.name ?? '')
@@ -60,6 +76,37 @@ export default function AthleteEditor() {
   const [hudlUrl, setHudlUrl] = useState(existing?.hudlUrl ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
+  const [rosterNeed, setRosterNeed] = useState<DeploymentRosterNeed>(
+    existing?.deploymentAssessment?.rosterNeed ?? 'none',
+  )
+  const [mentalReadiness, setMentalReadiness] = useState(
+    existing?.deploymentAssessment?.coachMentalReadiness
+      ? String(existing.deploymentAssessment.coachMentalReadiness)
+      : '',
+  )
+  const [assignmentReliability, setAssignmentReliability] = useState(
+    typeof existing?.deploymentAssessment?.assignmentReliability === 'number'
+      ? String(existing.deploymentAssessment.assignmentReliability)
+      : '',
+  )
+  const [packageStatus, setPackageStatus] = useState<IronManPackageStatus>(
+    existing?.ironManPackage?.status ?? 'planning',
+  )
+  const [packageFormations, setPackageFormations] = useState(
+    existing?.ironManPackage?.formations.join('\n') ?? '',
+  )
+  const [packageCalls, setPackageCalls] = useState(
+    existing?.ironManPackage?.calls.join('\n') ?? '',
+  )
+  const [packageResponsibilities, setPackageResponsibilities] = useState(
+    existing?.ironManPackage?.responsibilities ?? '',
+  )
+  const [secondarySnapCapPct, setSecondarySnapCapPct] = useState(
+    String(existing?.ironManPackage?.secondarySnapCapPct ?? 30),
+  )
+  const [packageReviewDate, setPackageReviewDate] = useState(
+    existing?.ironManPackage?.reviewDate ?? '',
+  )
 
   useEffect(() => {
     return () => {
@@ -102,6 +149,17 @@ export default function AthleteEditor() {
     try {
       const isTwoWay = usage !== 'one-way'
       const cleanSecondary = isTwoWay ? secondaryPosition.trim() : ''
+      if (isTwoWay && !cleanSecondary) {
+        throw new Error('Choose a secondary position before assigning an Iron Man or Two-Way role.')
+      }
+      const formations = parseDeploymentPackageItems(packageFormations)
+      const calls = parseDeploymentPackageItems(packageCalls)
+      if (usage === 'iron-man' && formations.length > IRON_MAN_MAX_FORMATIONS) {
+        throw new Error(`Iron Man packages are limited to ${IRON_MAN_MAX_FORMATIONS} formations.`)
+      }
+      if (usage === 'iron-man' && calls.length > IRON_MAN_MAX_CALLS) {
+        throw new Error(`Iron Man packages are limited to ${IRON_MAN_MAX_CALLS} calls or assignments.`)
+      }
       const athleteId = existing?.id ?? newId('athlete')
       let nextPhotoUrl = photoUrl.trim() || undefined
 
@@ -128,6 +186,22 @@ export default function AthleteEditor() {
         weightLbs: Number(weight) || 0,
         photoUrl: nextPhotoUrl,
         hudlUrl: hudlUrl.trim() || undefined,
+        deploymentAssessment: deploymentAssessmentFromValues({
+          rosterNeed,
+          coachMentalReadiness: mentalReadiness ? Number(mentalReadiness) : undefined,
+          assignmentReliability: assignmentReliability ? Number(assignmentReliability) : undefined,
+          updatedAt: new Date().toISOString(),
+        }),
+        ironManPackage: usage === 'iron-man'
+          ? normalizeIronManPackage({
+              status: packageStatus,
+              formations,
+              calls,
+              responsibilities: packageResponsibilities,
+              secondarySnapCapPct: Number(secondarySnapCapPct),
+              reviewDate: packageReviewDate,
+            })
+          : undefined,
       }
 
       if (existing) {
@@ -162,6 +236,47 @@ export default function AthleteEditor() {
   const primaryDetail = positionOptionFor(position)
   const secondaryDetail = positionOptionFor(secondaryPosition)
   const usageDetail = playerUsageDefinition(usage)
+  const latestTesting = existing
+    ? athleteTimeline(computed, existing.id).slice(-1)[0]
+    : undefined
+  const primaryScore = latestTesting && existing
+    ? computeSessionForPositionGroup(
+        latestTesting.session,
+        { ...existing, position: position.trim() || group, positionGroup: group },
+        latestTesting.event,
+        group,
+      ).fai
+    : undefined
+  const secondaryScore = latestTesting && existing && secondaryPosition.trim()
+    ? computeSessionForPositionGroup(
+        {
+          ...latestTesting.session,
+          positionSnapshot: secondaryPosition.trim(),
+          positionGroupSnapshot: secondaryGroup,
+        },
+        {
+          ...existing,
+          position: secondaryPosition.trim(),
+          positionGroup: secondaryGroup,
+        },
+        latestTesting.event,
+        secondaryGroup,
+      ).fai
+    : undefined
+  const latestAwareness = existing
+    ? latestAwarenessFor(data.awarenessResults, existing.id)
+    : undefined
+  const recommendation = recommendDeployment({
+    hasSecondaryPosition: Boolean(secondaryPosition.trim()),
+    primaryScore,
+    secondaryScore,
+    awarenessScore: latestAwareness?.score,
+    rosterNeed,
+    coachMentalReadiness: mentalReadiness ? Number(mentalReadiness) : undefined,
+    assignmentReliability: assignmentReliability ? Number(assignmentReliability) : undefined,
+  })
+  const formationItems = parseDeploymentPackageItems(packageFormations)
+  const callItems = parseDeploymentPackageItems(packageCalls)
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -268,6 +383,70 @@ export default function AthleteEditor() {
           <PlayerUsageGuide value={usage} onChange={setUsage} />
         </div>
 
+        <div className="rounded-xl border border-line bg-ink/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-fai">FAI deployment recommendation</div>
+              <div className="mt-1 text-lg font-black text-chalk">{recommendation.headline}</div>
+              <div className="mt-1 text-xs text-muted">{recommendation.confidence}% evidence confidence{typeof recommendation.readinessScore === 'number' ? ` · ${recommendation.readinessScore} readiness` : ''}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUsage(recommendation.usage)}
+              className="rounded-lg border border-fai/40 bg-fai/10 px-4 py-2 text-xs font-black text-fai"
+            >
+              Apply {playerUsageDefinition(recommendation.usage).label}
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <label>
+              <span className={labelCls}>Roster need</span>
+              <select className={inputCls} value={rosterNeed} onChange={(event) => setRosterNeed(event.target.value as DeploymentRosterNeed)}>
+                <option value="none">No secondary need</option>
+                <option value="emergency">Emergency depth</option>
+                <option value="rotation">Rotation role</option>
+                <option value="starter">Starter-level need</option>
+              </select>
+            </label>
+            <label>
+              <span className={labelCls}>Mental readiness</span>
+              <select className={inputCls} value={mentalReadiness} onChange={(event) => setMentalReadiness(event.target.value)}>
+                <option value="">Not graded</option>
+                <option value="1">1 · Overloaded</option>
+                <option value="2">2 · Needs heavy support</option>
+                <option value="3">3 · Limited package ready</option>
+                <option value="4">4 · Two-plan ready</option>
+                <option value="5">5 · Full command</option>
+              </select>
+            </label>
+            <label>
+              <span className={labelCls}>Assignment reliability</span>
+              <input className={inputCls} type="number" min="0" max="100" value={assignmentReliability} onChange={(event) => setAssignmentReliability(event.target.value)} placeholder="0-100" />
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted">Why</div>
+              <ul className="mt-2 space-y-1 text-xs leading-relaxed text-chalk">
+                {recommendation.reasons.map((reason) => <li key={reason}>• {reason}</li>)}
+              </ul>
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted">Guardrails</div>
+              <ul className="mt-2 space-y-1 text-xs leading-relaxed text-muted">
+                {recommendation.guardrails.map((guardrail) => <li key={guardrail}>• {guardrail}</li>)}
+              </ul>
+            </div>
+          </div>
+          {recommendation.missingInputs.length > 0 && (
+            <div className="mt-3 rounded-lg border border-gold/30 bg-gold/5 p-2 text-xs text-gold">
+              Missing evidence: {recommendation.missingInputs.join(', ')}. The engine stays conservative until these are recorded.
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label className={labelCls}>Primary Position</label>
@@ -327,6 +506,48 @@ export default function AthleteEditor() {
                 </select>
               </div>
             </div>
+
+            {usage === 'iron-man' && (
+              <div className="mt-4 border-t border-fai/20 pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-black text-chalk">Restricted Iron Man Package</div>
+                    <p className="mt-1 text-xs text-muted">One or two formations, no more than ten calls, and a maximum 30% planned secondary workload.</p>
+                  </div>
+                  <select className="rounded-lg border border-line bg-panel px-3 py-2 text-xs font-bold text-chalk" value={packageStatus} onChange={(event) => setPackageStatus(event.target.value as IronManPackageStatus)}>
+                    <option value="planning">Planning</option>
+                    <option value="installing">Installing</option>
+                    <option value="ready">Ready</option>
+                    <option value="paused">Paused</option>
+                  </select>
+                </div>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label>
+                    <span className={labelCls}>Allowed formations</span>
+                    <textarea className={`${inputCls} min-h-24`} value={packageFormations} onChange={(event) => setPackageFormations(event.target.value)} placeholder="Doubles&#10;Trips" />
+                    <span className={`mt-1 block text-[11px] ${formationItems.length > IRON_MAN_MAX_FORMATIONS ? 'text-down' : 'text-muted'}`}>{formationItems.length}/{IRON_MAN_MAX_FORMATIONS} formations</span>
+                  </label>
+                  <label>
+                    <span className={labelCls}>Allowed calls / assignments</span>
+                    <textarea className={`${inputCls} min-h-24`} value={packageCalls} onChange={(event) => setPackageCalls(event.target.value)} placeholder="Cloud&#10;Sky&#10;Boundary pressure" />
+                    <span className={`mt-1 block text-[11px] ${callItems.length > IRON_MAN_MAX_CALLS ? 'text-down' : 'text-muted'}`}>{callItems.length}/{IRON_MAN_MAX_CALLS} calls</span>
+                  </label>
+                  <label>
+                    <span className={labelCls}>Secondary snap ceiling</span>
+                    <div className="flex items-center gap-2"><input className={inputCls} type="number" min="0" max="30" value={secondarySnapCapPct} onChange={(event) => setSecondarySnapCapPct(event.target.value)} /><span className="text-sm font-black text-muted">%</span></div>
+                  </label>
+                  <label>
+                    <span className={labelCls}>Package review date</span>
+                    <input className={inputCls} type="date" value={packageReviewDate} onChange={(event) => setPackageReviewDate(event.target.value)} />
+                  </label>
+                  <label className="sm:col-span-2">
+                    <span className={labelCls}>Simplified responsibility rules</span>
+                    <textarea className={`${inputCls} min-h-20`} value={packageResponsibilities} onChange={(event) => setPackageResponsibilities(event.target.value)} placeholder="Example: field-side only; no motion checks; play Cloud unless the formation is empty." />
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

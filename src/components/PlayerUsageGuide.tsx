@@ -1,5 +1,5 @@
 import { PLAYER_USAGE_DEFINITIONS, playerUsagePlanLine } from '../lib/playerUsage'
-import type { PlayerUsage } from '../types'
+import type { Athlete, PlayerUsage } from '../types'
 
 const ORDER: PlayerUsage[] = ['one-way', 'iron-man', 'two-way']
 
@@ -60,14 +60,35 @@ export function PlayerUsageGuide({
   )
 }
 
-export function PlayerUsageSummary({ usage }: { usage?: PlayerUsage }) {
-  const definition = PLAYER_USAGE_DEFINITIONS[usage ?? 'one-way']
+export function PlayerUsageSummary({ usage, athlete }: { usage?: PlayerUsage; athlete?: Athlete }) {
+  const resolvedUsage = athlete?.usage ?? usage ?? 'one-way'
+  const definition = PLAYER_USAGE_DEFINITIONS[resolvedUsage]
+  const restrictedPackage = resolvedUsage === 'iron-man' ? athlete?.ironManPackage : undefined
   return (
     <div className="deployment-summary">
       <div className="deployment-summary-kicker">Deployment plan</div>
       <div className="deployment-summary-title">{definition.label}</div>
-      <div className="deployment-summary-split">{playerUsagePlanLine(usage)}</div>
+      <div className="deployment-summary-split">{playerUsagePlanLine(resolvedUsage)}</div>
       <p>{definition.gamePlan}</p>
+      {resolvedUsage === 'iron-man' && (
+        <div className="mt-4 border-t border-line pt-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted">
+            <span>Restricted package</span>
+            <span className="rounded-full border border-fai/30 px-2 py-1 text-fai">{restrictedPackage?.status ?? 'planning'}</span>
+            <span>{restrictedPackage?.secondarySnapCapPct ?? 30}% snap ceiling</span>
+          </div>
+          {restrictedPackage ? (
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <div><strong className="text-chalk">Formations:</strong> <span className="text-muted">{restrictedPackage.formations.join(', ') || 'Not assigned'}</span></div>
+              <div><strong className="text-chalk">Calls:</strong> <span className="text-muted">{restrictedPackage.calls.length}/10 installed</span></div>
+              {restrictedPackage.responsibilities && <div className="sm:col-span-2"><strong className="text-chalk">Responsibilities:</strong> <span className="text-muted">{restrictedPackage.responsibilities}</span></div>}
+              {restrictedPackage.reviewDate && <div className="sm:col-span-2 text-xs text-muted">Review {new Date(`${restrictedPackage.reviewDate}T12:00:00`).toLocaleDateString()}</div>}
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-gold">No restricted package has been installed yet.</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -17,6 +17,30 @@ export type PositionGroup =
 /** Coach-entered roster deployment, separate from combine scoring. */
 export type PlayerUsage = 'one-way' | 'two-way' | 'iron-man'
 
+export type DeploymentRosterNeed = 'none' | 'emergency' | 'rotation' | 'starter'
+export type IronManPackageStatus = 'planning' | 'installing' | 'ready' | 'paused'
+
+export interface DeploymentAssessment {
+  rosterNeed: DeploymentRosterNeed
+  /** Coach rating from 1-5 for handling a second terminology and adjustment load. */
+  coachMentalReadiness?: number
+  /** Coach or film grade from 0-100 for executing the correct assignment. */
+  assignmentReliability?: number
+  updatedAt?: string
+}
+
+export interface IronManPackage {
+  status: IronManPackageStatus
+  /** Restricted to one or two secondary formations. */
+  formations: string[]
+  /** Restricted to ten calls / assignments. */
+  calls: string[]
+  responsibilities?: string
+  /** Planned secondary snap ceiling; FAI caps this at 30%. */
+  secondarySnapCapPct: number
+  reviewDate?: string
+}
+
 export type TestingPhase =
   | 'Baseline'
   | 'Midpoint'
@@ -55,6 +79,10 @@ export interface Athlete {
   photoUrl?: string
   /** Hudl (or other) film link shown on the athlete profile. */
   hudlUrl?: string
+  /** Coach evidence used by the deployment recommendation engine. */
+  deploymentAssessment?: DeploymentAssessment
+  /** Restricted second-side installation for an Iron Man athlete. */
+  ironManPackage?: IronManPackage
 }
 
 /** Parent record for one combine or testing window. */

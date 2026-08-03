@@ -112,6 +112,8 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
       weightLbs: requiredNumber(row.weight_lbs),
       photoUrl: optionalText(row.photo_url),
       hudlUrl: optionalText(row.hudl_url),
+      deploymentAssessment: packed.deploymentAssessment,
+      ironManPackage: packed.ironManPackage,
     }
   })
 
