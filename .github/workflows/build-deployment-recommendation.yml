@@ -1,6 +1,8 @@
 name: Build deployment recommendation
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches:
       - feature/deployment-recommendation-and-iron-man-package
@@ -10,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ !contains(github.event.head_commit.message, '[deployment-built]') }}
+    if: ${{ !contains(github.event.head_commit.message || github.event.pull_request.title, '[deployment-built]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
