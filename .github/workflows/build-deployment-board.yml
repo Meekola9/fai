@@ -1,0 +1,48 @@
+name: Build deployment board
+
+on:
+  push:
+    branches:
+      - feature/deployment-board-smoke-test
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message, '[deployment-board-built]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/deployment-board-smoke-test
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply Deployment Board implementation
+        run: python scripts/applyDeploymentBoard.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Deployment persistence smoke test
+        run: npm run test:e2e -- e2e/deployment-smoke.spec.ts
+      - name: Route health
+        run: npm run test:e2e -- e2e/route-health.spec.ts
+      - name: Commit validated implementation
+        run: |
+          rm -f scripts/applyDeploymentBoard.py .github/workflows/build-deployment-board.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add Deployment Board and persistence smoke test [deployment-board-built]"
+          git push origin HEAD:feature/deployment-board-smoke-test
