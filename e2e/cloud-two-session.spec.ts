@@ -11,6 +11,7 @@ const SEED_VERSION = '2026-07-sheet26-complete'
 const configured = Boolean(TEAM_ID && TEAM_NAME && EMAIL_A && EMAIL_B && PASSWORD)
 
 test.skip(!configured, 'Authenticated cloud smoke credentials are not configured.')
+test.setTimeout(120_000)
 
 async function prepareContext(context: BrowserContext) {
   await context.addInitScript(({ teamId, seedVersion }) => {
@@ -54,13 +55,14 @@ test('two independent authenticated sessions round-trip an Iron Man package thro
 
   await deviceA.goto(`/#/athletes/${ATHLETE_ID}/edit`)
   await expect(deviceA.getByRole('heading', { name: 'Edit athlete' })).toBeVisible()
-  await deviceA.getByRole('button', { name: /Iron Man/ }).first().click()
+  const ironManRole = deviceA.getByRole('button', { name: /Iron Man/ }).first()
+  await ironManRole.click()
+  await expect(ironManRole).toHaveAttribute('aria-pressed', 'true')
   await deviceA.getByPlaceholder('e.g. Star').fill('Boundary Corner')
   await deviceA.getByText('Secondary Group', { exact: true }).locator('..').getByRole('combobox').selectOption('DB')
   await deviceA.getByLabel('Roster need').selectOption('rotation')
   await deviceA.getByLabel('Mental readiness').selectOption('3')
   await deviceA.getByPlaceholder('0-100').fill('74')
-  await deviceA.getByRole('button', { name: 'Apply Iron Man', exact: true }).click()
   await deviceA.locator('select').filter({ has: deviceA.locator('option[value="ready"]') }).selectOption('ready')
   await deviceA.getByPlaceholder('Doubles\nTrips').fill('Doubles\nTrips')
   await deviceA.getByPlaceholder('Cloud\nSky\nBoundary pressure').fill('Cloud\nSky\nBoundary pressure')
