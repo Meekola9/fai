@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
 import HudlImportWizard from '../components/HudlImportWizard'
 import QbMechanicsPanel from '../components/QbMechanicsPanel'
+import { FilmCatalogManager } from '../components/FilmCatalogManager'
 import type {
   FilmAnnotation,
   FilmAnnotationKind,
@@ -21,13 +22,13 @@ import type {
   ThrowTrajectory,
 } from '../types'
 import {
-  CONCEPTS_BY_CALL,
-  FORMATIONS,
-  PERSONNEL,
   PLAY_CALLS,
   buildTendencyReport,
-  labelFor,
+  catalogLabelResolver,
+  conceptOptionsForCall,
+  formationOptions,
   opponentsFromFilm,
+  personnelOptions,
   type TendencyGroup,
 } from '../lib/filmAnalysis'
 import { scoutingReportCsv, scoutingReportHtml } from '../lib/scoutingExport'
@@ -696,7 +697,16 @@ const selectClass =
 const inputClass = selectClass + ' placeholder:text-muted'
 
 export default function FilmRoom() {
-  const { data, canEdit, addFilmPlay, updateFilmPlay, deleteFilmPlay, addFilmSource } = useStore()
+  const {
+    data,
+    canEdit,
+    addFilmPlay,
+    updateFilmPlay,
+    deleteFilmPlay,
+    addFilmSource,
+    addFilmCatalogEntry,
+    removeFilmCatalogEntry,
+  } = useStore()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const objectUrlRef = useRef<string | null>(null)
@@ -756,9 +766,13 @@ export default function FilmRoom() {
     [data.athletes],
   )
   const opponents = useMemo(() => opponentsFromFilm(data.filmPlays), [data.filmPlays])
+  const filmCatalog = data.filmCatalog
+  const formationOpts = useMemo(() => formationOptions(filmCatalog), [filmCatalog])
+  const personnelOpts = useMemo(() => personnelOptions(filmCatalog), [filmCatalog])
+  const resolveLabel = useMemo(() => catalogLabelResolver(filmCatalog), [filmCatalog])
   const report = useMemo(
-    () => buildTendencyReport(data.filmPlays, { opponent: opponentFilter || undefined }),
-    [data.filmPlays, opponentFilter],
+    () => buildTendencyReport(data.filmPlays, { opponent: opponentFilter || undefined }, filmCatalog),
+    [data.filmPlays, opponentFilter, filmCatalog],
   )
 
   function downloadReport(format: 'csv' | 'html') {
@@ -791,7 +805,7 @@ export default function FilmRoom() {
     [data.filmPlays],
   )
 
-  const conceptOptions = form.call ? CONCEPTS_BY_CALL[form.call] ?? [] : []
+  const conceptOptions = conceptOptionsForCall(form.call, filmCatalog)
   const playerTracks = pending.filter(isPlayerTrack)
   const activeTrack = playerTracks.find((track) => track.id === activeTrackId)
   const formationTracks = playerTracks.filter((track) =>
@@ -1994,7 +2008,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 className={selectClass}
               >
                 <option value="">Formation…</option>
-                {FORMATIONS.map((item) => (
+                {formationOpts.map((item) => (
                   <option key={item.key} value={item.key}>{item.label}</option>
                 ))}
               </select>
@@ -2004,7 +2018,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 className={selectClass}
               >
                 <option value="">Personnel…</option>
-                {PERSONNEL.map((item) => (
+                {personnelOpts.map((item) => (
                   <option key={item.key} value={item.key}>{item.label}</option>
                 ))}
               </select>
@@ -2091,6 +2105,13 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
             live for everyone.
           </Card>
         )}
+        {canEdit && (
+          <FilmCatalogManager
+            catalog={filmCatalog}
+            onAdd={addFilmCatalogEntry}
+            onRemove={removeFilmCatalogEntry}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -2159,11 +2180,11 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                   {play.down && (
                     <Pill>{play.down} &amp; {play.distance ?? '?'}</Pill>
                   )}
-                  {play.formation && <span className="text-muted">{labelFor('formation', play.formation)}</span>}
-                  {play.call && <Pill tone={play.call === 'run' ? 'gold' : 'fai'}>{labelFor('call', play.call)}</Pill>}
+                  {play.formation && <span className="text-muted">{resolveLabel('formation', play.formation)}</span>}
+                  {play.call && <Pill tone={play.call === 'run' ? 'gold' : 'fai'}>{resolveLabel('call', play.call)}</Pill>}
                   {savedThrow?.throwFamily && <Pill tone="gold">🎯 {THROW_FAMILIES.find((item) => item.key === savedThrow.throwFamily)?.label ?? savedThrow.throwFamily}</Pill>}
                   {typeof savedThrowMetrics?.averageBallSpeedMph === 'number' && <span className="text-xs font-black text-flame nums">{savedThrowMetrics.averageBallSpeedMph.toFixed(1)} mph</span>}
-                  {play.concept && <span className="text-xs text-muted">{labelFor('concept', play.concept)}</span>}
+                  {play.concept && <span className="text-xs text-muted">{resolveLabel('concept', play.concept)}</span>}
                   {carrier && <span className="text-xs text-muted">· {carrier.name}</span>}
                   {typeof play.gain === 'number' && (
                     <span className={`text-xs font-bold nums ${play.gain >= 0 ? 'text-up' : 'text-down'}`}>

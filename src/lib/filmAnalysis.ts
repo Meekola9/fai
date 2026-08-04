@@ -7,7 +7,14 @@
 // or personnel grouping, what does this opponent tend to do?
 // ---------------------------------------------------------------------------
 
-import type { FilmAnnotation, FilmAnnotationPoint, FilmPlay, PlayCall } from '../types'
+import type {
+  FilmAnnotation,
+  FilmAnnotationPoint,
+  FilmCatalogEntry,
+  FilmCatalogKind,
+  FilmPlay,
+  PlayCall,
+} from '../types'
 
 export interface CatalogItem {
   key: string
@@ -104,6 +111,89 @@ export const CONCEPTS_BY_CALL: Partial<Record<PlayCall, CatalogItem[]>> = {
   pass: PASS_CONCEPTS,
   rpo: [...RUN_CONCEPTS, ...PASS_CONCEPTS],
   screen: PASS_CONCEPTS.filter((c) => c.key === 'screen'),
+}
+
+// ---------------------------------------------------------------------------
+// Coach-defined catalog merge. The lists above are the built-in vocabulary; a
+// staff can add their own formations, personnel groupings, and concepts
+// (persisted as FilmCatalogEntry). These helpers merge the two so tagging menus
+// and the scouting report speak the same language. Built-ins always come first;
+// a custom entry that reuses a built-in key just overrides its label.
+// ---------------------------------------------------------------------------
+
+function customItems(custom: readonly FilmCatalogEntry[], kind: FilmCatalogKind): CatalogItem[] {
+  return custom
+    .filter((entry) => entry.kind === kind && entry.key.trim() && entry.label.trim())
+    .map((entry) => ({ key: entry.key, label: entry.label }))
+}
+
+/** Built-ins + custom entries of one list, de-duplicated by key (custom wins on label). */
+function mergeItems(builtin: readonly CatalogItem[], additions: readonly CatalogItem[]): CatalogItem[] {
+  const byKey = new Map<string, CatalogItem>()
+  for (const item of builtin) byKey.set(item.key, item)
+  for (const item of additions) byKey.set(item.key, item)
+  return [...byKey.values()]
+}
+
+export function formationOptions(custom: readonly FilmCatalogEntry[] = []): CatalogItem[] {
+  return mergeItems(FORMATIONS, customItems(custom, 'formation'))
+}
+
+export function personnelOptions(custom: readonly FilmCatalogEntry[] = []): CatalogItem[] {
+  return mergeItems(PERSONNEL, customItems(custom, 'personnel'))
+}
+
+/** Concepts available for a play call, including any coach-defined concepts. */
+export function conceptOptionsForCall(
+  call: PlayCall | undefined,
+  custom: readonly FilmCatalogEntry[] = [],
+): CatalogItem[] {
+  if (!call) return []
+  const customRun = customItems(custom, 'run_concept')
+  const customPass = customItems(custom, 'pass_concept')
+  switch (call) {
+    case 'run':
+      return mergeItems(RUN_CONCEPTS, customRun)
+    case 'pass':
+      return mergeItems(PASS_CONCEPTS, customPass)
+    case 'rpo':
+      return mergeItems([...RUN_CONCEPTS, ...PASS_CONCEPTS], [...customRun, ...customPass])
+    case 'screen':
+      return mergeItems(CONCEPTS_BY_CALL.screen ?? [], customPass)
+    default:
+      return CONCEPTS_BY_CALL[call] ?? []
+  }
+}
+
+type LabelKind = keyof typeof LABEL_MAPS
+
+/**
+ * A label resolver that knows the coach's custom entries in addition to the
+ * built-ins. Used by the tendency report so custom formations/concepts show
+ * their real names rather than raw keys. Falls back to labelFor.
+ */
+export function catalogLabelResolver(
+  custom: readonly FilmCatalogEntry[] = [],
+): (kind: LabelKind, key?: string) => string {
+  const overrides: Record<string, Map<string, string>> = {
+    formation: new Map(),
+    personnel: new Map(),
+    concept: new Map(),
+  }
+  for (const entry of custom) {
+    if (!entry.key.trim() || !entry.label.trim()) continue
+    const target =
+      entry.kind === 'formation'
+        ? overrides.formation
+        : entry.kind === 'personnel'
+          ? overrides.personnel
+          : overrides.concept // run_concept + pass_concept both resolve as concepts
+    target.set(entry.key, entry.label)
+  }
+  return (kind, key) => {
+    if (!key) return '—'
+    return overrides[kind]?.get(key) ?? labelFor(kind, key)
+  }
 }
 
 const LABEL_MAPS: Record<string, Map<string, string>> = {
@@ -209,7 +299,14 @@ function topCounts(
     .slice(0, limit)
 }
 
-function summarizeGroup(key: string, label: string, plays: FilmPlay[]): TendencyGroup {
+type LabelResolver = (kind: LabelKind, key?: string) => string
+
+function summarizeGroup(
+  key: string,
+  label: string,
+  plays: FilmPlay[],
+  resolve: LabelResolver = labelFor,
+): TendencyGroup {
   const scrimmage = plays.filter(isScrimmagePlay)
   const runCount = scrimmage.filter((p) => !isPassFamily(p.call) && p.call !== 'special').length
   const passCount = scrimmage.filter((p) => isPassFamily(p.call)).length
@@ -227,8 +324,8 @@ function summarizeGroup(key: string, label: string, plays: FilmPlay[]): Tendency
     runShare: rated ? runCount / rated : 0,
     passShare: rated ? passCount / rated : 0,
     avgGain: Math.round(avgGain * 10) / 10,
-    topFormations: topCounts(scrimmage, (p) => p.formation, (k) => labelFor('formation', k)),
-    topConcepts: topCounts(scrimmage, (p) => p.concept, (k) => labelFor('concept', k)),
+    topFormations: topCounts(scrimmage, (p) => p.formation, (k) => resolve('formation', k)),
+    topConcepts: topCounts(scrimmage, (p) => p.concept, (k) => resolve('concept', k)),
   }
 }
 
@@ -250,7 +347,9 @@ export interface TendencyFilter {
 export function buildTendencyReport(
   filmPlays: FilmPlay[],
   filter: TendencyFilter = {},
+  custom: readonly FilmCatalogEntry[] = [],
 ): TendencyReport {
+  const resolve = catalogLabelResolver(custom)
   const plays = filmPlays.filter((play) => {
     if (filter.opponent && (play.opponent ?? '') !== filter.opponent) return false
     return isScrimmagePlay(play)
@@ -275,7 +374,7 @@ export function buildTendencyReport(
       const label = `${ordinal(Number(down))} & ${
         bucket === 'any' ? '?' : DISTANCE_BUCKET_LABEL[bucket as DistanceBucket]
       }`
-      return summarizeGroup(key, label, group)
+      return summarizeGroup(key, label, group, resolve)
     })
     .sort((a, b) => {
       const [da, ba] = a.key.split(':')
@@ -292,10 +391,10 @@ export function buildTendencyReport(
   }
   const byFieldZone = FIELD_ZONE_ORDER
     .filter((zone) => zoneGroups.has(zone))
-    .map((zone) => summarizeGroup(zone, FIELD_ZONE_LABEL[zone], zoneGroups.get(zone)!))
+    .map((zone) => summarizeGroup(zone, FIELD_ZONE_LABEL[zone], zoneGroups.get(zone)!, resolve))
 
-  const byFormation = groupBy(plays, (p) => p.formation, (k) => labelFor('formation', k))
-  const byPersonnel = groupBy(plays, (p) => p.personnel, (k) => labelFor('personnel', k))
+  const byFormation = groupBy(plays, (p) => p.formation, (k) => resolve('formation', k), resolve)
+  const byPersonnel = groupBy(plays, (p) => p.personnel, (k) => resolve('personnel', k), resolve)
 
   return {
     totalPlays: plays.length,
@@ -312,6 +411,7 @@ function groupBy(
   plays: FilmPlay[],
   pick: (play: FilmPlay) => string | undefined,
   label: (key: string) => string,
+  resolve: LabelResolver = labelFor,
 ): TendencyGroup[] {
   const groups = new Map<string, FilmPlay[]>()
   for (const play of plays) {
@@ -320,7 +420,7 @@ function groupBy(
     groups.set(key, [...(groups.get(key) ?? []), play])
   }
   return [...groups.entries()]
-    .map(([key, group]) => summarizeGroup(key, label(key), group))
+    .map(([key, group]) => summarizeGroup(key, label(key), group, resolve))
     .sort((a, b) => b.plays - a.plays || a.label.localeCompare(b.label))
 }
 
