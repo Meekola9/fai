@@ -285,6 +285,28 @@ export interface FilmSource {
   createdAt?: string
 }
 
+/**
+ * Which tagging vocabulary a coach-defined catalog entry extends. Custom
+ * entries are merged with the built-in catalogs (see lib/filmAnalysis.ts) so a
+ * staff can add their own formations, personnel groupings, and run/pass
+ * concepts — including looks transcribed from opponent film.
+ */
+export type FilmCatalogKind = 'formation' | 'personnel' | 'run_concept' | 'pass_concept'
+
+/**
+ * One coach-defined tagging option. `key` is the stable slug stored on plays;
+ * `label` is what shows in menus and the scouting report; `note` is an optional
+ * recognition cue ("3 receivers to the field, TE detached").
+ */
+export interface FilmCatalogEntry {
+  id: string
+  kind: FilmCatalogKind
+  key: string
+  label: string
+  note?: string
+  createdAt?: string
+}
+
 /** One tagged play broken down from film. */
 export interface FilmPlay {
   id: string
@@ -353,6 +375,7 @@ export interface AppData {
   plays?: PlayEvent[]
   filmPlays?: FilmPlay[]
   filmSources?: FilmSource[]
+  filmCatalog?: FilmCatalogEntry[]
   awarenessResults?: AwarenessResult[]
 }
 

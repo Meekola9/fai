@@ -5,6 +5,7 @@ import type {
   FilmAnnotation,
   FilmPlay,
   FilmSource,
+  FilmCatalogEntry,
   PlayCall,
   PlaySide,
   FieldHash,
@@ -80,7 +81,7 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult, playResult, filmResult, sourceResult, awarenessResult] =
+  const [athleteResult, eventResult, sessionResult, playResult, filmResult, sourceResult, catalogResult, awarenessResult] =
     await Promise.all([
       db.from('athletes').select('*').eq('team_id', teamId),
       db.from('testing_events').select('*').eq('team_id', teamId),
@@ -88,6 +89,7 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
       db.from('play_events').select('*').eq('team_id', teamId),
       db.from('film_plays').select('*').eq('team_id', teamId),
       db.from('film_sources').select('*').eq('team_id', teamId),
+      db.from('film_catalog').select('*').eq('team_id', teamId),
       db.from('awareness_results').select('*').eq('team_id', teamId),
     ])
 
@@ -215,6 +217,17 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         createdAt: optionalText(row.created_at),
       }))
 
+  const filmCatalog: FilmCatalogEntry[] = catalogResult.error
+    ? []
+    : (catalogResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        kind: String(row.kind) as FilmCatalogEntry['kind'],
+        key: String(row.entry_key),
+        label: String(row.label),
+        note: optionalText(row.note),
+        createdAt: optionalText(row.created_at),
+      }))
+
   const awarenessResults: AwarenessResult[] = awarenessResult.error
     ? []
     : (awarenessResult.data ?? []).map((row) => ({
@@ -229,7 +242,7 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
       }))
 
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions, plays, filmPlays, filmSources, awarenessResults }),
+    normalizeAppData({ athletes, events, sessions, plays, filmPlays, filmSources, filmCatalog, awarenessResults }),
   )
 }
 
@@ -473,6 +486,29 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     await deleteMissing('film_sources', teamId, oldSources, new Set((data.filmSources ?? []).map((source) => source.id)))
   } catch {
     // film_sources table not provisioned yet — skip source sync this save.
+  }
+
+  // Coach-defined tagging catalog syncs separately and non-fatally.
+  try {
+    const catalogRows = (data.filmCatalog ?? []).map((entry) => ({
+      team_id: teamId,
+      id: entry.id,
+      kind: entry.kind,
+      entry_key: entry.key,
+      label: entry.label,
+      note: nullable(entry.note),
+      created_at: entry.createdAt ?? now,
+    }))
+    const oldCatalog = await existingIds('film_catalog', teamId)
+    if (catalogRows.length > 0) {
+      const { error } = await db
+        .from('film_catalog')
+        .upsert(catalogRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save film catalog')
+    }
+    await deleteMissing('film_catalog', teamId, oldCatalog, new Set((data.filmCatalog ?? []).map((entry) => entry.id)))
+  } catch {
+    // film_catalog table not provisioned yet — skip catalog sync this save.
   }
 
   // Awareness quiz results sync separately and non-fatally. A coach save upserts
