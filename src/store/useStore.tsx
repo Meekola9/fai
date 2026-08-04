@@ -14,6 +14,7 @@ import type {
   ComputedSession,
   FilmPlay,
   FilmSource,
+  FilmCatalogEntry,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -128,6 +129,10 @@ interface StoreContextValue {
   deleteFilmPlay: (id: string) => void
   /** Create a master source film (game / practice / scrimmage); returns its id. */
   addFilmSource: (source: Omit<FilmSource, 'id' | 'createdAt'>) => string
+  /** Add a coach-defined tagging option (formation, personnel, or concept); returns its id. */
+  addFilmCatalogEntry: (entry: Omit<FilmCatalogEntry, 'id' | 'createdAt'>) => string
+  updateFilmCatalogEntry: (entry: FilmCatalogEntry) => void
+  removeFilmCatalogEntry: (id: string) => void
   /** Record an awareness-quiz result for the given athlete (athlete self-service). */
   submitAwarenessResult: (
     result: Omit<AwarenessResult, 'id' | 'createdAt'>,
@@ -145,6 +150,7 @@ const EMPTY: Required<AppData> = {
   plays: [],
   filmPlays: [],
   filmSources: [],
+  filmCatalog: [],
   awarenessResults: [],
 }
 
@@ -711,6 +717,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }))
       return id
     },
+    addFilmCatalogEntry(entry) {
+      const id = newId('filmcat')
+      const createdAt = new Date().toISOString()
+      mutate((current) => ({
+        ...current,
+        filmCatalog: [...current.filmCatalog, { ...entry, id, createdAt }],
+      }))
+      return id
+    },
+    updateFilmCatalogEntry(entry) {
+      mutate((current) => ({
+        ...current,
+        filmCatalog: current.filmCatalog.map((item) =>
+          item.id === entry.id
+            ? { ...entry, createdAt: entry.createdAt ?? item.createdAt ?? new Date().toISOString() }
+            : item,
+        ),
+      }))
+    },
+    removeFilmCatalogEntry(id) {
+      mutate((current) => ({
+        ...current,
+        filmCatalog: current.filmCatalog.filter((item) => item.id !== id),
+      }))
+    },
     addFilmPlays(films) {
       mutate((current) => {
         const existingIds = new Set(current.filmPlays.map((film) => film.id))
@@ -850,6 +881,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           plays: current.plays,
           filmPlays: current.filmPlays,
           filmSources: current.filmSources,
+          filmCatalog: current.filmCatalog,
           awarenessResults: current.awarenessResults,
         })
       })
