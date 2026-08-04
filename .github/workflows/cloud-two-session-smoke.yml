@@ -1,6 +1,8 @@
 name: FAI authenticated cloud smoke
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches:
       - feature/deployment-board-smoke-test
