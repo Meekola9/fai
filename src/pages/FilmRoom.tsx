@@ -1206,16 +1206,50 @@ export default function FilmRoom() {
     seekBy(direction * TRACK_FRAME_SECONDS)
   }
 
+  // Fast-tagging: start a fresh play pre-filled with the previous snap's context
+  // (opponent, down/distance, formation, personnel, call, concept). Outcome
+  // fields — ball carrier, gain, result, drawings — are cleared so only what
+  // changed needs a touch. No-op while editing an existing play.
+  function duplicateLastPlay() {
+    const last = recent[0]
+    if (!last || editingId) return
+    setEditingId(null)
+    setPending([])
+    setClip({})
+    setForm({
+      side: last.side ?? 'offense',
+      date: last.date ?? todayIso(),
+      opponent: last.opponent,
+      quarter: last.quarter,
+      down: last.down,
+      distance: last.distance,
+      yardLine: last.yardLine,
+      hash: last.hash,
+      formation: last.formation,
+      personnel: last.personnel,
+      call: last.call,
+      concept: last.concept,
+      filmLabel: last.filmLabel,
+    })
+  }
+
   // Professional keyboard controls. Subscribed once; reads the latest playback
   // handlers through a ref (kept fresh in an effect) so it never goes stale and
   // never re-binds the listener during playback. Ignored while typing in a field.
-  const shortcutHandlersRef = useRef({ seekBy, togglePlayback })
+  const shortcutHandlersRef = useRef({ seekBy, togglePlayback, duplicateLastPlay, canEdit })
   useEffect(() => {
-    shortcutHandlersRef.current = { seekBy, togglePlayback }
+    shortcutHandlersRef.current = { seekBy, togglePlayback, duplicateLastPlay, canEdit }
   })
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) return
+      // Fast-tag: "D" clones the previous snap's context into a new play.
+      if ((event.key === 'd' || event.key === 'D') && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (!shortcutHandlersRef.current.canEdit) return
+        event.preventDefault()
+        shortcutHandlersRef.current.duplicateLastPlay()
+        return
+      }
       const shortcut = resolveFilmShortcut(event)
       if (!shortcut) return
       event.preventDefault()
@@ -1459,6 +1493,7 @@ export default function FilmRoom() {
               <span className="rounded border border-line px-1.5 py-0.5">← →</span><span>frame</span>
               <span className="rounded border border-line px-1.5 py-0.5">⇧← ⇧→</span><span>10 frames</span>
               <span className="rounded border border-line px-1.5 py-0.5">J / L</span><span>±1 sec</span>
+              <span className="rounded border border-line px-1.5 py-0.5">D</span><span>same as last play</span>
             </div>
             <div className="mt-1 flex items-center justify-between gap-3 text-[11px] font-bold text-muted">
               <span>Drag the bar to scrub anywhere in the clip.</span>
@@ -2087,6 +2122,16 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
               >
                 {editingId ? 'Save changes' : '+ Log Play'}
               </button>
+              {!editingId && recent.length > 0 && (
+                <button
+                  type="button"
+                  onClick={duplicateLastPlay}
+                  title="Copy the previous play's context (formation, personnel, call…) into a new play. Shortcut: D"
+                  className="rounded-lg border border-line px-4 py-2 text-sm font-bold text-muted hover:text-chalk"
+                >
+                  Same as last <kbd className="ml-1 rounded border border-line px-1 text-[10px] text-muted">D</kbd>
+                </button>
+              )}
               {(editingId || pending.length > 0 || form.opponent) && (
                 <button
                   type="button"
