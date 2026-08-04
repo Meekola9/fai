@@ -37,6 +37,11 @@ export const FORMATIONS: CatalogItem[] = [
   { key: 'wing_t', label: 'Wing-T' },
   { key: 'wildcat', label: 'Wildcat' },
   { key: 'goal_line', label: 'Goal Line / Heavy' },
+  // Named looks charted from film (backside X receiver on the "-X" family).
+  { key: 'pro_twins', label: 'Pro Twins' },
+  { key: 'twins_x', label: 'Twins-X' },
+  { key: 'twins_x_slot', label: 'Twins-X Slot' },
+  { key: 'trips_x', label: 'Trips-X' },
 ]
 
 /** Skill personnel groupings (RB count + TE count). */
