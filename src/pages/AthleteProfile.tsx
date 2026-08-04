@@ -5,6 +5,7 @@ import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '
 import { strengths, weaknesses } from '../lib/progress'
 import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
+import { libraryEntryFor } from '../lib/filmLibrary'
 import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
 import { athleteGameDayBadgeSummary, type AthleteGameDayBadgeSummary } from '../lib/gameDayBadges'
 import { SCORED_METRICS, flyTimeToMph } from '../data/scoring'
@@ -240,6 +241,7 @@ export default function AthleteProfile() {
     fai: round1(clamp(selectedPosition.fai * (1 + totalBoostPct / 100), 0, 100)),
   }
   const positionArchetype = archetypeFor(positionCurrent)
+  const filmModel = libraryEntryFor(positionArchetype?.id)?.film
   const strong = strengths(positionCurrent)
   const weak = weaknesses(positionCurrent)
   const badges = playerBadgesFor({ result: displayResult, timeline })
@@ -269,6 +271,27 @@ export default function AthleteProfile() {
 
       {positionArchetype && (
         <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />
+      )}
+
+      {filmModel && (
+        <Card className="p-4">
+          <div className="flex items-center justify-between gap-2">
+            <SectionTitle>You play most similarly to…</SectionTitle>
+            <Link to="/library" className="shrink-0 text-xs font-bold text-fai hover:underline">Film Library →</Link>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-line bg-panel-2/40 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-fai">Pro model</div>
+              <div className="text-sm font-bold text-chalk">{filmModel.nfl}</div>
+            </div>
+            <div className="rounded-lg border border-line bg-panel-2/40 p-3">
+              <div className="text-[10px] font-black uppercase tracking-wider text-gold">College film</div>
+              <div className="text-sm font-bold text-chalk">{filmModel.college}</div>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-muted"><span className="font-bold text-chalk">Study focus:</span> {filmModel.focus}</p>
+          <p className="mt-2 text-xs text-muted/80">Teaching reference only — a film comparison to study, not a ceiling or a change to this athlete's archetype.</p>
+        </Card>
       )}
 
       <Card className="p-4">

@@ -9,6 +9,7 @@ import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
+import FilmLibrary from './pages/FilmLibrary'
 import AwarenessQuiz from './pages/AwarenessQuiz'
 import PlayerDevelopment from './pages/PlayerDevelopment'
 import StatsGuide from './pages/StatsGuide'
@@ -36,6 +37,7 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
   { to: '/film', label: 'Film Room' },
+  { to: '/library', label: 'Film Library' },
   { to: '/development', label: 'Development' },
   { to: '/stats', label: 'Stats Guide' },
   { to: '/entry', label: 'Enter Testing' },
@@ -75,6 +77,7 @@ function navForAccount(
       { to: '/quiz', label: 'Awareness Quiz' },
       { to: '/leaderboards', label: 'Rankings' },
       { to: '/development', label: 'Development' },
+      { to: '/library', label: 'Film Library' },
       { to: '/stats', label: 'Stats Guide' },
     ]
   }
@@ -87,6 +90,7 @@ function navForAccount(
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
   nav.push(
+    { to: '/library', label: 'Film Library' },
     { to: '/development', label: 'Development' },
     { to: '/stats', label: 'Stats Guide' },
   )
@@ -285,6 +289,7 @@ export default function App() {
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
           <Route path="/film" element={null} />
+          <Route path="/library" element={<FilmLibrary />} />
           <Route path="/development" element={<PlayerDevelopment />} />
           <Route path="/archetypes" element={<PlayerDevelopment />} />
           <Route path="/badges" element={<PlayerDevelopment />} />
