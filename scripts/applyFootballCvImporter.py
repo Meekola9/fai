@@ -10,6 +10,12 @@ def replace_once(path: str, old: str, new: str) -> None:
     file.write_text(text.replace(old, new, 1))
 
 
+replace_once(
+    'src/components/FootballCvImportPanel.tsx',
+    "function plural(count: number, singular: string): string {\n  return `${count} ${singular}${count === 1 ? '' : 's'}`\n}\n",
+    "function plural(count: number, singular: string): string {\n  const noun = count === 1\n    ? singular\n    : singular === 'identity'\n      ? 'identities'\n      : `${singular}s`\n  return `${count} ${noun}`\n}\n",
+)
+
 path = 'src/pages/FilmRoom.tsx'
 
 replace_once(
