@@ -270,6 +270,37 @@ export type FieldHash = 'L' | 'M' | 'R'
 /** What a master source film is — a game, practice, or scrimmage. */
 export type FilmSourceKind = 'game' | 'practice' | 'scrimmage' | 'other'
 
+// ---------------------------------------------------------------------------
+// Chief-to-King plan — a coach's per-opponent game-plan worksheet.
+// King  = the player everything flows through (QB, dominant LB, elite safety,
+//         disruptive DE, or featured skill player).
+// Chiefs = the 2-3 supporting players who make the King effective.
+// The plan drives the sideline "Chief-to-King" alert: attack the weakest Chief
+// until the King has to compensate/break structure, then counter the King.
+// ---------------------------------------------------------------------------
+export type KingPosition = 'qb' | 'mlb' | 'de' | 'safety' | 'skill' | 'other'
+
+/** One supporting player who makes the King effective. */
+export interface ChiefEntry {
+  id: string
+  label: string // "#42 MIKE" or a name
+  role?: string // e.g. "nickel", "center", "slot"
+  note?: string
+}
+
+/** A per-opponent Chief-to-King worksheet. */
+export interface ChiefKingPlan {
+  id: string
+  opponent: string
+  kingLabel: string
+  kingPosition: KingPosition
+  chiefs: ChiefEntry[]
+  /** The supporting Chief with the worst matchup — the one to attack. */
+  weakestChiefId?: string
+  note?: string
+  createdAt?: string
+}
+
 /**
  * One master source film. The video itself is never persisted — only this
  * lightweight record, so a coach can group every play cut from one game or
@@ -384,6 +415,7 @@ export interface AppData {
   filmPlays?: FilmPlay[]
   filmSources?: FilmSource[]
   filmCatalog?: FilmCatalogEntry[]
+  chiefKingPlans?: ChiefKingPlan[]
   awarenessResults?: AwarenessResult[]
 }
 

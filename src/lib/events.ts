@@ -96,8 +96,9 @@ export function normalizeAppData(input: AppData): Required<AppData> {
   const filmPlays = Array.isArray(input.filmPlays) ? input.filmPlays : []
   const filmSources = Array.isArray(input.filmSources) ? input.filmSources : []
   const filmCatalog = Array.isArray(input.filmCatalog) ? input.filmCatalog : []
+  const chiefKingPlans = Array.isArray(input.chiefKingPlans) ? input.chiefKingPlans : []
   const awarenessResults = Array.isArray(input.awarenessResults) ? input.awarenessResults : []
-  return { athletes, sessions: upgradedSessions, events, plays, filmPlays, filmSources, filmCatalog, awarenessResults }
+  return { athletes, sessions: upgradedSessions, events, plays, filmPlays, filmSources, filmCatalog, chiefKingPlans, awarenessResults }
 }
 
 /** Timed tests where a lower result is better; everything else is higher-better. */

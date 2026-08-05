@@ -15,6 +15,7 @@ import type {
   FilmPlay,
   FilmSource,
   FilmCatalogEntry,
+  ChiefKingPlan,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -133,6 +134,9 @@ interface StoreContextValue {
   addFilmCatalogEntry: (entry: Omit<FilmCatalogEntry, 'id' | 'createdAt'>) => string
   updateFilmCatalogEntry: (entry: FilmCatalogEntry) => void
   removeFilmCatalogEntry: (id: string) => void
+  /** Save (create or replace) an opponent's Chief-to-King plan; returns its id. */
+  saveChiefKingPlan: (plan: Omit<ChiefKingPlan, 'id' | 'createdAt'> & { id?: string }) => string
+  removeChiefKingPlan: (id: string) => void
   /** Record an awareness-quiz result for the given athlete (athlete self-service). */
   submitAwarenessResult: (
     result: Omit<AwarenessResult, 'id' | 'createdAt'>,
@@ -151,6 +155,7 @@ const EMPTY: Required<AppData> = {
   filmPlays: [],
   filmSources: [],
   filmCatalog: [],
+  chiefKingPlans: [],
   awarenessResults: [],
 }
 
@@ -742,6 +747,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         filmCatalog: current.filmCatalog.filter((item) => item.id !== id),
       }))
     },
+    saveChiefKingPlan(plan) {
+      const id = plan.id ?? newId('ckplan')
+      const createdAt = new Date().toISOString()
+      mutate((current) => {
+        const exists = current.chiefKingPlans.some((p) => p.id === id)
+        const next: ChiefKingPlan = {
+          ...plan,
+          id,
+          createdAt: current.chiefKingPlans.find((p) => p.id === id)?.createdAt ?? createdAt,
+        }
+        return {
+          ...current,
+          chiefKingPlans: exists
+            ? current.chiefKingPlans.map((p) => (p.id === id ? next : p))
+            : [...current.chiefKingPlans, next],
+        }
+      })
+      return id
+    },
+    removeChiefKingPlan(id) {
+      mutate((current) => ({
+        ...current,
+        chiefKingPlans: current.chiefKingPlans.filter((p) => p.id !== id),
+      }))
+    },
     addFilmPlays(films) {
       mutate((current) => {
         const existingIds = new Set(current.filmPlays.map((film) => film.id))
@@ -882,6 +912,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           filmPlays: current.filmPlays,
           filmSources: current.filmSources,
           filmCatalog: current.filmCatalog,
+          chiefKingPlans: current.chiefKingPlans,
           awarenessResults: current.awarenessResults,
         })
       })
