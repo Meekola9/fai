@@ -92,7 +92,7 @@ function storedZip(files: Record<string, string>): ArrayBuffer {
     uint32(local.byteLength),
     uint16(0),
   ])
-  return concat([local, central, end]).buffer
+  return concat([local, central, end]).buffer as ArrayBuffer
 }
 
 function workbookFixture(): ArrayBuffer {
