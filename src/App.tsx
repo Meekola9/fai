@@ -10,6 +10,7 @@ import Athletes from './pages/Athletes'
 import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
 import FilmLibrary from './pages/FilmLibrary'
+import Sideline from './pages/Sideline'
 import AwarenessQuiz from './pages/AwarenessQuiz'
 import PlayerDevelopment from './pages/PlayerDevelopment'
 import StatsGuide from './pages/StatsGuide'
@@ -33,6 +34,7 @@ interface NavItem {
 
 const PUBLIC_NAV: NavItem[] = [
   { to: '/', label: 'Coach Dashboard', end: true },
+  { to: '/sideline', label: 'Sideline' },
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
@@ -80,6 +82,7 @@ function navForAccount(viewerMode: boolean, role: string | undefined, capabiliti
 
   const nav: NavItem[] = [
     { to: '/', label: 'Coach Dashboard', end: true },
+    { to: '/sideline', label: 'Sideline' },
     { to: '/leaderboards', label: 'Leaderboards' },
     { to: '/athletes', label: 'Athletes' },
   ]
@@ -259,6 +262,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
           <Route path="/" element={isAthlete ? <Navigate to="/account/profile" replace /> : <Dashboard />} />
+          <Route path="/sideline" element={staffOrPublic ? <Sideline /> : <Navigate to="/account/profile" replace />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
