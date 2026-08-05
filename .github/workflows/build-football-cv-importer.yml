@@ -1,6 +1,8 @@
 name: Build Football CV importer
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches:
       - feature/football-cv-film-room-import
@@ -10,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ !contains(github.event.head_commit.message, '[football-cv-importer-built]') }}
+    if: ${{ !contains(github.event.head_commit.message || github.event.pull_request.title, '[football-cv-importer-built]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
