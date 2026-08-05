@@ -60,6 +60,16 @@ image coordinates** so a future importer can drop tracks straight in:
 `img` is normalized to the frame (matches the Film Room overlay). `field` is
 yards (length 0–100, width 0–53.3) when homography is set, otherwise `null`.
 
+## Fine-tuning a football-specific detector
+
+`football_detector_finetune.ipynb` is the next step once the proof holds: it
+walks through extracting frames, labeling players in Roboflow, fine-tuning
+RF-DETR into a **football player detector**, and plugging the trained weights
+back into the tracking pipeline. The generic COCO `person` detector only catches
+roughly half the players on night film; fine-tuning on your own labeled frames
+(~100–200, both teams boxed) is what gets it toward all 22 with a clean team
+split. Needs a free Roboflow account + API key and a GPU runtime.
+
 ## Not run in this repo's CI
 
 This is a standalone Colab artifact — it needs a GPU and downloads model weights,
