@@ -2102,6 +2102,23 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
               />
 
               <input
+                type="number"
+                value={form.boxCount ?? ''}
+                onChange={(event) => setField('boxCount', numberField(event.target.value))}
+                placeholder="Box count (defenders)"
+                title="Defenders in the box on this snap — feeds the box-count / run advantage number"
+                className={inputClass}
+              />
+              <input
+                type="number"
+                value={form.hiddenYards ?? ''}
+                onChange={(event) => setField('hiddenYards', numberField(event.target.value))}
+                placeholder="Hidden yds (+ ours)"
+                title="Special teams, penalties, turnover field position. Positive = in our favor. Feeds the hidden-yardage margin."
+                className={inputClass}
+              />
+
+              <input
                 value={form.result ?? ''}
                 onChange={(event) => setField('result', event.target.value || undefined)}
                 placeholder="Result (TD, INT, …)"

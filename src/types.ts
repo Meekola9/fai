@@ -338,6 +338,14 @@ export interface FilmPlay {
   concept?: string // run or pass concept key
   ballCarrierId?: string // rostered athlete
   targetId?: string // rostered athlete (intended receiver)
+  /** Defenders in the box on this snap — drives the box-count / run advantage number. */
+  boxCount?: number
+  /**
+   * Signed "hidden yardage" from our perspective (special-teams return/coverage,
+   * penalties, turnover field position). Positive = in our favor. Drives the
+   * hidden-yardage margin on the sideline dashboard.
+   */
+  hiddenYards?: number
 
   // Result
   gain?: number // yards gained (may be negative)

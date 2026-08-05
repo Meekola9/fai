@@ -197,6 +197,8 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         concept: optionalText(row.concept),
         ballCarrierId: optionalText(row.ball_carrier_id),
         targetId: optionalText(row.target_id),
+        boxCount: optionalNumber(row.box_count),
+        hiddenYards: optionalNumber(row.hidden_yards),
         gain: optionalNumber(row.gain),
         result: optionalText(row.result),
         annotations: Array.isArray(row.annotations)
@@ -447,6 +449,8 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
       concept: nullable(film.concept),
       ball_carrier_id: nullable(film.ballCarrierId),
       target_id: nullable(film.targetId),
+      box_count: nullable(film.boxCount),
+      hidden_yards: nullable(film.hiddenYards),
       gain: nullable(film.gain),
       result: nullable(film.result),
       annotations: film.annotations ?? [],
