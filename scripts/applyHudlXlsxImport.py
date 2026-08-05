@@ -10,6 +10,18 @@ def replace_once(path: str, old: str, new: str) -> None:
     file.write_text(text.replace(old, new, 1))
 
 
+replace_once(
+    'src/lib/hudlWorkbook.ts',
+    "  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))\n",
+    "  const payload = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer\n  const stream = new Blob([payload]).stream().pipeThrough(new DecompressionStream('deflate-raw'))\n",
+)
+
+replace_once(
+    'src/lib/hudlWorkbook.test.ts',
+    "  return concat([local, central, end]).buffer\n",
+    "  return concat([local, central, end]).buffer as ArrayBuffer\n",
+)
+
 path = 'src/components/HudlImportWizard.tsx'
 
 replace_once(
