@@ -12,8 +12,9 @@ own film before investing in fine-tuning**, not as a finished product.
    (File ▸ Upload notebook, or push this repo and use "Open in Colab").
 2. **Runtime ▸ Change runtime type ▸ GPU.**
 3. Upload a short clip (10–30s), set `CFG.clip_path`, and run the cells top to bottom.
-4. For the top-down map, fill in four known field points (pixels → yards) in the
-   homography cell. You can skip that and still get image-space tracking.
+4. For the top-down map, run the calibration cell and **click 4 field points**
+   on the image (near-left, near-right, far-left, far-right). You can skip it and
+   still get image-space tracking.
 
 ## What it does (v0.1) — and doesn't
 
@@ -22,7 +23,7 @@ own film before investing in fine-tuning**, not as a finished product.
 | Detect players | RF-DETR (COCO `person`) | Fine-tuned football detector |
 | Track | ByteTrack | SAM2 segmentation tracking |
 | Team split | jersey chroma (LAB a/b) + K-means | SigLIP embeddings + UMAP + K-means |
-| Field map | manual 4-point homography | trained field-keypoint model |
+| Field map | click 4 points (homography) | trained field-keypoint model |
 | Jersey numbers | not run | SmolVLM2 OCR |
 | Ball tracking | **not included** | — |
 
