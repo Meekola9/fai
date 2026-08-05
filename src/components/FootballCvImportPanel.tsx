@@ -38,7 +38,12 @@ function defaultTeamMapping(index: number): FootballCvTeamMapping {
 }
 
 function plural(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? '' : 's'}`
+  const noun = count === 1
+    ? singular
+    : singular === 'identity'
+      ? 'identities'
+      : `${singular}s`
+  return `${count} ${noun}`
 }
 
 export default function FootballCvImportPanel({ athletes, currentVideoTime, onImport }: Props) {
