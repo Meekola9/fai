@@ -19,6 +19,7 @@ describe('Hudl batch film import', () => {
       filmPlays: [],
       filmSources: [],
       filmCatalog: [],
+      chiefKingPlans: [],
       awarenessResults: [],
     }
     const incoming: FilmPlay[] = [{ id: 'film-1', formation: 'trips' }]

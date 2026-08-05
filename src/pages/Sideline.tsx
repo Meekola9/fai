@@ -5,6 +5,8 @@ import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
 import { usePageMemory } from '../hooks/usePageMemory'
 import { opponentsFromFilm } from '../lib/filmAnalysis'
 import { buildSidelineReport, type SidelineNumber } from '../lib/sidelineDashboard'
+import { buildChiefKingPlaybook, planForOpponent } from '../lib/chiefToKing'
+import { ChiefKingWorksheet } from '../components/ChiefKingWorksheet'
 
 type Accent = 'chalk' | 'fai' | 'gold' | 'flame' | 'up'
 
@@ -19,13 +21,19 @@ function accentFor(n: SidelineNumber): Accent {
 }
 
 export default function Sideline() {
-  const { data } = useStore()
+  const { data, canEdit, saveChiefKingPlan, removeChiefKingPlan } = useStore()
   const [opponent, setOpponent] = usePageMemory('fai:sideline:opponent', '')
   const opponents = useMemo(() => opponentsFromFilm(data.filmPlays), [data.filmPlays])
   const report = useMemo(
     () => buildSidelineReport(data.filmPlays, data.plays, opponent || undefined),
     [data.filmPlays, data.plays, opponent],
   )
+
+  const chiefKingPlan = useMemo(
+    () => planForOpponent(data.chiefKingPlans, opponent || undefined),
+    [data.chiefKingPlans, opponent],
+  )
+  const chiefKingPlaybook = chiefKingPlan ? buildChiefKingPlaybook(chiefKingPlan) : undefined
 
   const hasData = report.offensiveSnaps + report.defensiveSnaps > 0
 
@@ -95,15 +103,34 @@ export default function Sideline() {
                     <div className="mt-1 text-sm font-semibold text-chalk">{a.detail}</div>
                   </Card>
                 ))}
-                <Card className="border-line p-4">
-                  <div className="text-[10px] font-black uppercase tracking-wider text-gold">Chief-to-King target</div>
-                  <div className="mt-1 text-sm text-muted">
-                    Set up the opponent's King and Chiefs to activate this alert. (Coming next.)
+                <Card className={`p-4 ${chiefKingPlaybook?.complete ? 'border-flame/40' : 'border-line'}`}>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-flame">Chief-to-King target</div>
+                  <div className="mt-1 text-sm font-semibold text-chalk">
+                    {chiefKingPlaybook?.complete
+                      ? chiefKingPlaybook.alertDetail
+                      : opponent
+                        ? 'Fill in the Chief-to-King plan below to activate this target.'
+                        : 'Pick a game above, then build the Chief-to-King plan below.'}
                   </div>
                 </Card>
               </div>
             )}
           </div>
+
+          {canEdit && opponent && (
+            <div>
+              <SectionTitle>Chief-to-King plan</SectionTitle>
+              <div className="mt-2">
+                <ChiefKingWorksheet
+                  key={opponent}
+                  opponent={opponent}
+                  plan={chiefKingPlan}
+                  onSave={saveChiefKingPlan}
+                  onRemove={removeChiefKingPlan}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2 text-sm">
             <Link to="/film" className="rounded-lg border border-line px-3 py-2 font-bold text-chalk hover:border-fai">

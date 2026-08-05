@@ -210,6 +210,7 @@ export function consolidateAthleteAliases(input: AppData): Required<AppData> {
     filmPlays,
     filmSources: data.filmSources,
     filmCatalog: data.filmCatalog,
+    chiefKingPlans: data.chiefKingPlans,
     awarenessResults,
   })
 }
