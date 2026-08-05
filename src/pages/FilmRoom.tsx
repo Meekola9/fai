@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Card, Pill, SectionTitle, StatTile } from '../components/ui'
 import HudlImportWizard from '../components/HudlImportWizard'
+import FootballCvImportPanel from '../components/FootballCvImportPanel'
 import QbMechanicsPanel from '../components/QbMechanicsPanel'
 import { FilmCatalogManager } from '../components/FilmCatalogManager'
 import type {
@@ -56,6 +57,7 @@ import {
   summarizePlayerTrack,
 } from '../lib/filmTracking'
 import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
+import { mergeFootballCvPlayerTracks } from '../lib/footballCvImport'
 import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
 import { shouldShowTrackLabel, tracksForFilmStage } from '../lib/filmTrackDisplay'
 import {
@@ -639,10 +641,15 @@ function TendencyTable({ title, groups }: { title: string; groups: TendencyGroup
 }
 
 
-function FormationBoard({ tracks }: { tracks: FilmAnnotation[] }) {
+function FormationBoard({ tracks, atTime }: { tracks: FilmAnnotation[]; atTime?: number }) {
   const located = tracks
-    .map((track) => ({ track, start: trackKeyframes(track.points)[0] }))
-    .filter((item): item is { track: FilmAnnotation; start: FilmAnnotationPoint & { t: number } } => Boolean(item.start))
+    .map((track) => ({
+      track,
+      start: typeof atTime === 'number'
+        ? trackPositionAt(track.points, atTime) ?? trackKeyframes(track.points)[0]
+        : trackKeyframes(track.points)[0],
+    }))
+    .filter((item): item is { track: FilmAnnotation; start: FilmAnnotationPoint } => Boolean(item.start))
 
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-[#12331f]" data-testid="formation-board">
@@ -686,7 +693,7 @@ function FormationBoard({ tracks }: { tracks: FilmAnnotation[] }) {
         ))}
       </div>
       <div className="border-t border-white/15 bg-black/20 px-3 py-2 text-[10px] leading-relaxed text-white/65">
-        Starting dots form the alignment. Lines show each saved route in the camera view.
+        Starting dots use the selected formation frame. Lines show each saved route in the camera view.
       </div>
     </div>
   )
@@ -1789,6 +1796,32 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 <Pill tone={formationLocated.length === 11 ? 'fai' : 'gold'}>{formationLocated.length}/11 located</Pill>
               </div>
 
+              <FootballCvImportPanel
+                athletes={roster}
+                currentVideoTime={videoTime}
+                onImport={({ tracks, formationStartTime: suggestedStart, source, createdWith }) => {
+                  stopAutoFollow('idle', undefined, false)
+                  setAutoArmed(false)
+                  setPending((current) => mergeFootballCvPlayerTracks(current, tracks))
+                  const firstTrack = tracks.find(isPlayerTrack)
+                  setActiveTrackId(firstTrack?.id)
+                  if (firstTrack) {
+                    setTrackTeam(firstTrack.trackingTeam ?? 'opponent')
+                    setTrackSide(firstTrack.trackingSide ?? 'offense')
+                  }
+                  if (typeof suggestedStart === 'number') {
+                    setFormationStartTime(suggestedStart)
+                    seekVideo(suggestedStart)
+                  }
+                  if (source) {
+                    setForm((current) => ({ ...current, filmLabel: current.filmLabel || source }))
+                  }
+                  setTrackingMessage(
+                    `${tracks.length} CV player track${tracks.length === 1 ? '' : 's'} loaded${createdWith ? ` from ${createdWith}` : ''}. Review identities and corrections, then Log Play.`,
+                  )
+                }}
+              />
+
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <select value={trackTeam} onChange={(event) => setTrackTeam(event.target.value as TrackingTeam)} className={selectClass} aria-label="Formation team">
                   <option value="opponent">Opponent</option>
@@ -1917,7 +1950,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 <span>{completedRoutes}/11 routes finished</span>
                 <span className={formationLocated.length === 11 ? 'text-up' : 'text-gold'}>{formationLocated.length === 11 ? 'Formation ready ✓' : `${11 - formationLocated.length} locations remaining`}</span>
               </div>
-              <FormationBoard tracks={formationTracks} />
+              <FormationBoard tracks={formationTracks} atTime={formationStartTime} />
               {trackingMessage && <div className="text-xs font-bold text-gold">{trackingMessage}</div>}
             </div>
           )}
