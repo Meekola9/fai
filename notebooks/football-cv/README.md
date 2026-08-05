@@ -21,13 +21,22 @@ own film before investing in fine-tuning**, not as a finished product.
 |---|---|---|
 | Detect players | RF-DETR (COCO `person`) | Fine-tuned football detector |
 | Track | ByteTrack | SAM2 segmentation tracking |
-| Team split | jersey color + K-means | SigLIP embeddings + UMAP + K-means |
+| Team split | jersey chroma (LAB a/b) + K-means | SigLIP embeddings + UMAP + K-means |
 | Field map | manual 4-point homography | trained field-keypoint model |
 | Jersey numbers | not run | SmolVLM2 OCR |
+| Ball tracking | **not included** | — |
 
 Works best on stable, wide sideline film. Pan/zoom, end-zone piles, overlapping
 bodies, and similar jerseys are where it degrades — that's the real challenge and
 why this is a proof step.
+
+**Night games** are the hard case: low light + stadium glare wash out colors and
+add motion blur. The notebook fights that with an optional low-light boost
+(CLAHE, `CFG.low_light`) and a brightness-independent team split (LAB chroma), and
+starts detection confidence low (`CFG.conf = 0.4`). Expect night film to be
+noisier than daytime; if detections are sparse, lower `CFG.conf` further or raise
+the CLAHE `clipLimit`. **Ball tracking is intentionally omitted** — impractical
+with a brown ball under lights and unnecessary for formation/tendency scouting.
 
 ## Output contract
 
