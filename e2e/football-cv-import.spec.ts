@@ -61,7 +61,7 @@ test('imports Claude Football CV JSON into editable Film Room tracks and persist
     buffer: Buffer.from(trackingJson),
   })
 
-  await expect(page.getByText('fai_tracking.json', { exact: true })).toBeVisible()
+  await expect(page.getByText('fai_tracking.json', { exact: true }).last()).toBeVisible()
   await expect(page.getByText('2 identities', { exact: true })).toBeVisible()
   await expect(page.getByText(/Suggested formation frame:/)).toContainText('0:01.20')
 
