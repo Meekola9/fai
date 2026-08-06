@@ -7,6 +7,7 @@ import { opponentsFromFilm } from '../lib/filmAnalysis'
 import { buildSidelineReport, type SidelineNumber } from '../lib/sidelineDashboard'
 import { buildChiefKingPlaybook, planForOpponent } from '../lib/chiefToKing'
 import { ChiefKingWorksheet } from '../components/ChiefKingWorksheet'
+import { SAMPLE_GAME_OPPONENT } from '../data/sampleData'
 
 type Accent = 'chalk' | 'fai' | 'gold' | 'flame' | 'up'
 
@@ -21,8 +22,9 @@ function accentFor(n: SidelineNumber): Accent {
 }
 
 export default function Sideline() {
-  const { data, canEdit, saveChiefKingPlan, removeChiefKingPlan } = useStore()
+  const { data, canEdit, saveChiefKingPlan, removeChiefKingPlan, loadSampleGame, clearSampleGame } = useStore()
   const [opponent, setOpponent] = usePageMemory('fai:sideline:opponent', '')
+  const sampleLoaded = data.chiefKingPlans.some((p) => p.id === 'ck-central')
   const opponents = useMemo(() => opponentsFromFilm(data.filmPlays), [data.filmPlays])
   const report = useMemo(
     () => buildSidelineReport(data.filmPlays, data.plays, opponent || undefined),
@@ -49,6 +51,25 @@ export default function Sideline() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {canEdit && (
+            sampleLoaded ? (
+              <button
+                type="button"
+                onClick={() => { clearSampleGame(); if (opponent === SAMPLE_GAME_OPPONENT) setOpponent('') }}
+                className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-muted hover:text-down"
+              >
+                Remove sample game
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { loadSampleGame(); setOpponent(SAMPLE_GAME_OPPONENT) }}
+                className="rounded-lg border border-fai/40 bg-fai/10 px-3 py-2 text-xs font-bold text-fai"
+              >
+                Load sample game
+              </button>
+            )
+          )}
           <label className="text-[11px] font-bold uppercase tracking-wider text-muted">Game</label>
           <select
             value={opponent}

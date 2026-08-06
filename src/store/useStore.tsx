@@ -45,6 +45,7 @@ import {
   SEED_VERSION,
 } from '../data/historicalSeed'
 import { gradeLabel } from '../lib/alumni'
+import { SAMPLE_SIDELINE_GAME } from '../data/sampleData'
 import { computeAll } from '../lib/compute'
 import { buildResults } from '../lib/progress'
 import { buildImpact } from '../lib/impact'
@@ -137,6 +138,9 @@ interface StoreContextValue {
   /** Save (create or replace) an opponent's Chief-to-King plan; returns its id. */
   saveChiefKingPlan: (plan: Omit<ChiefKingPlan, 'id' | 'createdAt'> & { id?: string }) => string
   removeChiefKingPlan: (id: string) => void
+  /** Opt-in demo: add / remove the self-contained Sideline sample game. */
+  loadSampleGame: () => void
+  clearSampleGame: () => void
   /** Record an awareness-quiz result for the given athlete (athlete self-service). */
   submitAwarenessResult: (
     result: Omit<AwarenessResult, 'id' | 'createdAt'>,
@@ -770,6 +774,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mutate((current) => ({
         ...current,
         chiefKingPlans: current.chiefKingPlans.filter((p) => p.id !== id),
+      }))
+    },
+    loadSampleGame() {
+      const g = SAMPLE_SIDELINE_GAME
+      mutate((current) => {
+        const filmIds = new Set(current.filmPlays.map((f) => f.id))
+        const playIds = new Set(current.plays.map((p) => p.id))
+        const planIds = new Set(current.chiefKingPlans.map((p) => p.id))
+        return {
+          ...current,
+          filmPlays: [...current.filmPlays, ...structuredClone(g.filmPlays).filter((f) => !filmIds.has(f.id))],
+          plays: [...current.plays, ...structuredClone(g.plays).filter((p) => !playIds.has(p.id))],
+          chiefKingPlans: [...current.chiefKingPlans, ...structuredClone(g.chiefKingPlans).filter((p) => !planIds.has(p.id))],
+        }
+      })
+    },
+    clearSampleGame() {
+      const g = SAMPLE_SIDELINE_GAME
+      const fset = new Set(g.filmPlays.map((f) => f.id))
+      const pset = new Set(g.plays.map((p) => p.id))
+      const cset = new Set(g.chiefKingPlans.map((p) => p.id))
+      mutate((current) => ({
+        ...current,
+        filmPlays: current.filmPlays.filter((f) => !fset.has(f.id)),
+        plays: current.plays.filter((p) => !pset.has(p.id)),
+        chiefKingPlans: current.chiefKingPlans.filter((p) => !cset.has(p.id)),
       }))
     },
     addFilmPlays(films) {

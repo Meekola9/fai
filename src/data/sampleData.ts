@@ -3,7 +3,10 @@
 // immediately. Values are realistic HS combine numbers.
 // ---------------------------------------------------------------------------
 
-import type { AppData, Athlete, TestSession, PositionGroup, TestingPhase } from '../types'
+import type {
+  AppData, Athlete, TestSession, PositionGroup, TestingPhase,
+  FilmPlay, PlayEvent, ChiefKingPlan,
+} from '../types'
 
 function mk(id: string, name: string, grade: number, position: string, positionGroup: PositionGroup, heightIn: number, weightLbs: number): Athlete {
   return { id, name, grade, position, positionGroup, heightIn, weightLbs }
@@ -126,10 +129,93 @@ const sessions: TestSession[] = [
   session('a-trey', '2026-08-01', 'Preseason', { benchMax: 190, dash40_1: 4.86, dash40_2: 4.91, fly10_1: 1.59, fly10_2: 1.62, hangCleanReps: 7, shuttle20_1: 4.49, shuttle20_2: 4.53, latShuttle_1: 2.88, latShuttle_2: 2.92, illinois: 16.4, squatMax: 310, broadJump: 109, verticalJump: 30, cond51015: 144 }),
 ]
 
+// ---------------------------------------------------------------------------
+// A fully charted sample game vs "Central" so the Sideline dashboard shows
+// populated out of the box: our offense + defense snaps (with box counts and
+// hidden yards), defensive havoc events, and a Chief-to-King plan.
+// ---------------------------------------------------------------------------
+const OPP = 'Central'
+const GAME_DATE = '2026-09-05'
+
+let fseq = 0
+function off(p: Partial<FilmPlay>): FilmPlay {
+  return { id: `f-${++fseq}`, opponent: OPP, date: GAME_DATE, side: 'offense', ...p }
+}
+function def(p: Partial<FilmPlay>): FilmPlay {
+  return { id: `f-${++fseq}`, opponent: OPP, date: GAME_DATE, side: 'defense', ...p }
+}
+
+const filmPlays: FilmPlay[] = [
+  // --- our offense (Trips is the hot formation → best-matchup alert) ---
+  off({ down: 1, distance: 10, formation: 'trips', call: 'pass', concept: 'smash', gain: 8, targetId: 'a-jamal' }),
+  off({ down: 2, distance: 2, formation: 'i_form', call: 'run', concept: 'inside_zone', gain: 14, boxCount: 6, ballCarrierId: 'a-tyler' }),
+  off({ down: 1, distance: 10, formation: 'doubles', call: 'run', concept: 'power', gain: 3, boxCount: 7, ballCarrierId: 'a-tyler' }),
+  off({ down: 2, distance: 7, formation: 'trips', call: 'pass', concept: 'four_verts', gain: 22, targetId: 'a-jamal' }),
+  off({ down: 1, distance: 10, formation: 'trips', call: 'run', concept: 'outside_zone', gain: -2, boxCount: 6, ballCarrierId: 'a-cam' }),
+  off({ down: 2, distance: 12, formation: 'shotgun', call: 'pass', concept: 'mesh', gain: 9, targetId: 'a-marcus' }),
+  off({ down: 3, distance: 3, formation: 'i_form', call: 'run', concept: 'power', gain: 4, boxCount: 8, ballCarrierId: 'a-tyler' }),
+  off({ down: 1, distance: 10, formation: 'trips', call: 'pass', concept: 'slant_flat', gain: 6, targetId: 'a-marcus' }),
+  off({ down: 1, distance: 10, formation: 'doubles', call: 'run', concept: 'inside_zone', gain: 12, boxCount: 6, ballCarrierId: 'a-tyler' }),
+  off({ down: 3, distance: 8, formation: 'empty', call: 'pass', concept: 'y_cross', gain: 5, targetId: 'a-jamal' }),
+  off({ down: 1, distance: 10, formation: 'i_form', call: 'run', concept: 'iso', gain: 2, boxCount: 7, ballCarrierId: 'a-cam' }),
+  off({ down: 2, distance: 8, formation: 'trips', call: 'pass', concept: 'smash', gain: 16, targetId: 'a-jamal' }),
+  // special teams / penalties → hidden-yardage margin (+ our favor)
+  off({ call: 'special', result: 'Punt inside 20', hiddenYards: 14 }),
+  off({ down: 1, distance: 15, formation: 'trips', call: 'pass', concept: 'smash', gain: 5, hiddenYards: -5, result: 'Holding' }),
+
+  // --- our defense (Central offense): 3rd & long = pass every time → tendency alert ---
+  def({ down: 1, distance: 10, call: 'run', gain: 4 }),
+  def({ down: 2, distance: 6, call: 'run', gain: -3 }),
+  def({ down: 3, distance: 9, call: 'pass', gain: 5 }),
+  def({ down: 1, distance: 10, call: 'pass', gain: 20 }),
+  def({ down: 2, distance: 8, call: 'run', gain: 2 }),
+  def({ down: 3, distance: 7, call: 'pass', gain: 3 }),
+  def({ down: 3, distance: 11, call: 'pass', gain: -6, result: 'Sack' }),
+  def({ down: 1, distance: 10, call: 'run', gain: -1 }),
+  def({ down: 3, distance: 8, call: 'pass', gain: 0, result: 'Incomplete' }),
+  def({ call: 'special', result: 'Kick return', hiddenYards: 6 }),
+]
+
+const gamePlays: PlayEvent[] = [
+  { id: 'pe-1', athleteId: 'a-andre', type: 'sack', date: GAME_DATE, opponent: OPP },
+  { id: 'pe-2', athleteId: 'a-xavier', type: 'tfl', date: GAME_DATE, opponent: OPP },
+  { id: 'pe-3', athleteId: 'a-devin', type: 'interception', date: GAME_DATE, opponent: OPP },
+]
+
+const chiefKingPlans: ChiefKingPlan[] = [
+  {
+    id: 'ck-central',
+    opponent: OPP,
+    kingLabel: '#7 QB Reed',
+    kingPosition: 'qb',
+    chiefs: [
+      { id: 'ck-c1', label: '#55 C Grant', role: 'center' },
+      { id: 'ck-c2', label: '#3 Slot Vaughn', role: 'slot' },
+    ],
+    weakestChiefId: 'ck-c2',
+    note: 'Nickel over the slot is the soft spot — attack it early.',
+  },
+]
+
+/** Opponent name used by the loadable Sideline demo game. */
+export const SAMPLE_GAME_OPPONENT = OPP
+
+/** A self-contained, clearable demo game for the Sideline dashboard. */
+export const SAMPLE_SIDELINE_GAME: {
+  opponent: string
+  filmPlays: FilmPlay[]
+  plays: PlayEvent[]
+  chiefKingPlans: ChiefKingPlan[]
+} = { opponent: OPP, filmPlays, plays: gamePlays, chiefKingPlans }
+
 export function sampleData(): AppData {
   seq = 0
+  fseq = 0
   return {
     athletes: structuredClone(athletes),
     sessions: structuredClone(sessions),
+    filmPlays: structuredClone(filmPlays),
+    plays: structuredClone(gamePlays),
+    chiefKingPlans: structuredClone(chiefKingPlans),
   }
 }
