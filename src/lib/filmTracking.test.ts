@@ -4,11 +4,44 @@ import {
   formatTrackTime,
   isPlayerTrack,
   removeTrackKeyframe,
+  trackBoxAt,
   trackKeyframes,
   trackPositionAt,
   trackTrailAt,
   upsertTrackKeyframe,
 } from './filmTracking'
+
+describe('trackBoxAt (player highlight box)', () => {
+  const points = [
+    { x: 0.5, y: 0.5, t: 0, box: [0.4, 0.3, 0.5, 0.6] as [number, number, number, number] },
+    { x: 0.6, y: 0.5, t: 1, box: [0.6, 0.3, 0.7, 0.6] as [number, number, number, number] },
+  ]
+
+  it('preserves box coordinates through the keyframe reducer', () => {
+    expect(trackKeyframes(points)[0].box).toEqual([0.4, 0.3, 0.5, 0.6])
+  })
+
+  it('interpolates the box between keyframes', () => {
+    const box = trackBoxAt(points, 0.5)
+    expect(box).toBeDefined()
+    expect(box![0]).toBeCloseTo(0.5, 5)
+    expect(box![2]).toBeCloseTo(0.6, 5)
+  })
+
+  it('is hidden before the first boxed keyframe and clamps after the last', () => {
+    expect(trackBoxAt(points, -1)).toBeUndefined()
+    expect(trackBoxAt(points, 99)).toEqual([0.6, 0.3, 0.7, 0.6])
+  })
+
+  it('returns undefined when no point carries a box', () => {
+    expect(trackBoxAt([{ x: 0.5, y: 0.5, t: 0 }], 0)).toBeUndefined()
+  })
+
+  it('normalizes reversed corners so x1<=x2 and y1<=y2', () => {
+    const reversed = [{ x: 0.5, y: 0.5, t: 0, box: [0.7, 0.6, 0.4, 0.3] as [number, number, number, number] }]
+    expect(trackKeyframes(reversed)[0].box).toEqual([0.4, 0.3, 0.7, 0.6])
+  })
+})
 
 describe('coach-assisted film tracking', () => {
   it('creates a persisted player track annotation', () => {
