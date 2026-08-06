@@ -22,6 +22,12 @@ function clampUnit(value: number): number {
   return Math.max(0, Math.min(1, value))
 }
 
+function cleanField(value: FilmAnnotationPoint['field']): [number, number] | undefined {
+  return Array.isArray(value) && Number.isFinite(value[0]) && Number.isFinite(value[1])
+    ? [value[0], value[1]]
+    : undefined
+}
+
 function cleanTime(value: number): number {
   return Math.max(0, Math.round(value * 1000) / 1000)
 }
@@ -68,6 +74,7 @@ export function trackKeyframes(
       confidence: typeof point.confidence === 'number' && Number.isFinite(point.confidence)
         ? clampUnit(point.confidence)
         : undefined,
+      field: cleanField(point.field),
     }))
     .sort((a, b) => a.t - b.t)
 

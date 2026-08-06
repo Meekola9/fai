@@ -219,6 +219,7 @@ export function summarizeFootballCvTracks(data: FootballCvTrackingData): Footbal
         t: frame.t,
         source: 'auto',
         confidence: player.confidence,
+        field: player.field,
       })
       groups.set(key, group)
     }
