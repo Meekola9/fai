@@ -18,17 +18,26 @@ own film before investing in fine-tuning**, not as a finished product.
 
 ## What it does (v0.1) — and doesn't
 
-| Stage | v0.4 | Upgrade path |
+**v0.6:** an **annotated tracking video** (Step 4b) — draws boxes + team color +
+jersey number onto the clip (`tracking_overlay.mp4`) so you can watch and judge
+tracking quality directly, not just read a JSON.
+
+| Stage | v0.6 | Upgrade path |
 |---|---|---|
 | Detect players | RF-DETR — auto-uses your fine-tuned detector if present, else COCO `person` | — |
 | Field filter | homography bounds — drops refs / sideline / crowd | trained field-keypoint model |
-| Track | ByteTrack | SAM2 segmentation tracking |
+| Track | ByteTrack (default) · SAM2 optional, occlusion-robust (Step 3b, experimental) | — |
 | Team split | SigLIP embeddings → (UMAP) → K-means, color fallback | — |
 | Field map | click 4 points (homography) | trained field-keypoint model |
 | Jersey numbers | EasyOCR, voted across frames per track | SmolVLM2 fine-tuned OCR |
 | Ball tracking | **not included** | — |
 
-**v0.4 additions:** SigLIP team split — each track's clearest crops are embedded
+**v0.5 additions:** optional **SAM2** tracking (Step 3b) — segments and follows the
+players you prompt at the snap, holding IDs through the pile where ByteTrack
+swaps them. Opt in with `CFG.tracker='sam2'` (needs a SAM2 checkpoint); ByteTrack
+stays the default. Experimental / untested in this repo.
+
+**v0.4:** SigLIP team split — each track's clearest crops are embedded
 with SigLIP, optionally reduced with UMAP, and K-means'd into two teams. Robust
 when jerseys are similar or washed out at night; falls back to the LAB-chroma
 method automatically (`team_method='color'`, or if SigLIP can't load).
