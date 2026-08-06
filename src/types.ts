@@ -168,6 +168,12 @@ export interface FilmAnnotationPoint {
   x: number // 0-1 across the frame width
   y: number // 0-1 down the frame height
   t?: number // optional seconds from the play's start, for trails / speed
+  /**
+   * Real-world field position in yards [length 0-100, width 0-53.3] from the CV
+   * homography, when the field map is set. This is what makes true speed possible —
+   * image coords alone can't, because perspective stretches near-camera yards.
+   */
+  field?: [number, number]
   /** Whether the coach placed this point or the browser tracker generated it. */
   source?: 'manual' | 'auto'
   /** 0-1 visual match confidence for automatic points. */

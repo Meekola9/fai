@@ -58,6 +58,7 @@ import {
 } from '../lib/filmTracking'
 import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
 import { mergeFootballCvPlayerTracks } from '../lib/footballCvImport'
+import { summarizeTrackSpeed } from '../lib/playerSpeed'
 import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
 import { shouldShowTrackLabel, tracksForFilmStage } from '../lib/filmTrackDisplay'
 import {
@@ -821,6 +822,12 @@ export default function FilmRoom() {
   const formationLocated = formationTracks.filter((track) => trackKeyframes(track.points).length > 0)
   const completedRoutes = formationTracks.filter((track) => track.trackingComplete).length
   const activeStats = activeTrack ? summarizePlayerTrack(activeTrack.points) : undefined
+  const activeSpeed = activeTrack ? summarizeTrackSpeed(activeTrack.points) : undefined
+  const speedLeaders = playerTracks
+    .map((track) => ({ track, speed: summarizeTrackSpeed(track.points) }))
+    .filter((entry) => entry.speed.hasField)
+    .sort((left, right) => right.speed.topSpeedMph - left.speed.topSpeedMph)
+    .slice(0, 8)
   const throwRecord = throwAnalysisAnnotation(pending)
   const throwAnalysis = throwRecord?.throwAnalysis ?? {}
   const throwMetrics = computeThrowMetrics(throwAnalysis)
@@ -1938,6 +1945,8 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Auto frames</div><div className="text-xs font-black text-chalk nums">{Math.max(autoFrameCount, activeStats.autoFrames)}</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Duration</div><div className="text-xs font-black text-chalk nums">{activeStats.durationSec.toFixed(2)}s</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Screen distance</div><div className="text-xs font-black text-chalk nums">{activeStats.screenDistancePct.toFixed(1)}%</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2" title={activeSpeed?.hasField ? `${activeSpeed.distanceYards} yds over ${activeSpeed.elapsedSec}s` : 'Set the CV field map (4-point homography) to measure real speed'}><div className="text-[9px] uppercase text-muted">Top speed</div><div className={`text-xs font-black nums ${activeSpeed?.hasField ? 'text-up' : 'text-muted'}`}>{activeSpeed?.hasField ? `${activeSpeed.topSpeedMph} mph` : '—'}</div></div>
+                  <div className="rounded-lg border border-line bg-panel p-2" title={activeSpeed?.hasField ? 'Average speed across the tracked path' : 'Needs the CV field map'}><div className="text-[9px] uppercase text-muted">Avg speed</div><div className={`text-xs font-black nums ${activeSpeed?.hasField ? 'text-chalk' : 'text-muted'}`}>{activeSpeed?.hasField ? `${activeSpeed.avgSpeedMph} mph` : '—'}</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Corrections</div><div className="text-xs font-black text-chalk nums">{activeStats.manualCorrections}</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Camera shift</div><div className="text-xs font-black text-chalk nums">{(Math.hypot(autoCameraDx, autoCameraDy) * 100).toFixed(1)}%</div></div>
                   <div className="rounded-lg border border-line bg-panel p-2"><div className="text-[9px] uppercase text-muted">Camera zoom</div><div className="text-xs font-black text-chalk nums">{autoCameraScale.toFixed(3)}×</div></div>
@@ -1950,6 +1959,29 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 <span>{completedRoutes}/11 routes finished</span>
                 <span className={formationLocated.length === 11 ? 'text-up' : 'text-gold'}>{formationLocated.length === 11 ? 'Formation ready ✓' : `${11 - formationLocated.length} locations remaining`}</span>
               </div>
+              {speedLeaders.length > 0 ? (
+                <div className="rounded-xl border border-up/25 bg-up/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-black text-chalk">Player speed leaderboard</div>
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">top speed · mph</span>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {speedLeaders.map((entry, index) => (
+                      <div key={entry.track.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 text-[11px] ${entry.track.id === activeTrackId ? 'border-fai/40 bg-fai/5' : 'border-line bg-panel/40'}`}>
+                        <span className="w-4 text-center font-black text-muted nums">{index + 1}</span>
+                        <span className="flex-1 truncate font-bold text-chalk">{entry.track.label ?? 'Tracked player'}</span>
+                        <span className="text-[10px] text-muted nums">avg {entry.speed.avgSpeedMph}</span>
+                        <span className="min-w-14 text-right font-black text-up nums">{entry.speed.topSpeedMph} mph</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-[10px] leading-relaxed text-muted">Speeds are CV-derived from the field map — accurate to the homography you set, not a lab timer.</div>
+                </div>
+              ) : playerTracks.length > 0 && (
+                <div className="rounded-xl border border-line bg-panel-2/30 p-3 text-[11px] leading-relaxed text-muted">
+                  <span className="font-black text-chalk">Player speeds need the field map.</span> Click the 4 field points in the CV notebook&apos;s calibration step so tracks carry yard coordinates — then top and average speed appear here. Image tracking alone can&apos;t measure real speed.
+                </div>
+              )}
               <FormationBoard tracks={formationTracks} atTime={formationStartTime} />
               {trackingMessage && <div className="text-xs font-bold text-gold">{trackingMessage}</div>}
             </div>
