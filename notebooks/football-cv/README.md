@@ -18,14 +18,20 @@ own film before investing in fine-tuning**, not as a finished product.
 
 ## What it does (v0.1) — and doesn't
 
-| Stage | v0.1 | Upgrade path |
+| Stage | v0.2 | Upgrade path |
 |---|---|---|
-| Detect players | RF-DETR (COCO `person`) | Fine-tuned football detector |
+| Detect players | RF-DETR — auto-uses your fine-tuned detector if present, else COCO `person` | — |
+| Field filter | homography bounds — drops refs / sideline / crowd | trained field-keypoint model |
 | Track | ByteTrack | SAM2 segmentation tracking |
 | Team split | jersey chroma (LAB a/b) + K-means | SigLIP embeddings + UMAP + K-means |
 | Field map | click 4 points (homography) | trained field-keypoint model |
 | Jersey numbers | not run | SmolVLM2 OCR |
 | Ball tracking | **not included** | — |
+
+**v0.2 additions:** the tracking notebook now auto-loads your fine-tuned detector
+(`rfdetr_football/checkpoint_best_total.pth`) the moment it exists, and — once the
+homography is set — filters out anyone off the field (refs, sideline, chain crew,
+crowd) from both the radar and the JSON export.
 
 Works best on stable, wide sideline film. Pan/zoom, end-zone piles, overlapping
 bodies, and similar jerseys are where it degrades — that's the real challenge and
