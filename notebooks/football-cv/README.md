@@ -18,21 +18,26 @@ own film before investing in fine-tuning**, not as a finished product.
 
 ## What it does (v0.1) — and doesn't
 
-| Stage | v0.3 | Upgrade path |
+| Stage | v0.4 | Upgrade path |
 |---|---|---|
 | Detect players | RF-DETR — auto-uses your fine-tuned detector if present, else COCO `person` | — |
 | Field filter | homography bounds — drops refs / sideline / crowd | trained field-keypoint model |
 | Track | ByteTrack | SAM2 segmentation tracking |
-| Team split | jersey chroma (LAB a/b) + K-means | SigLIP embeddings + UMAP + K-means |
+| Team split | SigLIP embeddings → (UMAP) → K-means, color fallback | — |
 | Field map | click 4 points (homography) | trained field-keypoint model |
 | Jersey numbers | EasyOCR, voted across frames per track | SmolVLM2 fine-tuned OCR |
 | Ball tracking | **not included** | — |
 
-**v0.3 additions:** jersey-number OCR (EasyOCR) reads the chest band each frame
-and **votes the number per track** across every frame it's seen, so one blurry
-read can't win. The number lands in the export's `number` field and the Film Room
-importer labels the imported track `#42`. Best-effort on HS night film — tune
-`number_min_box_h` / `number_min_conf` / `number_min_votes`.
+**v0.4 additions:** SigLIP team split — each track's clearest crops are embedded
+with SigLIP, optionally reduced with UMAP, and K-means'd into two teams. Robust
+when jerseys are similar or washed out at night; falls back to the LAB-chroma
+method automatically (`team_method='color'`, or if SigLIP can't load).
+
+**v0.3:** jersey-number OCR (EasyOCR) reads the chest band each frame and **votes
+the number per track** across every frame it's seen. The number lands in the
+export's `number` field and the Film Room importer labels the track `#42`.
+Best-effort on HS night film — tune `number_min_box_h` / `number_min_conf` /
+`number_min_votes`.
 
 **v0.2:** auto-loads your fine-tuned detector
 (`rfdetr_football/checkpoint_best_total.pth`) the moment it exists, and — once the
