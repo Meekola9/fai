@@ -18,7 +18,11 @@ own film before investing in fine-tuning**, not as a finished product.
 
 ## What it does (v0.1) — and doesn't
 
-| Stage | v0.5 | Upgrade path |
+**v0.6:** an **annotated tracking video** (Step 4b) — draws boxes + team color +
+jersey number onto the clip (`tracking_overlay.mp4`) so you can watch and judge
+tracking quality directly, not just read a JSON.
+
+| Stage | v0.6 | Upgrade path |
 |---|---|---|
 | Detect players | RF-DETR — auto-uses your fine-tuned detector if present, else COCO `person` | — |
 | Field filter | homography bounds — drops refs / sideline / crowd | trained field-keypoint model |
