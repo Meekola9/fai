@@ -28,6 +28,16 @@ function cleanField(value: FilmAnnotationPoint['field']): [number, number] | und
     : undefined
 }
 
+function cleanBox(value: FilmAnnotationPoint['box']): [number, number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length < 4 || !value.every((v) => Number.isFinite(v))) return undefined
+  // Normalize corner order so x1<=x2, y1<=y2, then clamp into the frame.
+  const x1 = clampUnit(Math.min(value[0], value[2]))
+  const y1 = clampUnit(Math.min(value[1], value[3]))
+  const x2 = clampUnit(Math.max(value[0], value[2]))
+  const y2 = clampUnit(Math.max(value[1], value[3]))
+  return [x1, y1, x2, y2]
+}
+
 function cleanTime(value: number): number {
   return Math.max(0, Math.round(value * 1000) / 1000)
 }
@@ -75,6 +85,7 @@ export function trackKeyframes(
         ? clampUnit(point.confidence)
         : undefined,
       field: cleanField(point.field),
+      box: cleanBox(point.box),
     }))
     .sort((a, b) => a.t - b.t)
 
@@ -151,6 +162,36 @@ export function trackPositionAt(
       y: from.y + (to.y - from.y) * progress,
       t: timeSec,
     }
+  }
+  return undefined
+}
+
+/** Interpolated player box at a time, for the tracking highlight. Hidden before the
+ * first boxed keyframe; clamped to the last one after tracking ends. */
+export function trackBoxAt(
+  points: readonly FilmAnnotationPoint[],
+  timeSec: number,
+): [number, number, number, number] | undefined {
+  const boxed = trackKeyframes(points).filter(
+    (point): point is FilmAnnotationPoint & { t: number; box: [number, number, number, number] } =>
+      Array.isArray(point.box),
+  )
+  if (boxed.length === 0 || timeSec < boxed[0].t) return undefined
+  if (timeSec >= boxed[boxed.length - 1].t) return boxed[boxed.length - 1].box
+
+  for (let index = 0; index < boxed.length - 1; index += 1) {
+    const from = boxed[index]
+    const to = boxed[index + 1]
+    if (timeSec < from.t || timeSec > to.t) continue
+    const duration = to.t - from.t
+    if (duration <= 0) return to.box
+    const progress = (timeSec - from.t) / duration
+    return [
+      from.box[0] + (to.box[0] - from.box[0]) * progress,
+      from.box[1] + (to.box[1] - from.box[1]) * progress,
+      from.box[2] + (to.box[2] - from.box[2]) * progress,
+      from.box[3] + (to.box[3] - from.box[3]) * progress,
+    ]
   }
   return undefined
 }

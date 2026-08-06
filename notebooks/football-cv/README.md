@@ -18,11 +18,15 @@ own film before investing in fine-tuning**, not as a finished product.
 
 ## What it does (v0.1) — and doesn't
 
+**v0.7:** the export now carries a normalized **player `box`** per detection, so the
+Film Room draws a **tracking highlight around the whole body** (team-colored box +
+glow) instead of a dot at the feet.
+
 **v0.6:** an **annotated tracking video** (Step 4b) — draws boxes + team color +
 jersey number onto the clip (`tracking_overlay.mp4`) so you can watch and judge
 tracking quality directly, not just read a JSON.
 
-| Stage | v0.6 | Upgrade path |
+| Stage | v0.7 | Upgrade path |
 |---|---|---|
 | Detect players | RF-DETR — auto-uses your fine-tuned detector if present, else COCO `person` | — |
 | Field filter | homography bounds — drops refs / sideline / crowd | trained field-keypoint model |
@@ -77,14 +81,17 @@ image coordinates** so a future importer can drop tracks straight in:
     { "t": 1.23, "players": [
       { "trackId": 3, "team": "A", "number": null,
         "img": { "x": 0.42, "y": 0.61 },
+        "box": [0.39, 0.44, 0.45, 0.63],
         "field": [33.5, 12.0] }
     ] }
   ]
 }
 ```
 
-`img` is normalized to the frame (matches the Film Room overlay). `field` is
-yards (length 0–100, width 0–53.3) when homography is set, otherwise `null`.
+`img` is normalized to the frame (matches the Film Room overlay). `box` is the
+normalized player bounding box `[x1, y1, x2, y2]` (0–1) that drives the Film Room's
+tracking highlight. `field` is yards (length 0–100, width 0–53.3) when homography is
+set, otherwise `null`.
 
 ## Fine-tuning a football-specific detector
 

@@ -20,6 +20,7 @@ export interface FootballCvPlayerSample {
   number?: string
   img: { x: number; y: number }
   field?: [number, number]
+  box?: [number, number, number, number]
   confidence?: number
 }
 
@@ -170,12 +171,26 @@ export function parseFootballCvTrackingJson(input: string | unknown): FootballCv
         ? [fieldX, fieldY] as [number, number]
         : undefined
 
+      const boxRaw = Array.isArray(playerRaw.box) ? playerRaw.box : undefined
+      const boxCoords = boxRaw && boxRaw.length >= 4
+        ? boxRaw.slice(0, 4).map(finiteNumber)
+        : undefined
+      const box = boxCoords && boxCoords.every((value): value is number => value !== undefined)
+        ? [
+            clampUnit(Math.min(boxCoords[0], boxCoords[2])),
+            clampUnit(Math.min(boxCoords[1], boxCoords[3])),
+            clampUnit(Math.max(boxCoords[0], boxCoords[2])),
+            clampUnit(Math.max(boxCoords[1], boxCoords[3])),
+          ] as [number, number, number, number]
+        : undefined
+
       players.push({
         trackId,
         team,
         number: optionalText(playerRaw.number),
         img: { x: clampUnit(x), y: clampUnit(y) },
         field,
+        box,
         confidence: confidenceRaw === undefined ? undefined : clampUnit(confidenceRaw),
       })
     })
@@ -220,6 +235,7 @@ export function summarizeFootballCvTracks(data: FootballCvTrackingData): Footbal
         source: 'auto',
         confidence: player.confidence,
         field: player.field,
+        box: player.box,
       })
       groups.set(key, group)
     }

@@ -174,6 +174,12 @@ export interface FilmAnnotationPoint {
    * image coords alone can't, because perspective stretches near-camera yards.
    */
   field?: [number, number]
+  /**
+   * Normalized player bounding box [x1, y1, x2, y2] (0-1, top-left to bottom-right)
+   * from the CV detector, when available. Lets the overlay draw a highlight box that
+   * tracks the whole player instead of a single dot at their feet.
+   */
+  box?: [number, number, number, number]
   /** Whether the coach placed this point or the browser tracker generated it. */
   source?: 'manual' | 'auto'
   /** 0-1 visual match confidence for automatic points. */

@@ -50,6 +50,7 @@ import {
   formatTrackTime,
   isPlayerTrack,
   removeTrackKeyframe,
+  trackBoxAt,
   trackKeyframes,
   trackPositionAt,
   trackTrailAt,
@@ -397,29 +398,62 @@ function FilmStage({
         ctx.stroke()
         ctx.restore()
       }
-      if (!position) continue
+      const box = trackBoxAt(track.points, currentTime)
+      if (!position && !box) continue
+      const isActive = track.id === activeTrackId
 
-      const px = position.x * width
-      const py = position.y * height
-      const radius = track.id === activeTrackId ? 11 : 8
+      // Anchor for the label: box top-left when we have a box, else the foot dot.
+      let anchorX = position ? position.x * width : 0
+      let anchorY = position ? position.y * height : 0
+      let labelGap = (isActive ? 11 : 8) + 5
+
       ctx.save()
-      ctx.shadowColor = color
-      ctx.shadowBlur = track.id === activeTrackId ? 18 : 10
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(px, py, radius, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.shadowBlur = 0
-      ctx.strokeStyle = track.id === activeTrackId ? '#ffffff' : '#0b0f14'
-      ctx.lineWidth = track.id === activeTrackId ? 3 : 2
-      ctx.stroke()
+      if (box) {
+        // Player highlight: a team-colored box + soft glow that tracks the whole body,
+        // instead of a single dot at the feet.
+        const bx = box[0] * width
+        const by = box[1] * height
+        const bw = Math.max(2, (box[2] - box[0]) * width)
+        const bh = Math.max(2, (box[3] - box[1]) * height)
+        const corner = Math.min(10, bw / 3, bh / 3)
+        ctx.beginPath()
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(bx, by, bw, bh, corner)
+        else ctx.rect(bx, by, bw, bh)
+        ctx.fillStyle = color
+        ctx.globalAlpha = isActive ? 0.18 : 0.1
+        ctx.fill()
+        ctx.globalAlpha = 1
+        ctx.shadowColor = color
+        ctx.shadowBlur = isActive ? 16 : 9
+        ctx.strokeStyle = color
+        ctx.lineWidth = isActive ? 3 : 2
+        ctx.stroke()
+        ctx.shadowBlur = 0
+        anchorX = bx
+        anchorY = by
+        labelGap = 4
+      } else if (position) {
+        const px = position.x * width
+        const py = position.y * height
+        const radius = isActive ? 11 : 8
+        ctx.shadowColor = color
+        ctx.shadowBlur = isActive ? 18 : 10
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(px, py, radius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+        ctx.strokeStyle = isActive ? '#ffffff' : '#0b0f14'
+        ctx.lineWidth = isActive ? 3 : 2
+        ctx.stroke()
+      }
 
       const label = track.label?.trim()
       if (label && shouldShowTrackLabel(track, { activeTrackId, focusActiveTrack })) {
         ctx.font = '700 12px system-ui, sans-serif'
         const labelWidth = ctx.measureText(label).width + 12
-        const labelX = Math.min(width - labelWidth - 4, Math.max(4, px + radius + 5))
-        const labelY = Math.max(18, py - radius - 4)
+        const labelX = Math.min(width - labelWidth - 4, Math.max(4, box ? anchorX : anchorX + labelGap))
+        const labelY = Math.max(18, anchorY - (box ? labelGap : labelGap - 1))
         ctx.fillStyle = 'rgba(5, 10, 16, 0.82)'
         ctx.fillRect(labelX, labelY - 15, labelWidth, 20)
         ctx.fillStyle = '#f8fafc'

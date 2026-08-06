@@ -66,6 +66,19 @@ describe('Football CV tracking JSON parsing', () => {
       .toThrow('No valid player samples')
     expect(() => parseFootballCvTrackingJson('{broken')).toThrow('not valid JSON')
   })
+
+  it('parses the player box and carries it into the track points', () => {
+    const withBox = {
+      frames: [{
+        t: 0,
+        players: [{ trackId: 5, team: 'A', img: { x: 0.5, y: 0.6 }, box: [0.45, 0.4, 0.55, 0.65] }],
+      }],
+    }
+    const parsed = parseFootballCvTrackingJson(withBox)
+    expect(parsed.data.frames[0].players[0].box).toEqual([0.45, 0.4, 0.55, 0.65])
+    const summary = summarizeFootballCvTracks(parsed.data)[0]
+    expect(summary.points[0].box).toEqual([0.45, 0.4, 0.55, 0.65])
+  })
 })
 
 describe('Football CV track conversion', () => {
