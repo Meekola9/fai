@@ -17,6 +17,11 @@ import {
   type HudlImportPreviewRow,
   type HudlTable,
 } from '../lib/hudlImport'
+import {
+  isExcelHudlBreakdown,
+  isLegacyExcelHudlBreakdown,
+  parseHudlWorkbookFile,
+} from '../lib/hudlWorkbook'
 import { FORMATIONS, PERSONNEL, PLAY_CALLS, labelFor } from '../lib/filmAnalysis'
 
 const emptyTable: HudlTable = { headers: [], rows: [], delimiter: ',' }
@@ -167,9 +172,27 @@ export default function HudlImportWizard() {
   }
 
   async function loadBreakdownFile(file: File) {
-    const text = await file.text()
-    setBreakdownText(text)
-    parseBreakdown(text)
+    try {
+      if (isLegacyExcelHudlBreakdown(file.name)) {
+        throw new Error('Legacy .xls files are not supported. In Excel, choose Save As and select .xlsx, then upload that file.')
+      }
+      if (isExcelHudlBreakdown(file.name)) {
+        const workbook = await parseHudlWorkbookFile(file)
+        setBreakdownText('')
+        setTable(workbook.table)
+        setMapping(autoMapHudlColumns(workbook.table.headers))
+        setOverrides({})
+        setSelectedRow(0)
+        const warning = workbook.warnings.length ? ` ${workbook.warnings.join(' ')}` : ''
+        setMessage(`${workbook.table.rows.length} breakdown rows loaded from ${workbook.sheetName} in ${file.name}.${warning}`)
+        return
+      }
+      const text = await file.text()
+      setBreakdownText(text)
+      parseBreakdown(text)
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : 'Could not read this Hudl breakdown file.')
+    }
   }
 
   function updateDefault<K extends keyof HudlImportDefaults>(key: K, value: HudlImportDefaults[K]) {
@@ -276,14 +299,14 @@ export default function HudlImportWizard() {
                   Download template
                 </button>
               )}>
-                2 · Breakdown data
+                2 · Hudl breakdown file
               </SectionTitle>
               <div className="flex flex-wrap gap-2">
                 <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm font-bold text-chalk hover:border-fai/50">
-                  Upload CSV / TSV
+                  Upload Excel / CSV / TSV
                   <input
                     type="file"
-                    accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values"
+                    accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/tab-separated-values"
                     className="hidden"
                     onChange={(event) => {
                       const file = event.target.files?.[0]
@@ -298,6 +321,9 @@ export default function HudlImportWizard() {
                 >
                   Parse pasted rows
                 </button>
+              </div>
+              <div className="mt-2 text-[11px] leading-relaxed text-muted">
+                Upload the Excel breakdown downloaded from Hudl. FAI scans the workbook sheets, finds the strongest Hudl header row, and keeps the existing column-mapping review. Modern .xlsx and .xlsm files are supported; resave legacy .xls files as .xlsx.
               </div>
               <textarea
                 value={breakdownText}
