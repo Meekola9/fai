@@ -55,6 +55,7 @@ import {
   normalizeAthleteName,
 } from '../lib/athleteIdentity'
 import { LatestSaveQueue } from './latestSaveQueue'
+import { authLifecycleAction } from './authLifecycle'
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 export type StorageMode = 'local' | 'cloud'
@@ -210,9 +211,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true
     let activationNumber = 0
+    let activeAuthUserId: string | undefined
 
     async function showSignedOut() {
       const request = ++activationNumber
+      activeAuthUserId = undefined
       const local = await localStore.load()
 
       // Signed-out visitors get a read-only live view of the team cloud when
@@ -259,6 +262,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const access = await loadTeamAccess(user.id)
       if (!alive || request !== activationNumber) return
 
+      // Mark the successfully resolved session before cloud hydration. Supabase
+      // can emit SIGNED_IN or TOKEN_REFRESHED again when a backgrounded tab
+      // regains focus; those same-user events must not remount the whole app.
+      activeAuthUserId = user.id
       setUserId(user.id)
       setUserEmail(user.email ?? undefined)
       setViewerMode(false)
@@ -395,10 +402,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const authSubscription = supabase?.auth.onAuthStateChange((_event, session) => {
+    const authSubscription = supabase?.auth.onAuthStateChange((event, session) => {
       window.setTimeout(() => {
         if (!alive) return
-        if (session?.user) {
+        const action = authLifecycleAction(event, session?.user?.id, activeAuthUserId)
+
+        // Supabase may emit SIGNED_IN again when a tab regains focus, and it
+        // emits TOKEN_REFRESHED for the same session. Rehydrating the full
+        // store for those events sets global loading=true, unmounts Film Room,
+        // and releases its local video URL. Refresh identity fields in place.
+        if (action === 'ignore-bootstrap') return
+        if (action === 'refresh-user' && session?.user) {
+          setUserId(session.user.id)
+          setUserEmail(session.user.email ?? undefined)
+          return
+        }
+
+        if (action === 'activate-user' && session?.user) {
           void activateUser(session.user).catch((error: unknown) => {
             if (!alive) return
             setAuthError(
