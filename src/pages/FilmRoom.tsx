@@ -60,7 +60,9 @@ import {
 import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
 import { mergeFootballCvPlayerTracks } from '../lib/footballCvImport'
 import { summarizeTrackSpeed } from '../lib/playerSpeed'
+import { buildFieldHeatmap } from '../lib/playerHeatmap'
 import FieldMap from '../components/FieldMap'
+import FieldHeatmap from '../components/FieldHeatmap'
 import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
 import { shouldShowTrackLabel, tracksForFilmStage } from '../lib/filmTrackDisplay'
 import {
@@ -864,6 +866,12 @@ export default function FilmRoom() {
     .sort((left, right) => right.speed.topSpeedMph - left.speed.topSpeedMph)
     .slice(0, 8)
   const hasFieldTracks = playerTracks.some((track) => track.points.some((point) => Array.isArray(point.field)))
+  const activeTrackHasField = Boolean(activeTrack?.points.some((point) => Array.isArray(point.field)))
+  const heatmapScope = activeTrackHasField && activeTrack ? [activeTrack] : playerTracks
+  const heatmapScopeLabel = activeTrackHasField && activeTrack
+    ? (activeTrack.label ?? 'Active player')
+    : 'All tracked players'
+  const fieldHeatmap = hasFieldTracks ? buildFieldHeatmap(heatmapScope) : undefined
   const throwRecord = throwAnalysisAnnotation(pending)
   const throwAnalysis = throwRecord?.throwAnalysis ?? {}
   const throwMetrics = computeThrowMetrics(throwAnalysis)
@@ -1998,8 +2006,8 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
               {speedLeaders.length > 0 ? (
                 <div className="rounded-xl border border-up/25 bg-up/5 p-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-black text-chalk">Player speed leaderboard</div>
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">top speed · mph</span>
+                    <div className="text-xs font-black text-chalk">Player speed &amp; distance</div>
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">top mph · yds covered</span>
                   </div>
                   <div className="mt-2 space-y-1">
                     {speedLeaders.map((entry, index) => (
@@ -2007,6 +2015,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                         <span className="w-4 text-center font-black text-muted nums">{index + 1}</span>
                         <span className="flex-1 truncate font-bold text-chalk">{entry.track.label ?? 'Tracked player'}</span>
                         <span className="text-[10px] text-muted nums">avg {entry.speed.avgSpeedMph}</span>
+                        <span className="min-w-12 text-right text-[10px] text-muted nums">{entry.speed.distanceYards} yd</span>
                         <span className="min-w-14 text-right font-black text-up nums">{entry.speed.topSpeedMph} mph</span>
                       </div>
                     ))}
@@ -2020,6 +2029,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
               )}
               <FormationBoard tracks={formationTracks} atTime={formationStartTime} />
               {hasFieldTracks && <FieldMap tracks={playerTracks} atTime={videoTime} />}
+              {fieldHeatmap?.hasField && <FieldHeatmap heatmap={fieldHeatmap} scopeLabel={heatmapScopeLabel} />}
               {trackingMessage && <div className="text-xs font-bold text-gold">{trackingMessage}</div>}
             </div>
           )}
