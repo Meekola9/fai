@@ -166,6 +166,54 @@ export function trackPositionAt(
   return undefined
 }
 
+/** Interpolated real-world field position (yards) at a time, for the top-down map.
+ * Hidden before the first field keyframe; clamped to the last after tracking ends. */
+export function trackFieldAt(
+  points: readonly FilmAnnotationPoint[],
+  timeSec: number,
+): [number, number] | undefined {
+  const located = trackKeyframes(points).filter(
+    (point): point is FilmAnnotationPoint & { t: number; field: [number, number] } =>
+      Array.isArray(point.field),
+  )
+  if (located.length === 0 || timeSec < located[0].t) return undefined
+  if (timeSec >= located[located.length - 1].t) return located[located.length - 1].field
+
+  for (let index = 0; index < located.length - 1; index += 1) {
+    const from = located[index]
+    const to = located[index + 1]
+    if (timeSec < from.t || timeSec > to.t) continue
+    const duration = to.t - from.t
+    if (duration <= 0) return to.field
+    const progress = (timeSec - from.t) / duration
+    return [
+      from.field[0] + (to.field[0] - from.field[0]) * progress,
+      from.field[1] + (to.field[1] - from.field[1]) * progress,
+    ]
+  }
+  return undefined
+}
+
+/** Field-space path (yards) up to a time, plus the interpolated current point — for
+ * drawing a top-down movement trail. Empty when the track has no field coordinates. */
+export function trackFieldTrailAt(
+  points: readonly FilmAnnotationPoint[],
+  timeSec: number,
+): Array<[number, number]> {
+  const located = trackKeyframes(points).filter(
+    (point): point is FilmAnnotationPoint & { t: number; field: [number, number] } =>
+      Array.isArray(point.field),
+  )
+  if (located.length === 0 || timeSec < located[0].t) return []
+  const trail: Array<[number, number]> = located
+    .filter((point) => point.t <= timeSec)
+    .map((point) => point.field)
+  const current = trackFieldAt(points, timeSec)
+  const last = trail.at(-1)
+  if (current && (!last || last[0] !== current[0] || last[1] !== current[1])) trail.push(current)
+  return trail
+}
+
 /** Interpolated player box at a time, for the tracking highlight. Hidden before the
  * first boxed keyframe; clamped to the last one after tracking ends. */
 export function trackBoxAt(
