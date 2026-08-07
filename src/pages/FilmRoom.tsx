@@ -60,6 +60,7 @@ import {
 import { LockedBrowserPlayerAutoTracker } from '../lib/filmLockedAutoTracking'
 import { mergeFootballCvPlayerTracks } from '../lib/footballCvImport'
 import { summarizeTrackSpeed } from '../lib/playerSpeed'
+import FieldMap from '../components/FieldMap'
 import { followViewForAthlete } from '../lib/filmAutoFollowViewport'
 import { shouldShowTrackLabel, tracksForFilmStage } from '../lib/filmTrackDisplay'
 import {
@@ -862,6 +863,7 @@ export default function FilmRoom() {
     .filter((entry) => entry.speed.hasField)
     .sort((left, right) => right.speed.topSpeedMph - left.speed.topSpeedMph)
     .slice(0, 8)
+  const hasFieldTracks = playerTracks.some((track) => track.points.some((point) => Array.isArray(point.field)))
   const throwRecord = throwAnalysisAnnotation(pending)
   const throwAnalysis = throwRecord?.throwAnalysis ?? {}
   const throwMetrics = computeThrowMetrics(throwAnalysis)
@@ -2017,6 +2019,7 @@ Set the pre-snap frame, create one player, arm auto-follow, and tap that player 
                 </div>
               )}
               <FormationBoard tracks={formationTracks} atTime={formationStartTime} />
+              {hasFieldTracks && <FieldMap tracks={playerTracks} atTime={videoTime} />}
               {trackingMessage && <div className="text-xs font-bold text-gold">{trackingMessage}</div>}
             </div>
           )}

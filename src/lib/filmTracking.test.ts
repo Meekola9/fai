@@ -5,11 +5,43 @@ import {
   isPlayerTrack,
   removeTrackKeyframe,
   trackBoxAt,
+  trackFieldAt,
+  trackFieldTrailAt,
   trackKeyframes,
   trackPositionAt,
   trackTrailAt,
   upsertTrackKeyframe,
 } from './filmTracking'
+
+describe('trackFieldAt / trackFieldTrailAt (top-down field map)', () => {
+  const points = [
+    { x: 0.4, y: 0.5, t: 0, field: [10, 20] as [number, number] },
+    { x: 0.6, y: 0.5, t: 2, field: [30, 20] as [number, number] },
+  ]
+
+  it('interpolates the field position between keyframes', () => {
+    const pos = trackFieldAt(points, 1)
+    expect(pos).toBeDefined()
+    expect(pos![0]).toBeCloseTo(20, 5)
+    expect(pos![1]).toBeCloseTo(20, 5)
+  })
+
+  it('is hidden before the first field keyframe and clamps after the last', () => {
+    expect(trackFieldAt(points, -1)).toBeUndefined()
+    expect(trackFieldAt(points, 99)).toEqual([30, 20])
+  })
+
+  it('returns undefined when no point carries field yards', () => {
+    expect(trackFieldAt([{ x: 0.5, y: 0.5, t: 0 }], 0)).toBeUndefined()
+  })
+
+  it('builds a field trail up to the current time', () => {
+    const trail = trackFieldTrailAt(points, 1)
+    expect(trail[0]).toEqual([10, 20])
+    expect(trail.at(-1)![0]).toBeCloseTo(20, 5)
+    expect(trackFieldTrailAt([{ x: 0.5, y: 0.5, t: 0 }], 0)).toEqual([])
+  })
+})
 
 describe('trackBoxAt (player highlight box)', () => {
   const points = [
