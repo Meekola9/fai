@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
 import { GameDayBadgeArtwork } from '../components/GameDayBadges'
+import GameImpactImport from '../components/GameImpactImport'
 import {
   HAVOC_TYPES,
   HAVOC_NEGATIVES,
@@ -400,6 +401,8 @@ export default function Playmakers() {
           </button>
         </Card>
       )}
+
+      {canEdit && <GameImpactImport />}
 
       <Card className="p-5">
         <SectionTitle>Active Game-Day Badges · This Week</SectionTitle>
