@@ -344,11 +344,26 @@ button.deployment-card:hover {
 /* Live Havoc / Playmaker meter chrome. Scoped to the meters only; the
    prefers-reduced-motion block below freezes all of it for opted-out viewers. */
 @keyframes fai-bolt {
-  0%, 100% { opacity: 0.12; transform: translateX(-50%) scaleY(0.96); }
-  10% { opacity: 0.95; }
-  32% { opacity: 0.3; }
-  55% { opacity: 0.8; transform: translateX(-50%) scaleY(1.04); }
-  80% { opacity: 0.22; }
+  0%, 100% { opacity: 0.06; transform: translateX(-50%) scaleY(0.9); }
+  5% { opacity: 1; transform: translateX(-50%) scaleY(1.06); }   /* strike */
+  11% { opacity: 0.2; }
+  16% { opacity: 0.9; transform: translateX(-50%) scaleY(1.02); } /* re-strike flicker */
+  24% { opacity: 0.12; }
+  60% { opacity: 0.55; transform: translateX(-50%) scaleY(1.0); } /* charged glow */
+  78% { opacity: 0.18; }
+}
+/* Whole lightning layer breathes so the Havoc meter reads as pulsating. */
+@keyframes fai-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+/* Camera flash: a fast bright pop with a paparazzi double-blink, then dark. */
+@keyframes fai-flash {
+  0%, 100% { opacity: 0; transform: scale(0.35); }
+  4% { opacity: 1; transform: scale(1.15); }
+  12% { opacity: 0.08; transform: scale(1); }
+  17% { opacity: 0.85; transform: scale(1.05); }
+  27% { opacity: 0; }
 }
 @keyframes fai-volt {
   0%, 100% { opacity: 0.35; transform: scale(0.92); }
@@ -368,7 +383,9 @@ button.deployment-card:hover {
   100% { transform: translateX(1200%) skewX(12deg); }
 }
 
-.animate-bolt { animation: fai-bolt 1.6s ease-in-out infinite; }
+.animate-bolt { animation: fai-bolt 1.4s ease-in-out infinite; }
+.animate-pulse-layer { animation: fai-pulse 1.9s ease-in-out infinite; }
+.animate-flash { animation: fai-flash 2.2s ease-out infinite; }
 .animate-volt { animation: fai-volt 3.2s ease-in-out infinite; }
 .animate-surge { animation: fai-surge 2.8s linear infinite; }
 .animate-shine { animation: fai-shine 2.6s ease-in-out infinite; }

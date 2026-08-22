@@ -110,7 +110,7 @@ function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays
   return (
     <div className="relative overflow-hidden rounded-2xl border border-down/30 bg-gradient-to-b from-[#160a12] to-[#0a0710] p-5">
       <div className="field-grid absolute inset-0 opacity-60" aria-hidden />
-      <div className="absolute inset-0" aria-hidden>
+      <div className="animate-pulse-layer absolute inset-0" aria-hidden>
         {total > 0 && bolts.map((bolt, index) => <Bolt key={index} {...bolt} />)}
       </div>
       <div className="pointer-events-none absolute -inset-8 animate-volt bg-[radial-gradient(circle_at_50%_45%,rgba(239,68,68,0.22),transparent_62%)]" aria-hidden />
@@ -149,21 +149,31 @@ function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays
 
 function PlaymakerMeter({ total, fill, plays }: { total: number; fill: number; plays: number }) {
   const shown = useCountUp(total)
-  const streaks = Array.from({ length: 7 }, (_, index) => index)
+  // Paparazzi camera flashes — scattered, staggered bright pops for the stars.
+  const flashes = Array.from({ length: 12 }, (_, index) => ({
+    left: `${(index * 37 + 7) % 92}%`,
+    top: `${(index * 53 + 11) % 82}%`,
+    delay: `${((index * 41) % 220) / 100}s`,
+    size: 6 + ((index * 13) % 12),
+  }))
   return (
     <div className="relative overflow-hidden rounded-2xl border border-up/30 bg-gradient-to-b from-[#07140c] to-[#050b09] p-5">
       <div className="field-grid absolute inset-0 opacity-60" aria-hidden />
       <div className="absolute inset-0 overflow-hidden" aria-hidden>
         {total > 0 &&
-          streaks.map((index) => (
+          flashes.map((flash, index) => (
             <span
               key={index}
-              className="animate-surge absolute bottom-0 h-24 w-[3px] rounded-full bg-gradient-to-t from-transparent via-up to-white"
+              className="animate-flash absolute rounded-full"
               style={{
-                left: `${6 + index * 13}%`,
-                animationDelay: `${(index * 0.35) % 2.6}s`,
-                opacity: 0.7,
-                filter: 'drop-shadow(0 0 6px #22c55e)',
+                left: flash.left,
+                top: flash.top,
+                width: `${flash.size}px`,
+                height: `${flash.size}px`,
+                background:
+                  'radial-gradient(circle, #ffffff 0%, rgba(255,255,255,0.65) 35%, transparent 70%)',
+                animationDelay: flash.delay,
+                filter: 'drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 12px rgba(34,197,94,0.8))',
               }}
             />
           ))}
