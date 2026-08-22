@@ -341,12 +341,42 @@ button.deployment-card:hover {
   background-size: 28px 28px;
 }
 
-.animate-bolt,
-.animate-volt,
-.animate-charge,
-.animate-shine,
-.animate-surge {
-  animation: none;
+/* Live Havoc / Playmaker meter chrome. Scoped to the meters only; the
+   prefers-reduced-motion block below freezes all of it for opted-out viewers. */
+@keyframes fai-bolt {
+  0%, 100% { opacity: 0.12; transform: translateX(-50%) scaleY(0.96); }
+  10% { opacity: 0.95; }
+  32% { opacity: 0.3; }
+  55% { opacity: 0.8; transform: translateX(-50%) scaleY(1.04); }
+  80% { opacity: 0.22; }
+}
+@keyframes fai-volt {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); }
+  50% { opacity: 0.7; transform: scale(1.07); }
+}
+@keyframes fai-surge {
+  0% { transform: translateY(35%); opacity: 0; }
+  20% { opacity: 0.85; }
+  100% { transform: translateY(-125%); opacity: 0; }
+}
+@keyframes fai-charge {
+  0% { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+@keyframes fai-shine {
+  0% { transform: translateX(-320%) skewX(12deg); }
+  100% { transform: translateX(1200%) skewX(12deg); }
+}
+
+.animate-bolt { animation: fai-bolt 1.6s ease-in-out infinite; }
+.animate-volt { animation: fai-volt 3.2s ease-in-out infinite; }
+.animate-surge { animation: fai-surge 2.8s linear infinite; }
+.animate-shine { animation: fai-shine 2.6s ease-in-out infinite; }
+.animate-charge {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+  animation: fai-charge 1.9s linear infinite;
 }
 
 .no-scrollbar::-webkit-scrollbar {

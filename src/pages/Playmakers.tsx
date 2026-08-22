@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { stepCountUp } from '../lib/animation'
 import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
 import { GameDayBadgeArtwork } from '../components/GameDayBadges'
@@ -70,7 +71,35 @@ function Bolt({
 
 const BOLT_COLORS = ['#38bdf8', '#a855f7', '#22d3ee', '#818cf8', '#60a5fa']
 
+/** Animate a number up to its target with an ease-out; snaps for reduced-motion. */
+function useCountUp(target: number, durationMs = 900): number {
+  const [value, setValue] = useState(target)
+  const fromRef = useRef(target)
+  useEffect(() => {
+    const from = fromRef.current
+    const reduce =
+      typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reduce || from === target) {
+      setValue(target)
+      fromRef.current = target
+      return
+    }
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const progress = (now - start) / durationMs
+      setValue(stepCountUp(from, target, progress))
+      if (progress < 1) raf = requestAnimationFrame(tick)
+      else fromRef.current = target
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, durationMs])
+  return value
+}
+
 function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays: number }) {
+  const shown = useCountUp(total)
   const boltCount = 3 + Math.min(5, Math.floor(total / 8))
   const bolts = Array.from({ length: boltCount }, (_, index) => ({
     leftPct: 8 + (index * 84) / Math.max(1, boltCount - 1),
@@ -95,7 +124,7 @@ function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays
           <div className="relative inline-block">
             <div className="animate-volt absolute inset-0 -z-0 blur-2xl" style={{ background: 'radial-gradient(circle,#38bdf8,transparent 70%)', opacity: 0.5 }} aria-hidden />
             <div className="nums relative text-7xl font-black leading-none text-chalk drop-shadow-[0_0_18px_rgba(56,189,248,0.55)]">
-              {total}
+              {shown}
             </div>
           </div>
           <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-muted">Chaos Created</div>
@@ -103,7 +132,7 @@ function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays
 
         <div className="relative mt-6 h-3 w-full overflow-hidden rounded-full border border-line bg-black/50">
           <div
-            className="relative h-full rounded-full bg-gradient-to-r from-down/70 via-[#38bdf8] to-[#a855f7]"
+            className="relative h-full rounded-full bg-gradient-to-r from-down/70 via-[#38bdf8] to-[#a855f7] transition-[width] duration-700 ease-out"
             style={{ width: `${clamp(fill, 0.04, 1) * 100}%` }}
           >
             <div className="animate-charge absolute inset-0 text-white/70" />
@@ -119,6 +148,7 @@ function HavocMeter({ total, fill, plays }: { total: number; fill: number; plays
 }
 
 function PlaymakerMeter({ total, fill, plays }: { total: number; fill: number; plays: number }) {
+  const shown = useCountUp(total)
   const streaks = Array.from({ length: 7 }, (_, index) => index)
   return (
     <div className="relative overflow-hidden rounded-2xl border border-up/30 bg-gradient-to-b from-[#07140c] to-[#050b09] p-5">
@@ -149,7 +179,7 @@ function PlaymakerMeter({ total, fill, plays }: { total: number; fill: number; p
           <div className="relative inline-block">
             <div className="animate-volt absolute inset-0 -z-0 blur-2xl" style={{ background: 'radial-gradient(circle,#22c55e,transparent 70%)', opacity: 0.5 }} aria-hidden />
             <div className="nums relative text-7xl font-black leading-none text-chalk drop-shadow-[0_0_18px_rgba(34,197,94,0.55)]">
-              {total}
+              {shown}
             </div>
           </div>
           <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.2em] text-muted">Explosive Plays</div>
@@ -157,7 +187,7 @@ function PlaymakerMeter({ total, fill, plays }: { total: number; fill: number; p
 
         <div className="relative mt-6 h-3 w-full overflow-hidden rounded-full border border-line bg-black/50">
           <div
-            className="relative h-full rounded-full bg-gradient-to-r from-up/70 via-up to-[#a3e635]"
+            className="relative h-full rounded-full bg-gradient-to-r from-up/70 via-up to-[#a3e635] transition-[width] duration-700 ease-out"
             style={{ width: `${clamp(fill, 0.04, 1) * 100}%` }}
           >
             <div className="animate-charge absolute inset-0 text-white/70" />
