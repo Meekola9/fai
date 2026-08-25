@@ -463,4 +463,6 @@ export interface AthleteResult {
   impactBoostPct: number
   /** Awareness-quiz boost applied to current.fai, in percent. */
   awarenessBoostPct: number
+  /** Signed efficiency adjustment applied to current.fai, in percent (+boost / -reduction). */
+  efficiencyBoostPct: number
 }

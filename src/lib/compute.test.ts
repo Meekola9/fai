@@ -236,6 +236,19 @@ describe('FAI computation', () => {
     expect(none.current.fai).toBe(none.baseFai)
   })
 
+  it('applies a negative efficiency swing as an FAI reduction', () => {
+    const computed = computeAll(completeData)
+    const id = computed[0].athlete.id
+    const base = buildResults(computed)[0]
+
+    const reduced = buildResults(computed, undefined, undefined, undefined, new Map([[id, -6]]))[0]
+    expect(reduced.efficiencyBoostPct).toBe(-6)
+    expect(reduced.baseFai).toBe(base.current.fai)
+    const expected = Math.round(Math.max(0, base.current.fai * 0.94) * 10) / 10
+    expect(reduced.current.fai).toBe(expected)
+    expect(reduced.current.fai).toBeLessThan(reduced.baseFai)
+  })
+
   it('recomputes one testing card against a selected secondary position group', () => {
     const merged = computeAll(completeData)[0]
     const withTen = { ...merged.session, dash10_1: 1.7, dash10_2: 1.73 }
