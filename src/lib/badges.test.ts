@@ -113,6 +113,7 @@ function resultFor(
     baseFai: current.fai,
     impactBoostPct: 0,
     awarenessBoostPct: 0,
+    efficiencyBoostPct: 0,
   }
 }
 

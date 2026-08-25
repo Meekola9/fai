@@ -74,6 +74,7 @@ function result(id: string, rankEligible: boolean, dash40: number): AthleteResul
     baseFai: current.fai,
     impactBoostPct: 0,
     awarenessBoostPct: 0,
+    efficiencyBoostPct: 0,
   }
 }
 
