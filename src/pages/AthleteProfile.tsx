@@ -236,7 +236,8 @@ export default function AthleteProfile() {
   const selectedPositionName = viewingSecondary
     ? athlete.secondaryPosition ?? secondaryGroup ?? 'Secondary'
     : athlete.position
-  const totalBoostPct = displayResult.impactBoostPct + displayResult.awarenessBoostPct
+  const totalBoostPct =
+    displayResult.impactBoostPct + displayResult.awarenessBoostPct + displayResult.efficiencyBoostPct
   const positionCurrent = {
     ...selectedPosition,
     fai: round1(clamp(selectedPosition.fai * (1 + totalBoostPct / 100), 0, 100)),
@@ -281,7 +282,9 @@ export default function AthleteProfile() {
           <Pill tone={rankEligible ? 'up' : 'gold'}>{rankEligible ? 'Official score' : `${current.scoreStatus} · ${current.completionPct}% complete`}</Pill>
           {displayResult.impactBoostPct > 0 && <Pill tone="fai">Playmaker +{displayResult.impactBoostPct}%</Pill>}
           {displayResult.awarenessBoostPct > 0 && <Pill tone="fai">Awareness +{displayResult.awarenessBoostPct}%</Pill>}
-          {(displayResult.impactBoostPct > 0 || displayResult.awarenessBoostPct > 0) && <Pill tone="gold">Boosted from {displayResult.baseFai.toFixed(1)}</Pill>}
+          {displayResult.efficiencyBoostPct > 0 && <Pill tone="up">Efficiency +{displayResult.efficiencyBoostPct}%</Pill>}
+          {displayResult.efficiencyBoostPct < 0 && <Pill tone="down">Efficiency {displayResult.efficiencyBoostPct}%</Pill>}
+          {totalBoostPct !== 0 && <Pill tone="gold">{totalBoostPct > 0 ? 'Boosted' : 'Adjusted'} from {displayResult.baseFai.toFixed(1)}</Pill>}
           {typeof current.metrics.bestFly === 'number' && current.metrics.bestFly > 0 && <Pill tone="gold">Top Speed {flyTimeToMph(current.metrics.bestFly).toFixed(1)} mph</Pill>}
         </div>
         {!rankEligible && (

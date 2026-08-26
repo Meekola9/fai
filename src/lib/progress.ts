@@ -175,6 +175,7 @@ export function buildResults(
   eventId?: string,
   boostByAthlete?: Map<string, number>,
   awarenessBoostByAthlete?: Map<string, number>,
+  efficiencyBoostByAthlete?: Map<string, number>,
 ): AthleteResult[] {
   const athleteIds = new Set(computed.map((result) => result.session.athleteId))
   const results: AthleteResult[] = []
@@ -195,10 +196,12 @@ export function buildResults(
     // into current.fai so every ranking and display picks it up, keeping the base.
     const impactBoostPct = boostByAthlete?.get(athleteId) ?? 0
     const awarenessBoostPct = awarenessBoostByAthlete?.get(athleteId) ?? 0
-    const totalBoostPct = impactBoostPct + awarenessBoostPct
+    // Efficiency is signed — it can lift or reduce the overall.
+    const efficiencyBoostPct = efficiencyBoostByAthlete?.get(athleteId) ?? 0
+    const totalBoostPct = impactBoostPct + awarenessBoostPct + efficiencyBoostPct
     const baseFai = baseCurrent.fai
     const current =
-      totalBoostPct > 0
+      totalBoostPct !== 0
         ? { ...baseCurrent, fai: round1(clamp(baseFai * (1 + totalBoostPct / 100), 0, 100)) }
         : baseCurrent
 
@@ -224,6 +227,7 @@ export function buildResults(
       baseFai,
       impactBoostPct,
       awarenessBoostPct,
+      efficiencyBoostPct,
     })
   }
 

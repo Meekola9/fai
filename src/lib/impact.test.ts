@@ -75,6 +75,41 @@ describe('impact scoring', () => {
     expect(summary.boostByAthlete.size).toBe(0)
   })
 
+  it('rewards efficient players and reduces mistake-prone ones with a signed swing', () => {
+    const roster = [athlete('eff', 'Efficient'), athlete('bad', 'Sloppy')]
+    const good = Array.from({ length: 8 }, () => play('eff', 'tfl')) // 8 positive
+    const bad = Array.from({ length: 8 }, () => play('bad', 'missed_tackle')) // 8 negative
+    const summary = buildImpact([...good, ...bad], roster)
+    const eff = summary.athletes.find((i) => i.athlete.id === 'eff')!
+    const sloppy = summary.athletes.find((i) => i.athlete.id === 'bad')!
+
+    expect(eff.efficiency).toBe(100)
+    expect(eff.efficiencyBoostPct).toBe(8) // full positive swing at 8 plays
+    expect(summary.efficiencyBoostByAthlete.get('eff')).toBe(8)
+
+    expect(sloppy.efficiency).toBe(0)
+    expect(sloppy.efficiencyBoostPct).toBe(-8) // full reduction
+    expect(summary.efficiencyBoostByAthlete.get('bad')).toBe(-8)
+  })
+
+  it('scales the efficiency swing down for small samples', () => {
+    // 2 positive plays → volume 2/8 → a quarter of the +8 swing.
+    const summary = buildImpact([play('a', 'tfl'), play('a', 'tfl')], [athlete('a', 'A')])
+    expect(summary.athletes[0].efficiency).toBe(100)
+    expect(summary.athletes[0].efficiencyBoostPct).toBe(2)
+  })
+
+  it('treats a balanced positive/negative record as neutral efficiency', () => {
+    // +5 interception and -5 worth of mistakes → 50% efficiency → no swing.
+    const summary = buildImpact(
+      [play('a', 'interception'), play('a', 'missed_tackle'), play('a', 'td_allowed')],
+      [athlete('a', 'A')],
+    )
+    expect(summary.athletes[0].efficiency).toBe(50)
+    expect(summary.athletes[0].efficiencyBoostPct).toBe(0)
+    expect(summary.efficiencyBoostByAthlete.has('a')).toBe(false)
+  })
+
   it('ignores unknown play types for points but still counts them', () => {
     expect(playPoints('interception')).toBe(5)
     expect(playPoints('not_a_play')).toBe(0)

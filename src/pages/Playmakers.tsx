@@ -261,6 +261,8 @@ function LevelCard({ item, rank }: { item: AthleteImpact; rank: number }) {
             {item.havocPoints > 0 && <Pill tone="down">💥 {item.havocPoints}</Pill>}
             {item.playmakerPoints > 0 && <Pill tone="up">⚡ {item.playmakerPoints}</Pill>}
             {item.boostPct > 0 && <Pill tone="gold">📈 +{item.boostPct}% overall</Pill>}
+            {item.efficiencyBoostPct > 0 && <Pill tone="up">🎯 {item.efficiency}% eff · +{item.efficiencyBoostPct}%</Pill>}
+            {item.efficiencyBoostPct < 0 && <Pill tone="down">🎯 {item.efficiency}% eff · {item.efficiencyBoostPct}%</Pill>}
             {item.negativePoints > 0 && <Pill tone="down">⚠️ −{item.negativePoints}</Pill>}
           </div>
         </div>

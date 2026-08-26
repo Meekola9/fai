@@ -465,17 +465,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const computed = useMemo(() => computeAll(data), [data])
-  const impactBoost = useMemo(
-    () => buildImpact(data.plays, data.athletes).boostByAthlete,
+  const impactSummary = useMemo(
+    () => buildImpact(data.plays, data.athletes),
     [data.plays, data.athletes],
   )
+  const impactBoost = impactSummary.boostByAthlete
+  const efficiencyBoost = impactSummary.efficiencyBoostByAthlete
   const awarenessBoost = useMemo(
     () => awarenessBoostByAthlete(data.awarenessResults),
     [data.awarenessResults],
   )
   const results = useMemo(
-    () => buildResults(computed, undefined, impactBoost, awarenessBoost),
-    [computed, impactBoost, awarenessBoost],
+    () => buildResults(computed, undefined, impactBoost, awarenessBoost, efficiencyBoost),
+    [computed, impactBoost, awarenessBoost, efficiencyBoost],
   )
   const resultByAthlete = useMemo(
     () => new Map(results.map((result) => [result.athlete.id, result])),
@@ -503,7 +505,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     computed,
     results,
     resultsForEvent(eventId) {
-      return buildResults(computed, eventId, impactBoost, awarenessBoost)
+      return buildResults(computed, eventId, impactBoost, awarenessBoost, efficiencyBoost)
     },
     resultByAthlete,
     gradeLabelFor(athlete, style = 'short') {

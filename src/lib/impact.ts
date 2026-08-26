@@ -84,6 +84,30 @@ export function boostForLevel(level: number): number {
   return Math.max(0, Math.min(MAX_IMPACT_BOOST_PCT, level - 1))
 }
 
+// ---------------------------------------------------------------------------
+// Efficiency: reward players whose impact is mostly positive and dock players
+// who are mistake-prone. Unlike the level boost (volume only, positive only),
+// efficiency is a signed FAI swing — it can lift OR reduce the overall.
+// ---------------------------------------------------------------------------
+
+/** Neutral efficiency: equal positive and negative impact. */
+export const NEUTRAL_EFFICIENCY = 0.5
+/** Max FAI swing (percent) efficiency can add or subtract at full sample. */
+export const MAX_EFFICIENCY_SWING_PCT = 8
+/** Impact plays needed before efficiency swings the overall at full weight. */
+export const EFFICIENCY_FULL_WEIGHT_PLAYS = 8
+
+/**
+ * Signed FAI adjustment (percent) from an efficiency ratio (0-1). 0.5 is neutral
+ * (0%); 1.0 gives +max, 0.0 gives -max. Scaled down until a player has enough
+ * plays, so one bad rep can't tank an overall.
+ */
+export function efficiencyBoostPct(efficiency: number, playCount: number): number {
+  const volume = Math.min(1, Math.max(0, playCount) / EFFICIENCY_FULL_WEIGHT_PLAYS)
+  const swing = (efficiency - NEUTRAL_EFFICIENCY) * 2 * MAX_EFFICIENCY_SWING_PCT * volume
+  return Math.round(swing * 10) / 10
+}
+
 /**
  * Points needed to reach a level. Each level costs a little more than the last,
  * so early levels come fast and later ones are earned: L1 at 0, then +5, +10,
@@ -126,6 +150,10 @@ export interface AthleteImpact {
   level: LevelInfo
   /** FAI boost this athlete's level grants, in percent. */
   boostPct: number
+  /** Share of impact that is positive, 0-100 (50 = neutral). */
+  efficiency: number
+  /** Signed FAI adjustment from efficiency, in percent (+boost / -reduction). */
+  efficiencyBoostPct: number
   /** Count per play-type key, for the breakdown. */
   counts: Record<string, number>
 }
@@ -134,8 +162,10 @@ export interface ImpactSummary {
   athletes: AthleteImpact[]
   teamHavoc: number
   teamPlaymaker: number
-  /** athleteId -> FAI boost percent, for the results pipeline. */
+  /** athleteId -> level FAI boost percent (positive only), for the results pipeline. */
   boostByAthlete: Map<string, number>
+  /** athleteId -> signed efficiency FAI adjustment (+boost / -reduction). */
+  efficiencyBoostByAthlete: Map<string, number>
 }
 
 export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSummary {
@@ -148,6 +178,7 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
 
   const results: AthleteImpact[] = []
   const boostByAthlete = new Map<string, number>()
+  const efficiencyBoostByAthlete = new Map<string, number>()
   for (const athlete of athletes) {
     const own = byAthlete.get(athlete.id) ?? []
     if (own.length === 0) continue
@@ -167,6 +198,14 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
     const level = levelForPoints(totalPoints)
     const boostPct = boostForLevel(level.level)
     if (boostPct > 0) boostByAthlete.set(athlete.id, boostPct)
+
+    // Efficiency = positive impact as a share of total impact magnitude.
+    const positivePoints = totalPoints + negativePoints
+    const magnitude = positivePoints + negativePoints
+    const efficiency = magnitude > 0 ? positivePoints / magnitude : NEUTRAL_EFFICIENCY
+    const efficiencyBoost = efficiencyBoostPct(efficiency, own.length)
+    if (efficiencyBoost !== 0) efficiencyBoostByAthlete.set(athlete.id, efficiencyBoost)
+
     results.push({
       athlete,
       havocPoints,
@@ -176,6 +215,8 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
       playCount: own.length,
       level,
       boostPct,
+      efficiency: Math.round(efficiency * 100),
+      efficiencyBoostPct: efficiencyBoost,
       counts,
     })
   }
@@ -191,5 +232,6 @@ export function buildImpact(plays: PlayEvent[], athletes: Athlete[]): ImpactSumm
       .filter((p) => PLAY_TYPE_BY_KEY.get(p.type)?.category === 'playmaker' && (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0) > 0)
       .reduce((sum, p) => sum + (PLAY_TYPE_BY_KEY.get(p.type)?.points ?? 0), 0),
     boostByAthlete,
+    efficiencyBoostByAthlete,
   }
 }
