@@ -4,7 +4,9 @@ import { useStore } from '../store/useStore'
 import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '../lib/compute'
 import { strengths, weaknesses } from '../lib/progress'
 import { buildFaiTrend } from '../lib/faiTrend'
+import { buildPlayerGameImpact } from '../lib/playerGameImpact'
 import FaiTrendMeter from '../components/FaiTrendMeter'
+import PlayerGameImpactCard from '../components/PlayerGameImpactCard'
 import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
 import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
@@ -214,6 +216,7 @@ export default function AthleteProfile() {
     data.plays ?? [],
     displayResult.awarenessBoostPct,
   )
+  const gameImpact = buildPlayerGameImpact(athlete, data.plays ?? [])
   const primaryGroup = current.session.positionGroupSnapshot ?? athlete.positionGroup
   const primaryPosition = computeSessionForPositionGroup(
     current.session,
@@ -300,9 +303,10 @@ export default function AthleteProfile() {
             This score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
           </div>
         )}
-        {faiTrend.points.length > 0 && (
-          <div className="mt-4">
-            <FaiTrendMeter trend={faiTrend} />
+        {(faiTrend.points.length > 0 || gameImpact.length > 0) && (
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {faiTrend.points.length > 0 && <FaiTrendMeter trend={faiTrend} />}
+            {gameImpact.length > 0 && <PlayerGameImpactCard games={gameImpact} />}
           </div>
         )}
       </Card>
