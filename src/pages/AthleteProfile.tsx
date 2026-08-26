@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '../lib/compute'
 import { strengths, weaknesses } from '../lib/progress'
+import { buildFaiTrend } from '../lib/faiTrend'
+import FaiTrendMeter from '../components/FaiTrendMeter'
 import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
 import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
@@ -206,6 +208,12 @@ export default function AthleteProfile() {
 
   const displayResult = currentSeasonResult(result)
   const { current, rankEligible } = displayResult
+  const faiTrend = buildFaiTrend(
+    athlete,
+    displayResult.baseFai,
+    data.plays ?? [],
+    displayResult.awarenessBoostPct,
+  )
   const primaryGroup = current.session.positionGroupSnapshot ?? athlete.positionGroup
   const primaryPosition = computeSessionForPositionGroup(
     current.session,
@@ -290,6 +298,11 @@ export default function AthleteProfile() {
         {!rankEligible && (
           <div className="mt-3 rounded-xl border border-flame/30 bg-flame/5 p-3 text-sm text-muted">
             This score is visible for coaching feedback but is excluded from official rankings until all required tests are complete.
+          </div>
+        )}
+        {faiTrend.points.length > 0 && (
+          <div className="mt-4">
+            <FaiTrendMeter trend={faiTrend} />
           </div>
         )}
       </Card>
