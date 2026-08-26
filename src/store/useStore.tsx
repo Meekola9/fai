@@ -16,6 +16,8 @@ import type {
   FilmSource,
   FilmCatalogEntry,
   ChiefKingPlan,
+  GameResult,
+  PlayerGameStat,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -139,6 +141,10 @@ interface StoreContextValue {
   /** Save (create or replace) an opponent's Chief-to-King plan; returns its id. */
   saveChiefKingPlan: (plan: Omit<ChiefKingPlan, 'id' | 'createdAt'> & { id?: string }) => string
   removeChiefKingPlan: (id: string) => void
+  saveGameResult: (result: Omit<GameResult, 'id' | 'createdAt'> & { id?: string }) => string
+  removeGameResult: (id: string) => void
+  savePlayerStat: (stat: Omit<PlayerGameStat, 'id' | 'createdAt'> & { id?: string }) => string
+  removePlayerStat: (id: string) => void
   /** Opt-in demo: add / remove the self-contained Sideline sample game. */
   loadSampleGame: () => void
   clearSampleGame: () => void
@@ -162,6 +168,8 @@ const EMPTY: Required<AppData> = {
   filmCatalog: [],
   chiefKingPlans: [],
   awarenessResults: [],
+  gameResults: [],
+  playerStats: [],
 }
 
 interface AuthUserLike {
@@ -798,6 +806,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         chiefKingPlans: current.chiefKingPlans.filter((p) => p.id !== id),
       }))
     },
+    saveGameResult(result) {
+      const id = result.id ?? newId('game')
+      const createdAt = new Date().toISOString()
+      mutate((current) => {
+        const exists = current.gameResults.some((g) => g.id === id)
+        const next: GameResult = {
+          ...result,
+          id,
+          createdAt: current.gameResults.find((g) => g.id === id)?.createdAt ?? createdAt,
+        }
+        return {
+          ...current,
+          gameResults: exists
+            ? current.gameResults.map((g) => (g.id === id ? next : g))
+            : [...current.gameResults, next],
+        }
+      })
+      return id
+    },
+    removeGameResult(id) {
+      mutate((current) => ({
+        ...current,
+        gameResults: current.gameResults.filter((g) => g.id !== id),
+      }))
+    },
+    savePlayerStat(stat) {
+      const id = stat.id ?? newId('stat')
+      const createdAt = new Date().toISOString()
+      mutate((current) => {
+        const exists = current.playerStats.some((s) => s.id === id)
+        const next: PlayerGameStat = {
+          ...stat,
+          id,
+          createdAt: current.playerStats.find((s) => s.id === id)?.createdAt ?? createdAt,
+        }
+        return {
+          ...current,
+          playerStats: exists
+            ? current.playerStats.map((s) => (s.id === id ? next : s))
+            : [...current.playerStats, next],
+        }
+      })
+      return id
+    },
+    removePlayerStat(id) {
+      mutate((current) => ({
+        ...current,
+        playerStats: current.playerStats.filter((s) => s.id !== id),
+      }))
+    },
     loadSampleGame() {
       const g = SAMPLE_SIDELINE_GAME
       mutate((current) => {
@@ -966,6 +1024,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           filmCatalog: current.filmCatalog,
           chiefKingPlans: current.chiefKingPlans,
           awarenessResults: current.awarenessResults,
+          gameResults: current.gameResults,
+          playerStats: current.playerStats,
         })
       })
     },

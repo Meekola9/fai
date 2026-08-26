@@ -141,6 +141,37 @@ export interface TestSession {
   cond51015?: number
 }
 
+/** The final score of one game — powers the team record and per-game W/L. */
+export interface GameResult {
+  id: string
+  date: string
+  opponent: string
+  /** Our points. */
+  teamScore: number
+  /** Opponent points. */
+  oppScore: number
+  note?: string
+  createdAt?: string
+}
+
+/** Countable box-score stat keys tracked per player per game. */
+export type StatKey =
+  | 'passAtt' | 'passComp' | 'passYds' | 'passTD' | 'passInt'
+  | 'rushAtt' | 'rushYds' | 'rushTD' | 'fumbles'
+  | 'targets' | 'rec' | 'recYds' | 'recTD' | 'drops'
+  | 'tackles' | 'tacklesForLoss' | 'sacks' | 'missedTackles' | 'passBreakups' | 'interceptions' | 'forcedFumbles'
+
+/** One athlete's box score for one game. Values live in `stats` so the record
+ * stays lean and new stat keys don't need a schema change. */
+export interface PlayerGameStat {
+  id: string
+  athleteId: string
+  date: string
+  opponent?: string
+  stats: Partial<Record<StatKey, number>>
+  createdAt?: string
+}
+
 /** A single game/scrimmage play that earns Havoc (defense) or Playmaker (offense) points. */
 export interface PlayEvent {
   id: string
@@ -429,6 +460,8 @@ export interface AppData {
   filmCatalog?: FilmCatalogEntry[]
   chiefKingPlans?: ChiefKingPlan[]
   awarenessResults?: AwarenessResult[]
+  gameResults?: GameResult[]
+  playerStats?: PlayerGameStat[]
 }
 
 export type CategoryScores = Record<Category, number>
