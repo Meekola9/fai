@@ -8,6 +8,7 @@ import { buildPlayerGameImpact } from '../lib/playerGameImpact'
 import { gameResultLookup } from '../lib/gameRecord'
 import FaiTrendMeter from '../components/FaiTrendMeter'
 import PlayerGameImpactCard from '../components/PlayerGameImpactCard'
+import PlayerStatsCard from '../components/PlayerStatsCard'
 import { playerBadgesFor } from '../lib/badges'
 import { archetypeFor } from '../lib/archetypes'
 import { ArchetypeNameplate } from '../components/ArchetypeNameplate'
@@ -312,6 +313,8 @@ export default function AthleteProfile() {
           </div>
         )}
       </Card>
+
+      <PlayerStatsCard athlete={athlete} />
 
       <Card className="p-5">
         <SectionTitle right={<Link to="/badges" className="text-xs font-bold text-gold hover:underline">Badge guide →</Link>}>

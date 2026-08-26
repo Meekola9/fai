@@ -17,6 +17,7 @@ import type {
   FilmCatalogEntry,
   ChiefKingPlan,
   GameResult,
+  PlayerGameStat,
   PlayEvent,
   TestSession,
   TestingEvent,
@@ -142,6 +143,8 @@ interface StoreContextValue {
   removeChiefKingPlan: (id: string) => void
   saveGameResult: (result: Omit<GameResult, 'id' | 'createdAt'> & { id?: string }) => string
   removeGameResult: (id: string) => void
+  savePlayerStat: (stat: Omit<PlayerGameStat, 'id' | 'createdAt'> & { id?: string }) => string
+  removePlayerStat: (id: string) => void
   /** Opt-in demo: add / remove the self-contained Sideline sample game. */
   loadSampleGame: () => void
   clearSampleGame: () => void
@@ -166,6 +169,7 @@ const EMPTY: Required<AppData> = {
   chiefKingPlans: [],
   awarenessResults: [],
   gameResults: [],
+  playerStats: [],
 }
 
 interface AuthUserLike {
@@ -827,6 +831,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         gameResults: current.gameResults.filter((g) => g.id !== id),
       }))
     },
+    savePlayerStat(stat) {
+      const id = stat.id ?? newId('stat')
+      const createdAt = new Date().toISOString()
+      mutate((current) => {
+        const exists = current.playerStats.some((s) => s.id === id)
+        const next: PlayerGameStat = {
+          ...stat,
+          id,
+          createdAt: current.playerStats.find((s) => s.id === id)?.createdAt ?? createdAt,
+        }
+        return {
+          ...current,
+          playerStats: exists
+            ? current.playerStats.map((s) => (s.id === id ? next : s))
+            : [...current.playerStats, next],
+        }
+      })
+      return id
+    },
+    removePlayerStat(id) {
+      mutate((current) => ({
+        ...current,
+        playerStats: current.playerStats.filter((s) => s.id !== id),
+      }))
+    },
     loadSampleGame() {
       const g = SAMPLE_SIDELINE_GAME
       mutate((current) => {
@@ -996,6 +1025,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           chiefKingPlans: current.chiefKingPlans,
           awarenessResults: current.awarenessResults,
           gameResults: current.gameResults,
+          playerStats: current.playerStats,
         })
       })
     },
