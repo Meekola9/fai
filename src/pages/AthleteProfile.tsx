@@ -5,6 +5,7 @@ import { athleteTimeline, clamp, computeSessionForPositionGroup, round1 } from '
 import { strengths, weaknesses } from '../lib/progress'
 import { buildFaiTrend } from '../lib/faiTrend'
 import { buildPlayerGameImpact } from '../lib/playerGameImpact'
+import { gameResultLookup } from '../lib/gameRecord'
 import FaiTrendMeter from '../components/FaiTrendMeter'
 import PlayerGameImpactCard from '../components/PlayerGameImpactCard'
 import { playerBadgesFor } from '../lib/badges'
@@ -217,6 +218,7 @@ export default function AthleteProfile() {
     displayResult.awarenessBoostPct,
   )
   const gameImpact = buildPlayerGameImpact(athlete, data.plays ?? [])
+  const gameScores = gameResultLookup(data.gameResults ?? [])
   const primaryGroup = current.session.positionGroupSnapshot ?? athlete.positionGroup
   const primaryPosition = computeSessionForPositionGroup(
     current.session,
@@ -306,7 +308,7 @@ export default function AthleteProfile() {
         {(faiTrend.points.length > 0 || gameImpact.length > 0) && (
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {faiTrend.points.length > 0 && <FaiTrendMeter trend={faiTrend} />}
-            {gameImpact.length > 0 && <PlayerGameImpactCard games={gameImpact} />}
+            {gameImpact.length > 0 && <PlayerGameImpactCard games={gameImpact} scores={gameScores} />}
           </div>
         )}
       </Card>

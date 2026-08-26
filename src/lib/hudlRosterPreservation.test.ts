@@ -21,6 +21,7 @@ describe('Hudl batch film import', () => {
       filmCatalog: [],
       chiefKingPlans: [],
       awarenessResults: [],
+      gameResults: [],
     }
     const incoming: FilmPlay[] = [{ id: 'film-1', formation: 'trips' }]
     const next = appendFilms(current, incoming)

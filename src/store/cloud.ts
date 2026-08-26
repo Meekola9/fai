@@ -8,6 +8,7 @@ import type {
   FilmCatalogEntry,
   ChiefEntry,
   ChiefKingPlan,
+  GameResult,
   KingPosition,
   PlayCall,
   PlaySide,
@@ -84,7 +85,7 @@ export async function loadTeamAccess(userId: string): Promise<TeamAccess | null>
 
 export async function loadCloudData(teamId: string): Promise<Required<AppData>> {
   const db = client()
-  const [athleteResult, eventResult, sessionResult, playResult, filmResult, sourceResult, catalogResult, planResult, awarenessResult] =
+  const [athleteResult, eventResult, sessionResult, playResult, filmResult, sourceResult, catalogResult, planResult, awarenessResult, gameResultResult] =
     await Promise.all([
       db.from('athletes').select('*').eq('team_id', teamId),
       db.from('testing_events').select('*').eq('team_id', teamId),
@@ -95,6 +96,7 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
       db.from('film_catalog').select('*').eq('team_id', teamId),
       db.from('chief_king_plans').select('*').eq('team_id', teamId),
       db.from('awareness_results').select('*').eq('team_id', teamId),
+      db.from('game_results').select('*').eq('team_id', teamId),
     ])
 
   throwIfError(athleteResult.error, 'Could not load athletes')
@@ -260,8 +262,20 @@ export async function loadCloudData(teamId: string): Promise<Required<AppData>> 
         createdAt: optionalText(row.created_at),
       }))
 
+  const gameResults: GameResult[] = gameResultResult.error
+    ? []
+    : (gameResultResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        date: String(row.date),
+        opponent: String(row.opponent),
+        teamScore: requiredNumber(row.team_score),
+        oppScore: requiredNumber(row.opp_score),
+        note: optionalText(row.note),
+        createdAt: optionalText(row.created_at),
+      }))
+
   return consolidateAthleteAliases(
-    normalizeAppData({ athletes, events, sessions, plays, filmPlays, filmSources, filmCatalog, chiefKingPlans, awarenessResults }),
+    normalizeAppData({ athletes, events, sessions, plays, filmPlays, filmSources, filmCatalog, chiefKingPlans, awarenessResults, gameResults }),
   )
 }
 
@@ -555,6 +569,30 @@ export async function saveCloudData(teamId: string, input: AppData): Promise<voi
     await deleteMissing('chief_king_plans', teamId, oldPlans, new Set((data.chiefKingPlans ?? []).map((plan) => plan.id)))
   } catch {
     // chief_king_plans table not provisioned yet — skip plan sync this save.
+  }
+
+  // Game scores / team record sync separately and non-fatally.
+  try {
+    const gameRows = (data.gameResults ?? []).map((game) => ({
+      team_id: teamId,
+      id: game.id,
+      date: game.date,
+      opponent: game.opponent,
+      team_score: game.teamScore,
+      opp_score: game.oppScore,
+      note: nullable(game.note),
+      created_at: game.createdAt ?? now,
+    }))
+    const oldGames = await existingIds('game_results', teamId)
+    if (gameRows.length > 0) {
+      const { error } = await db
+        .from('game_results')
+        .upsert(gameRows, { onConflict: 'team_id,id' })
+      throwIfError(error, 'Could not save game results')
+    }
+    await deleteMissing('game_results', teamId, oldGames, new Set((data.gameResults ?? []).map((game) => game.id)))
+  } catch {
+    // game_results table not provisioned yet — skip score sync this save.
   }
 
   // Awareness quiz results sync separately and non-fatally. A coach save upserts

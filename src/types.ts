@@ -141,6 +141,19 @@ export interface TestSession {
   cond51015?: number
 }
 
+/** The final score of one game — powers the team record and per-game W/L. */
+export interface GameResult {
+  id: string
+  date: string
+  opponent: string
+  /** Our points. */
+  teamScore: number
+  /** Opponent points. */
+  oppScore: number
+  note?: string
+  createdAt?: string
+}
+
 /** A single game/scrimmage play that earns Havoc (defense) or Playmaker (offense) points. */
 export interface PlayEvent {
   id: string
@@ -429,6 +442,7 @@ export interface AppData {
   filmCatalog?: FilmCatalogEntry[]
   chiefKingPlans?: ChiefKingPlan[]
   awarenessResults?: AwarenessResult[]
+  gameResults?: GameResult[]
 }
 
 export type CategoryScores = Record<Category, number>

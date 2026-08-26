@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore'
 import { Avatar, Card, Pill, SectionTitle } from '../components/ui'
 import { GameDayBadgeArtwork } from '../components/GameDayBadges'
 import GameImpactImport from '../components/GameImpactImport'
+import GameScores from '../components/GameScores'
 import {
   HAVOC_TYPES,
   HAVOC_NEGATIVES,
@@ -357,6 +358,8 @@ export default function Playmakers() {
           <ContributorChips items={playLeaders} pointsOf={(item) => item.playmakerPoints} tone="text-up" />
         </div>
       </div>
+
+      <GameScores />
 
       {canEdit && (
         <Card className="p-5">

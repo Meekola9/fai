@@ -1,4 +1,6 @@
+import type { GameResult } from '../types'
 import type { PlayerGameImpact } from '../lib/playerGameImpact'
+import { gameResultKey, outcomeOf } from '../lib/gameRecord'
 
 function shortDate(iso: string): string {
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -10,7 +12,13 @@ function shortDate(iso: string): string {
  * recent first. The bar splits Playmaker (green) and Havoc (blue) production
  * against mistakes (red), scaled across the player's games.
  */
-export default function PlayerGameImpactCard({ games }: { games: PlayerGameImpact[] }) {
+export default function PlayerGameImpactCard({
+  games,
+  scores,
+}: {
+  games: PlayerGameImpact[]
+  scores?: Map<string, GameResult>
+}) {
   if (games.length === 0) return null
   const rows = [...games].reverse() // most recent first
   const scale = Math.max(
@@ -34,7 +42,15 @@ export default function PlayerGameImpactCard({ games }: { games: PlayerGameImpac
             <div key={game.date + game.gameLabel}>
               <div className="flex items-center gap-2 text-[11px]">
                 <span className="min-w-24 truncate font-black text-chalk">{game.gameLabel}</span>
-                <span className="nums text-muted">{shortDate(game.date)}</span>
+                {(() => {
+                  const score = scores?.get(gameResultKey(game.date, game.opponent))
+                  if (!score) return <span className="nums text-muted">{shortDate(game.date)}</span>
+                  const outcome = outcomeOf(score)
+                  const tone = outcome === 'W' ? 'text-up' : outcome === 'L' ? 'text-down' : 'text-gold'
+                  return (
+                    <span className={`nums font-black ${tone}`}>{outcome} {score.teamScore}–{score.oppScore}</span>
+                  )
+                })()}
                 <span className="ml-auto flex items-center gap-2">
                   {game.playmakerPoints !== 0 && <span className="nums font-black text-up">⚡{game.playmakerPoints}</span>}
                   {game.havocPoints !== 0 && <span className="nums font-black text-fai">💥{game.havocPoints}</span>}
