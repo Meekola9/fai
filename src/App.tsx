@@ -12,6 +12,7 @@ import Playmakers from './pages/Playmakers'
 import FilmRoom from './pages/FilmRoom'
 import FilmLibrary from './pages/FilmLibrary'
 import Sideline from './pages/Sideline'
+import WeeklyReports from './pages/WeeklyReports'
 import AwarenessQuiz from './pages/AwarenessQuiz'
 import PlayerDevelopment from './pages/PlayerDevelopment'
 import StatsGuide from './pages/StatsGuide'
@@ -89,6 +90,7 @@ function navForAccount(viewerMode: boolean, role: string | undefined, capabiliti
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
   if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
   nav.push({ to: '/film-library', label: 'Player Study Guide' }, { to: '/development', label: 'Development' }, { to: '/stats', label: 'Stats Guide' })
+  if (capabilities.canViewReports) nav.push({ to: '/reports', label: 'Weekly Reports' })
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
   if (capabilities.canManageRoster) nav.push({ to: '/import', label: 'Bulk Import' })
   if (capabilities.canManageData) nav.push({ to: '/data', label: 'Data' })
@@ -123,6 +125,7 @@ function Header() {
           {access.role !== 'athlete' && <NavLink to="/tv" className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame">TV</NavLink>}
         </div>
       </div>
+      {!viewerMode && access.capabilities.canViewReports && <div className="border-t border-line px-3 py-2 md:hidden"><NavLink to="/reports" className="block rounded-lg bg-fai/10 px-3 py-2 text-center text-xs font-black text-fai">Weekly Reports · Grades & scouting</NavLink></div>}
     </header>
   )
 }
@@ -263,6 +266,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
           <Route path="/" element={isAthlete ? <Navigate to="/account/profile" replace /> : <Dashboard />} />
+          <Route path="/reports" element={allowed(!viewerMode && access.capabilities.canViewReports, <WeeklyReports />)} />
           <Route path="/sideline" element={staffOrPublic ? <Sideline /> : <Navigate to="/account/profile" replace />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
