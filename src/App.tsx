@@ -120,12 +120,12 @@ function Header() {
         </nav>
         <div className="flex items-center gap-2 md:hidden">
           <ConnectivityBadge />
-          {!viewerMode && access.capabilities.canViewReports && <NavLink to="/reports" className="rounded-lg border border-fai/30 bg-fai/10 px-2 py-3 text-[10px] font-black text-fai">REPORTS</NavLink>}
           <NavLink to="/film-library" className="grid h-9 min-w-9 place-items-center rounded-lg border border-fai/30 bg-fai/10 px-2 text-[10px] font-black text-fai">STUDY</NavLink>
           <NavLink to={access.role === 'athlete' ? '/account/profile' : '/stats'} className="grid h-9 min-w-9 place-items-center rounded-lg border border-line bg-panel px-2 text-[10px] font-black text-muted">{access.role === 'athlete' ? 'ME' : 'GUIDES'}</NavLink>
           {access.role !== 'athlete' && <NavLink to="/tv" className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame">TV</NavLink>}
         </div>
       </div>
+      {!viewerMode && access.capabilities.canViewReports && <div className="border-t border-line px-3 py-2 md:hidden"><NavLink to="/reports" className="block rounded-lg bg-fai/10 px-3 py-2 text-center text-xs font-black text-fai">Weekly Reports · Grades & scouting</NavLink></div>}
     </header>
   )
 }

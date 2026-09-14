@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 test.use({ viewport: { width: 390, height: 844 } })
 test('coach grades, reloads, and downloads a weekly packet on a phone', async ({ page }) => {
-  await page.goto('/reports')
+  await page.goto('/#/reports')
   await expect(page.getByRole('heading', { name: 'Weekly Reports', exact: true })).toBeVisible()
   await expect(page.getByText('Loading saved evaluations…')).not.toBeVisible()
   await page.getByLabel('Game date', { exact: true }).fill('2026-09-14')

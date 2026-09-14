@@ -13,24 +13,24 @@ create table if not exists public.weekly_grades (
   unique (team_id, athlete_id, position_group, game_date, opponent_key)
 );
 alter table public.weekly_grades enable row level security;
-revoke all on public.weekly_grades from anon;
+revoke all on public.weekly_grades from anon, authenticated;
 grant select, insert, update on public.weekly_grades to authenticated;
 create policy "Staff read weekly grades" on public.weekly_grades for select to authenticated
 using (exists (
   select 1 from public.team_members m where m.team_id = weekly_grades.team_id
-    and m.user_id = auth.uid() and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
+    and m.user_id = (select auth.uid()) and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
 ));
 create policy "Staff insert weekly grades" on public.weekly_grades for insert to authenticated
 with check (exists (
   select 1 from public.team_members m where m.team_id = weekly_grades.team_id
-    and m.user_id = auth.uid() and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
+    and m.user_id = (select auth.uid()) and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
 ));
 create policy "Staff update weekly grades" on public.weekly_grades for update to authenticated
 using (exists (
   select 1 from public.team_members m where m.team_id = weekly_grades.team_id
-    and m.user_id = auth.uid() and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
+    and m.user_id = (select auth.uid()) and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
 ))
 with check (exists (
   select 1 from public.team_members m where m.team_id = weekly_grades.team_id
-    and m.user_id = auth.uid() and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
+    and m.user_id = (select auth.uid()) and lower(m.role) in ('owner', 'admin', 'coach', 'editor', 'manager')
 ));
