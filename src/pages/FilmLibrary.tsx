@@ -30,13 +30,17 @@ function ModelCard({ item }: { item: ArchetypeFilmModel }) {
           <div className="mt-2 text-xs leading-relaxed text-muted">Study how the professional model applies this play style against NFL-level speed, leverage, and structure.</div>
         </div>
         <div className="bg-panel p-5">
-          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-muted">College model</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-muted">College film model</div>
           <div className="mt-1 text-xl font-black text-flame">{item.collegeModel}</div>
-          <div className="mt-2 text-xs leading-relaxed text-muted">Use the college model to see the traits in a developmental setting closer to high-school projection.</div>
+          <div className="mt-2 text-xs leading-relaxed text-muted">Study a different player using their college football film. This may be a historical college example, even if the player later reached the NFL.</div>
         </div>
       </div>
 
       <div className="p-5">
+        <div className="mb-5 rounded-xl border border-fai/20 bg-fai/5 p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-fai">Compare the two players</div>
+          <p className="mt-2 text-sm leading-relaxed text-chalk">{item.comparisonFocus}</p>
+        </div>
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-muted">What to study</div>
         <div className="mt-2 flex flex-wrap gap-2">
           {item.studyTopics.map((topic) => <Pill key={topic}>{topic}</Pill>)}
@@ -75,7 +79,7 @@ export default function FilmLibrary() {
         <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-chalk sm:text-4xl">Player Study Guide</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Browse professional and college study references for each FAI archetype. This guide contains study topics, not a playable clip collection. These are film-study references—not claims that testing alone proves technique, instincts, production, or football IQ.</p>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Study two different players for each FAI archetype: one professional example and one college-film example with a comparable frame or role. They are not exact physical matches; compare how each solves similar assignments. This guide contains study topics, not a playable clip collection. These are film-study references—not claims that testing alone proves technique, instincts, production, or football IQ.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to="/film" className="rounded-xl border border-fai/40 bg-fai/10 px-4 py-2 text-sm font-black text-fai">Open Film Room</Link>

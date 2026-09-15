@@ -13,22 +13,22 @@ This library maps every current FAI archetype ID to professional and college fil
 
 | Archetype ID | FAI name | Professional model | College film model | Study focus |
 |---|---|---|---|---|
-| `qb-field-general` | Field General | Joe Burrow | Joe Burrow — LSU | Protection command, coverage identification, pocket sequencing |
-| `qb-gunslinger` | Gunslinger | Josh Allen | Josh Allen — Wyoming | Velocity from imperfect platforms, deep-out timing, aggressive window selection |
-| `qb-point-guard` | Floor General | Jalen Hurts | Jalen Hurts — Oklahoma | Distribution, option decisions, movement that preserves throwing structure |
-| `qb-escape-artist` | Escape Artist | Lamar Jackson | Lamar Jackson — Louisville | Pressure escape paths, pocket exits, open-field leverage |
-| `qb-bulldozer` | Bulldozer QB | Cam Newton | Cam Newton — Auburn | Designed-run finish, short-yardage pad level, power after contact |
-| `qb-raw-cannon` | Live Arm | Anthony Richardson | Anthony Richardson — Florida | Arm strength, explosive off-platform throws, mechanical consistency needs |
-| `qb-rhythm-passer` | Rhythm Passer | Tua Tagovailoa | Tua Tagovailoa — Alabama | Catch-and-throw rhythm, anticipation, lower-body timing |
+| `qb-field-general` | Field General | Joe Burrow | Jared Goff — California | Protection command, coverage identification, pocket sequencing |
+| `qb-gunslinger` | Gunslinger | Josh Allen | Matthew Stafford — Georgia | Velocity from imperfect platforms, deep-out timing, aggressive window selection |
+| `qb-point-guard` | Floor General | Jalen Hurts | Dak Prescott — Mississippi State | Distribution, option decisions, movement that preserves throwing structure |
+| `qb-escape-artist` | Escape Artist | Lamar Jackson | Michael Vick — Virginia Tech | Pressure escape paths, pocket exits, open-field leverage |
+| `qb-bulldozer` | Bulldozer QB | Cam Newton | Tim Tebow — Florida | Designed-run finish, short-yardage pad level, power after contact |
+| `qb-raw-cannon` | Live Arm | Anthony Richardson | Cam Newton — Auburn | Arm strength, explosive off-platform throws, mechanical consistency needs |
+| `qb-rhythm-passer` | Rhythm Passer | Tua Tagovailoa | Mac Jones — Alabama | Catch-and-throw rhythm, anticipation, lower-body timing |
 
 ## Running Back
 
 | Archetype ID | FAI name | Professional model | College film model | Study focus |
 |---|---|---|---|---|
-| `rb-downhill-hammer` | Downhill Hammer | Nick Chubb | Nick Chubb — Georgia | Pressing downhill tracks, square cuts, contact balance |
-| `rb-one-cut-slasher` | One-Cut Slasher | Jonathan Taylor | Jonathan Taylor — Wisconsin | Read-to-cut timing, foot in ground, acceleration through daylight |
+| `rb-downhill-hammer` | Downhill Hammer | Nick Chubb | Michael Turner — Northern Illinois | Pressing downhill tracks, square cuts, contact balance |
+| `rb-one-cut-slasher` | One-Cut Slasher | Jonathan Taylor | Terrell Davis — Georgia | Read-to-cut timing, foot in ground, acceleration through daylight |
 | `rb-satellite-back` | Satellite Back | Christian McCaffrey | Jahmyr Gibbs — Alabama | Space routes, option leverage, screen tempo |
-| `rb-bell-cow` | Bell Cow | Derrick Henry | Derrick Henry — Alabama | Workload consistency, late-game efficiency, finishing runs |
+| `rb-bell-cow` | Bell Cow | Derrick Henry | Brandon Jacobs — Southern Illinois | Workload consistency, late-game efficiency, finishing runs |
 | `rb-jitterbug` | Jitterbug | LeSean McCoy | Reggie Bush — USC | Short-area deception, jump cuts, defender manipulation |
 | `rb-battering-ram` | Battering Ram | Marshawn Lynch | Blake Corum — Michigan | Low pads, leg drive, falling forward through contact |
 | `rb-track-star-convert` | Track Star Convert | Raheem Mostert | Devon Achane — Texas A&M | Track speed translated to run angles, patience before acceleration, perimeter finish |
@@ -41,10 +41,10 @@ This library maps every current FAI archetype ID to professional and college fil
 | `wr-chain-mover` | Chain Mover | Amon-Ra St. Brown | Cooper Kupp — Eastern Washington | Landmark discipline, leverage reads, reliable third-down separation |
 | `wr-big-body-boundary` | Big Body Boundary | Mike Evans | Drake London — USC | Boundary releases, body positioning, back-shoulder timing |
 | `wr-route-technician` | Route Technician | Davante Adams | Jerry Jeudy — Alabama | Release plans, breakpoint violence, stem manipulation |
-| `wr-yards-after-menace` | Yards-After Menace | Deebo Samuel | Deebo Samuel — South Carolina | Catch-to-run transition, contact navigation, designed-touch efficiency |
+| `wr-yards-after-menace` | Yards-After Menace | Deebo Samuel | A.J. Brown — Ole Miss | Catch-to-run transition, contact navigation, designed-touch efficiency |
 | `wr-contested-catch-freak` | Contested Catch Freak | Calvin Johnson | Rome Odunze — Washington | Late hands, high-point timing, vertical body control |
-| `wr-straight-line-blur` | Straight Line Blur | DK Metcalf | DK Metcalf — Ole Miss | Vertical stem, stacking, maintaining speed through contact |
-| `wr-gadget-weapon` | Gadget Weapon | Percy Harvin | Percy Harvin — Florida | Motion usage, backfield transitions, space-touch versatility |
+| `wr-straight-line-blur` | Straight Line Blur | DK Metcalf | Julio Jones — Alabama | Vertical stem, stacking, maintaining speed through contact |
+| `wr-gadget-weapon` | Gadget Weapon | Percy Harvin | Curtis Samuel — Ohio State | Motion usage, backfield transitions, space-touch versatility |
 
 ## Tight End
 
@@ -53,7 +53,7 @@ This library maps every current FAI archetype ID to professional and college fil
 | `te-move-piece` | Move Piece | Evan Engram | Brock Bowers — Georgia | Alignment versatility, motion, separation against linebackers |
 | `te-inline-mauler` | In-Line Mauler | George Kittle | Darnell Washington — Georgia | Hand placement, hip roll, sustaining edge blocks |
 | `te-seam-buster` | Seam Buster | Travis Kelce | Kyle Pitts — Florida | Seam leverage, zone-window pacing, vertical mismatch creation |
-| `te-basketball-body` | Basketball Body | Jimmy Graham | Antonio Gates — Kent State basketball transition film | Rebounding position, red-zone body control, catch radius |
+| `te-basketball-body` | Basketball Body | Jimmy Graham | Julius Thomas — Portland State | Rebounding position, red-zone body control, catch radius |
 | `te-hybrid-h-back` | Hybrid H-Back | Kyle Juszczyk | Chigoziem Okonkwo — Maryland | Insert blocks, split-flow action, route/block disguise |
 
 ## Offensive Line
@@ -65,7 +65,7 @@ This library maps every current FAI archetype ID to professional and college fil
 | `ol-puller` | Puller | Zack Martin | Jackson Powers-Johnson — Oregon | Pull path, target selection, balance in space |
 | `ol-pass-pro-technician` | Pass Pro Technician | Lane Johnson | Rashawn Slater — Northwestern | Set variation, hand timing, inside-counter recovery |
 | `ol-phone-booth-brawler` | Phone Booth Brawler | Jason Kelce | Creed Humphrey — Oklahoma | Leverage in tight space, combo blocks, interior recovery |
-| `ol-clay-frame` | Project Tackle | Jordan Mailata | Jordan Mailata developmental film | Stance consistency, strike timing, converting frame into functional technique |
+| `ol-clay-frame` | Project Tackle | Jordan Mailata | Daniel Faalele — Minnesota | Stance consistency, strike timing, converting frame into functional technique |
 | `ol-space-eater` | Space Eater | Mekhi Becton | Amarius Mims — Georgia | Mass with balance, lane occupation, controlling width |
 
 ## Defensive Line
@@ -87,18 +87,18 @@ This library maps every current FAI archetype ID to professional and college fil
 | `edge-speed-rusher` | Speed Rusher | Von Miller | Will Anderson Jr. — Alabama | Get-off, cornering angle, speed-to-counter sequence |
 | `edge-power-convert` | Power Convert | Khalil Mack | Travon Walker — Georgia | Speed-to-power, long arm, compressing the tackle's set |
 | `edge-set-edge-setter` | Set Edge Setter | T.J. Watt | Aidan Hutchinson — Michigan | Outside-arm leverage, block destruction, forcing runs inside |
-| `edge-length-freak` | Length Freak | Myles Garrett | Myles Garrett — Texas A&M | Reach advantage, long-arm control, closing radius |
-| `edge-chase-athlete` | Chase Athlete | Micah Parsons | Micah Parsons — Penn State | Backside pursuit, redirect speed, finishing from distance |
+| `edge-length-freak` | Length Freak | Myles Garrett | Julius Peppers — North Carolina | Reach advantage, long-arm control, closing radius |
+| `edge-chase-athlete` | Chase Athlete | Micah Parsons | Haason Reddick — Temple | Backside pursuit, redirect speed, finishing from distance |
 
 ## Linebacker
 
 | Archetype ID | FAI name | Professional model | College film model | Study focus |
 |---|---|---|---|---|
 | `lb-downhill-thumper` | Downhill Thumper | Fred Warner | Reuben Foster — Alabama | Trigger downhill, take-on leverage, square tackling |
-| `lb-sideline-to-sideline` | Sideline-to-Sideline | Roquan Smith | Roquan Smith — Georgia | Flow recognition, pursuit angle, closing in space |
+| `lb-sideline-to-sideline` | Sideline-to-Sideline | Roquan Smith | Devin Bush — Michigan | Flow recognition, pursuit angle, closing in space |
 | `lb-coverage-backer` | Coverage Backer | Matt Milano | Jeremiah Owusu-Koramoah — Notre Dame | Match leverage, zone spacing, transition against backs and tight ends |
 | `lb-green-dot` | Green Dot | Bobby Wagner | Luke Kuechly — Boston College | Front communication, formation checks, diagnostic tempo |
-| `lb-blitz-specialist` | Blitz Specialist | Devin White | Devin White — LSU | Timing, protection entry points, finishing through contact |
+| `lb-blitz-specialist` | Blitz Specialist | Devin White | Patrick Queen — LSU | Timing, protection entry points, finishing through contact |
 | `lb-undersized-missile` | Guided Missile | Dre Greenlaw | Nakobe Dean — Georgia | Fast trigger, slipping blocks, high-velocity tackling control |
 
 ## Cornerback
@@ -107,7 +107,7 @@ This library maps every current FAI archetype ID to professional and college fil
 |---|---|---|---|---|
 | `cb-press-bully` | Press Bully | Patrick Surtain II | Joey Porter Jr. — Penn State | Jam timing, release disruption, catch-point control |
 | `cb-off-man-mirror` | Off-Man Mirror | Trent McDuffie | Denzel Ward — Ohio State | Cushion control, transition efficiency, route matching |
-| `cb-ball-hawk` | Ball Hawk | Trevon Diggs | Trevon Diggs — Alabama | Quarterback vision, route anticipation, ball tracking |
+| `cb-ball-hawk` | Ball Hawk | Trevon Diggs | Josh Jackson — Iowa | Quarterback vision, route anticipation, ball tracking |
 | `cb-sticky-feet` | Sticky Feet | Jaire Alexander | Mike Sainristil — Michigan | Hip switch, recovery steps, connection through breaks |
 | `cb-long-strider` | Long Strider | Tariq Woolen | Christian Gonzalez — Oregon | Open-and-run mechanics, vertical phase, late length at catch point |
 
