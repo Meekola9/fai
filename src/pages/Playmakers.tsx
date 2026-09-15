@@ -1,3 +1,4 @@
+import { gameStatsAdjustment } from '../lib/gameStatEntry'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { stepCountUp } from '../lib/animation'
@@ -244,6 +245,8 @@ function ContributorChips({ items, pointsOf, tone }: { items: AthleteImpact[]; p
 
 function LevelCard({ item, rank }: { item: AthleteImpact; rank: number }) {
   const { level } = item
+  const { data } = useStore()
+  const gameAdjustment = gameStatsAdjustment(item.athlete.id, data.playerStats)
   return (
     <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-b from-panel-2/70 to-panel p-4">
       <div className="flex items-center gap-3">
@@ -262,8 +265,9 @@ function LevelCard({ item, rank }: { item: AthleteImpact; rank: number }) {
             {item.havocPoints > 0 && <Pill tone="down">💥 {item.havocPoints}</Pill>}
             {item.playmakerPoints > 0 && <Pill tone="up">⚡ {item.playmakerPoints}</Pill>}
             {item.boostPct > 0 && <Pill tone="gold">📈 +{item.boostPct}% overall</Pill>}
-            {item.efficiencyBoostPct > 0 && <Pill tone="up">🎯 {item.efficiency}% positive impact · +{item.efficiencyBoostPct}%</Pill>}
-            {item.efficiencyBoostPct < 0 && <Pill tone="down">🎯 {item.efficiency}% positive impact · {item.efficiencyBoostPct}%</Pill>}
+            {!gameAdjustment && item.efficiencyBoostPct > 0 && <Pill tone="up">🎯 {item.efficiency}% positive impact · +{item.efficiencyBoostPct}%</Pill>}
+            {!gameAdjustment && item.efficiencyBoostPct < 0 && <Pill tone="down">🎯 {item.efficiency}% positive impact · {item.efficiencyBoostPct}%</Pill>}
+            {gameAdjustment && <Pill tone={gameAdjustment.boostPct < 0 ? 'down' : 'up'}>Game efficiency {gameAdjustment.boostPct > 0 ? '+' : ''}{gameAdjustment.boostPct}%</Pill>}
             <span title="Positive points divided by the total magnitude of positive and negative points; based only on logged impact events.">{item.playCount} logged events</span>
             {item.negativePoints > 0 && <Pill tone="down">⚠️ −{item.negativePoints}</Pill>}
           </div>

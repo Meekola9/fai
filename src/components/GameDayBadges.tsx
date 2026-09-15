@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type {
   GameDayBadgeAward,
   GameDayBadgeCount,
@@ -254,7 +255,8 @@ export function GameDayBadgeArtwork({ badge, size = 64 }: { badge: GameDayBadgeD
     : positive
       ? 'M32 3L57 13V31C57 46 47 56 32 61C17 56 7 46 7 31V13Z'
       : 'M20 4H44L60 20V44L44 60H20L4 44V20Z'
-  const id = `game-badge-${badge.id}`
+  const instanceId = useId().replace(/[^a-z0-9_-]/gi, '')
+  const id = `game-badge-${instanceId}-${badge.id}`
   const ariaKind = achievement ? 'season achievement badge' : 'game-day badge'
 
   return (

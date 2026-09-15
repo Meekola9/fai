@@ -1,3 +1,4 @@
+import { ROSTER_SEASON_ID } from './rosterScope'
 // ---------------------------------------------------------------------------
 // Progress tracking, official rankings, and event-specific result selection.
 // ---------------------------------------------------------------------------
@@ -9,7 +10,7 @@ import type {
 } from '../types'
 import { METRICS_BY_CATEGORY, SCORED_METRICS } from '../data/scoring'
 import { CATEGORIES } from '../data/constants'
-import { athleteTimeline, clamp, round1 } from './compute'
+import { athleteTimeline, clamp, round1, computeSession } from './compute'
 
 export type Trend = 'improved' | 'same' | 'regressed'
 
@@ -188,7 +189,16 @@ export function buildResults(
       : timeline.length - 1
     if (currentIndex < 0) continue
 
-    const baseCurrent = timeline[currentIndex]
+    const recorded = timeline[currentIndex]
+    // Live cards follow roster edits; historical event views keep their snapshots.
+    const liveView = !eventId || eventId === ROSTER_SEASON_ID
+    const positionChanged = recorded.session.positionSnapshot !== recorded.athlete.position
+      || recorded.session.positionGroupSnapshot !== recorded.athlete.positionGroup
+    const baseCurrent = !liveView || !positionChanged ? recorded : computeSession({
+      ...recorded.session,
+      positionSnapshot: recorded.athlete.position,
+      positionGroupSnapshot: recorded.athlete.positionGroup,
+    }, recorded.athlete, recorded.event)
     const previous = currentIndex > 0 ? timeline[currentIndex - 1] : undefined
 
     // A Playmaker/Havoc level and a high awareness-quiz score each lift the

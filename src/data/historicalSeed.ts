@@ -110,6 +110,7 @@ function repairHistoricalReferences(input: AppData): AppData {
         athleteId: remapHistoricalAthleteId(annotation.athleteId),
       })),
     })),
+    playerStats: (input.playerStats ?? []).map(stat => ({ ...stat, athleteId: remapHistoricalAthleteId(stat.athleteId) ?? stat.athleteId })),
     awarenessResults: (input.awarenessResults ?? []).map((result) => ({
       ...result,
       athleteId: remapHistoricalAthleteId(result.athleteId) ?? result.athleteId,
@@ -196,6 +197,7 @@ export function mergeHistoricalData(
   const normalizedCurrent = consolidateAthleteAliases(repairHistoricalReferences(current))
   return consolidateAthleteAliases(
     normalizeAppData({
+      ...normalizedCurrent,
       athletes: upsertById(repairedSeed.athletes, normalizedCurrent.athletes),
       events: upsertById(repairedSeed.events, normalizedCurrent.events),
       sessions: upsertById(repairedSeed.sessions, normalizedCurrent.sessions),

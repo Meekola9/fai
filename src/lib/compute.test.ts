@@ -320,3 +320,18 @@ describe('FAI computation', () => {
     expect(withTenDash.completionPct).toBe(100)
   })
 })
+
+it('updates live position benchmarks and archetypes while retaining historical snapshots', async () => {
+  const { archetypeFor } = await import('./archetypes')
+  const { ROSTER_SEASON_ID } = await import('./rosterScope')
+  const changed: AppData = { ...completeData, athletes: [{ ...athlete, position: 'CB', positionGroup: 'DB' }] }
+  const computed = computeAll(changed)
+  const live = buildResults(computed)[0]
+  expect(live.current.session.positionGroupSnapshot).toBe('DB')
+  expect(archetypeFor(live.current)?.role).toBe('CB')
+  const historical = computed.map(item => ({ ...item, event: { ...item.event, id: 'past-combine' } }))
+  expect(buildResults(historical, 'past-combine')[0].current.session.positionGroupSnapshot).toBe('WR')
+  expect(changed.sessions[0].positionGroupSnapshot).toBe('WR')
+  const season = computed.map(item => ({ ...item, event: { ...item.event, id: ROSTER_SEASON_ID } }))
+  expect(archetypeFor(buildResults(season, ROSTER_SEASON_ID)[0].current)?.role).toBe('CB')
+})

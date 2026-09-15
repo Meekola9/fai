@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // Retained for the separate Film Room rebuild; its route is retired in the active app.
+  testIgnore: ['**/film-room-smoke.spec.ts', '**/film-scrubbing.spec.ts', '**/film-tracking.spec.ts', '**/film-throw-analysis.spec.ts', '**/film-formation-builder.spec.ts', '**/football-cv-import.spec.ts'],
   fullyParallel: false,
   retries: 1,
   reporter: [['line']],

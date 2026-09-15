@@ -1,3 +1,4 @@
+import { gameStatsAdjustment, sameStatGame } from '../lib/gameStatEntry'
 import {
   createContext,
   useContext,
@@ -478,7 +479,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [data.plays, data.athletes],
   )
   const impactBoost = impactSummary.boostByAthlete
-  const efficiencyBoost = impactSummary.efficiencyBoostByAthlete
+  const efficiencyBoost = useMemo(() => {
+    const boosts = new Map(impactSummary.efficiencyBoostByAthlete)
+    for (const athlete of data.athletes) {
+      const adjustment = gameStatsAdjustment(athlete.id, data.playerStats)
+      // Box scores replace the impact efficiency signal when enough paired data exists.
+      if (adjustment) boosts.set(athlete.id, adjustment.boostPct)
+    }
+    return boosts
+  }, [impactSummary.efficiencyBoostByAthlete, data.athletes, data.playerStats])
   const awarenessBoost = useMemo(
     () => awarenessBoostByAthlete(data.awarenessResults),
     [data.awarenessResults],
@@ -832,7 +841,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }))
     },
     savePlayerStat(stat) {
-      const id = stat.id ?? newId('stat')
+      const id = stat.id ?? data.playerStats.find(existing => sameStatGame(existing, stat))?.id ?? newId('stat')
       const createdAt = new Date().toISOString()
       mutate((current) => {
         const exists = current.playerStats.some((s) => s.id === id)

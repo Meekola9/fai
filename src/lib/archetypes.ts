@@ -573,3 +573,38 @@ export function archetypeFor(result: ComputedSession): PlayerArchetype | undefin
     evidence,
   }
 }
+
+/** Coach-facing rules come from the same catalog and scoring functions as assignment. */
+export function archetypeRules(id: string) {
+  const definition = ARCHETYPE_CATALOG.find(item => item.id === id)
+  if (!definition) return undefined
+  const weight = WEIGHT_CENTER[definition.role]
+  const height = HEIGHT_CENTER[definition.role]
+  return {
+    definition,
+    build: [
+      definition.size && definition.size !== 'any'
+        ? definition.size === 'heavy' ? `Weight preference: ${weight + 12}+ lb`
+          : definition.size === 'light' ? `Weight preference: ${weight - 12} lb or lighter`
+            : `Weight preference: over ${weight - 12} and under ${weight + 12} lb`
+        : 'No weight preference',
+      definition.height && definition.height !== 'any'
+        ? definition.height === 'tall' ? `Height preference: ${height + 2}+ inches`
+          : definition.height === 'short' ? `Height preference: ${height - 2} inches or shorter`
+            : `Height preference: over ${height - 2} and under ${height + 2} inches`
+        : 'No height preference',
+    ],
+  }
+}
+
+export function archetypeMatches(result: ComputedSession) {
+  const group = result.session.positionGroupSnapshot ?? result.athlete.positionGroup
+  const available = CATEGORIES.filter(category => categoryIsAvailable(result, category))
+  if (!available.length) return []
+  const roles = archetypeRolesFor(result)
+  return ARCHETYPE_CATALOG.filter(definition => roles.includes(definition.role))
+    .map(definition => ({ id: definition.id, name: definition.name,
+      score: fitScore(definition, result, available, group),
+      edge: primaryEdge(definition, result, available, group) }))
+    .sort((a, b) => b.score - a.score || b.edge - a.edge || a.name.localeCompare(b.name))
+}

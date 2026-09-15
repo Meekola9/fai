@@ -96,7 +96,7 @@ function ReportWorkspace() {
       <p className="mt-2 max-w-2xl text-sm text-muted">Grade execution. Set the next practice focus. Build a packet your staff and players can use.</p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Link className={button} to="/import">Import roster</Link>
-        <Link className={button} to="/film">Import / tag game film</Link>
+        <Link className={button} to="/game-stats">Enter game stats</Link>
         <span className="self-center text-xs text-muted">{teamId ? 'Private staff reports · cloud storage' : 'On-device reports · export a backup regularly'}</span>
       </div>
     </header>

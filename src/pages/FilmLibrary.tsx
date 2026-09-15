@@ -1,3 +1,4 @@
+import ArchetypeRequirements from '../components/ArchetypeRequirements'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -37,6 +38,7 @@ function ModelCard({ item }: { item: ArchetypeFilmModel }) {
       </div>
 
       <div className="p-5">
+        <ArchetypeRequirements id={item.archetypeId} />
         <div className="mb-5 rounded-xl border border-fai/20 bg-fai/5 p-4">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-fai">Compare the two players</div>
           <p className="mt-2 text-sm leading-relaxed text-chalk">{item.comparisonFocus}</p>
@@ -82,7 +84,7 @@ export default function FilmLibrary() {
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">Study two different players for each FAI archetype: one professional example and one college-film example with a comparable frame or role. They are not exact physical matches; compare how each solves similar assignments. This guide contains study topics, not a playable clip collection. These are film-study references—not claims that testing alone proves technique, instincts, production, or football IQ.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/film" className="rounded-xl border border-fai/40 bg-fai/10 px-4 py-2 text-sm font-black text-fai">Open Film Room</Link>
+            <Link to="/game-stats" className="rounded-xl border border-fai/40 bg-fai/10 px-4 py-2 text-sm font-black text-fai">Game Stats</Link>
             <Link to="/development" className="rounded-xl border border-line px-4 py-2 text-sm font-black text-chalk">Development Hub</Link>
           </div>
         </div>

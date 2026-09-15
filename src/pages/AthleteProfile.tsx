@@ -287,7 +287,7 @@ export default function AthleteProfile() {
       />
 
       {positionArchetype && (
-        <ArchetypeNameplate archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />
+        <ArchetypeNameplate result={positionCurrent} archetype={positionArchetype} positionLabel={`${selectedGroup} · ${athlete.position}`} />
       )}
 
       <Card className="p-4">
