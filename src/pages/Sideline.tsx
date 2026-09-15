@@ -92,9 +92,8 @@ export default function Sideline() {
 
       {!hasData ? (
         <Card className="p-8 text-center text-muted">
-          No charted plays yet{opponent ? ` for ${opponent}` : ''}. Tag plays in the{' '}
-          <Link to="/film" className="font-bold text-fai hover:underline">Film Room</Link> — down, distance, gain,
-          box count, and hidden yards — and the six numbers fill in automatically.
+          No charted plays yet{opponent ? ` for ${opponent}` : ''}. Film charting is paused while Film Room is rebuilt. Enter player box scores in{' '}
+          <Link to="/game-stats" className="font-bold text-fai hover:underline">Game Stats</Link>.
         </Card>
       ) : (
         <>
@@ -154,8 +153,8 @@ export default function Sideline() {
           )}
 
           <div className="flex flex-wrap gap-2 text-sm">
-            <Link to="/film" className="rounded-lg border border-line px-3 py-2 font-bold text-chalk hover:border-fai">
-              Full scouting report →
+            <Link to="/game-stats" className="rounded-lg border border-line px-3 py-2 font-bold text-chalk hover:border-fai">
+              Enter game stats →
             </Link>
           </div>
         </>

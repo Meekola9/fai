@@ -28,3 +28,6 @@ test-results
 *.sw?
 
 .env.local
+
+# Generated from installed OCR packages before dev/build
+public/ocr/

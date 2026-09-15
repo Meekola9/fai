@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore'
 import { useAccountAccess } from './hooks/useAccountAccess'
@@ -9,7 +9,7 @@ import Leaderboards from './pages/Leaderboards'
 import Athletes from './pages/Athletes'
 import DeploymentBoard from './pages/DeploymentBoard'
 import Playmakers from './pages/Playmakers'
-import FilmRoom from './pages/FilmRoom'
+import GameStats from './pages/GameStats'
 import FilmLibrary from './pages/FilmLibrary'
 import Sideline from './pages/Sideline'
 import WeeklyReports from './pages/WeeklyReports'
@@ -40,7 +40,7 @@ const PUBLIC_NAV: NavItem[] = [
   { to: '/leaderboards', label: 'Leaderboards' },
   { to: '/athletes', label: 'Athletes' },
   { to: '/playmakers', label: 'Playmakers' },
-  { to: '/film', label: 'Film Room' },
+  { to: '/game-stats', label: 'Game Stats' },
   { to: '/film-library', label: 'Player Study Guide' },
   { to: '/development', label: 'Development' },
   { to: '/stats', label: 'Stats Guide' },
@@ -88,7 +88,7 @@ function navForAccount(viewerMode: boolean, role: string | undefined, capabiliti
   ]
   if (capabilities.canManageRoster || capabilities.canManageTesting || role === 'owner' || role === 'admin') nav.push({ to: '/deployment', label: 'Deployment' })
   if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/playmakers', label: 'Playmakers' })
-  if (capabilities.canManageFilm || role === 'owner' || role === 'admin') nav.push({ to: '/film', label: 'Film Room' })
+  if (capabilities.canManageAwards || role === 'owner' || role === 'admin') nav.push({ to: '/game-stats', label: 'Game Stats' })
   nav.push({ to: '/film-library', label: 'Player Study Guide' }, { to: '/development', label: 'Development' }, { to: '/stats', label: 'Stats Guide' })
   if (capabilities.canViewReports) nav.push({ to: '/reports', label: 'Weekly Reports' })
   if (capabilities.canManageTesting) nav.push({ to: '/entry', label: 'Enter Testing' })
@@ -125,7 +125,7 @@ function Header() {
           {access.role !== 'athlete' && <NavLink to="/tv" className="grid h-9 min-w-9 place-items-center rounded-lg border border-flame/40 bg-flame/10 px-2 text-xs font-black text-flame">TV</NavLink>}
         </div>
       </div>
-      {!viewerMode && access.capabilities.canViewReports && <div className="border-t border-line px-3 py-2 md:hidden"><NavLink to="/reports" className="block rounded-lg bg-fai/10 px-3 py-2 text-center text-xs font-black text-fai">Weekly Reports · Grades & scouting</NavLink></div>}
+      {!viewerMode && access.capabilities.canViewReports && <div className="flex gap-2 border-t border-line px-3 py-2 md:hidden"><NavLink to="/game-stats" className="flex-1 rounded-lg bg-fai/10 px-3 py-2 text-center text-xs font-black text-fai">Game Stats</NavLink><NavLink to="/reports" className="block rounded-lg bg-fai/10 px-3 py-2 text-center text-xs font-black text-fai">Weekly Reports · Grades & scouting</NavLink></div>}
     </header>
   )
 }
@@ -228,21 +228,11 @@ function PermissionDenied({ message = 'Your FAI account does not have permission
   return <div className="mx-auto max-w-xl rounded-2xl border border-down/30 bg-panel p-6 text-center"><h1 className="text-xl font-black text-chalk">{viewerMode ? 'Sign in required' : 'Permission required'}</h1><p className="mt-2 text-sm text-muted">{message}</p>{viewerMode && <NavLink to="/login" className="mt-4 inline-block rounded-xl bg-fai px-4 py-2 text-sm font-bold text-ink">Sign in to your account</NavLink>}<NavLink to="/" className="mt-4 inline-block rounded-xl border border-line px-4 py-2 text-sm font-bold text-chalk">Return to FAI</NavLink></div>
 }
 
-function PersistentFilmRoute({ active, children }: { active: boolean; children: React.ReactNode }) {
-  const scrollTop = useRef(0)
-  useLayoutEffect(() => {
-    if (active) window.requestAnimationFrame(() => window.scrollTo({ top: scrollTop.current, behavior: 'auto' }))
-    else scrollTop.current = window.scrollY
-  }, [active])
-  return <section hidden={!active} aria-hidden={!active}>{children}</section>
-}
-
 export default function App() {
   const { loading, cloudConfigured, signedIn, teamName, viewerMode, storageMode } = useStore()
   const access = useAccountAccess()
   const location = useLocation()
   const isTv = location.pathname.startsWith('/tv')
-  const isFilm = location.pathname === '/film'
 
   if (loading || access.loading) return <Loading />
   const signedOut = cloudConfigured && !signedIn
@@ -272,7 +262,8 @@ export default function App() {
           <Route path="/athletes" element={staffOrPublic ? <Athletes /> : <Navigate to="/account/profile" replace />} />
           <Route path="/deployment" element={allowed(!viewerMode && staffOrPublic && (access.capabilities.canManageRoster || access.capabilities.canManageTesting || ownerOrAdmin), <DeploymentBoard />, 'Your coach role does not include deployment planning access.')} />
           <Route path="/playmakers" element={viewerMode ? <Playmakers /> : allowed(access.capabilities.canManageAwards, <Playmakers />, 'Your coach role does not include Awards access.')} />
-          <Route path="/film" element={null} />
+          <Route path="/film" element={<Navigate to="/game-stats" replace />} />
+          <Route path="/game-stats" element={staffOrPublic ? <GameStats /> : <Navigate to="/account/profile" replace />} />
           <Route path="/film-library" element={<FilmLibrary />} />
           <Route path="/development" element={<PlayerDevelopment />} />
           <Route path="/archetypes" element={<PlayerDevelopment />} />
@@ -291,9 +282,7 @@ export default function App() {
           <Route path="/account/profile" element={allowed(isAthlete, <MyAthleteAccount />, 'Only an approved athlete account has a self-service profile.')} />
           <Route path="/login" element={<Navigate to={isAthlete ? '/account/profile' : '/'} replace />} />
         </Routes>
-        <PersistentFilmRoute active={isFilm}>
-          {viewerMode ? <FilmRoom /> : allowed(access.capabilities.canManageFilm, <FilmRoom />, 'Your coach role does not include Film grading.')}
-        </PersistentFilmRoute>
+
       </main>
       <footer className="mx-auto hidden max-w-7xl px-4 pb-10 pt-4 text-center text-xs text-muted md:block">FAI — Football Athlete Index · {viewerMode ? 'Live team view · read only' : storageMode === 'cloud' ? 'Secure role-based cloud access with on-device backup' : 'Local-first with on-device backup'}</footer>
       <PwaControls />

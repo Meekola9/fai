@@ -1,3 +1,5 @@
+import ArchetypeRequirements from './ArchetypeRequirements'
+import type { ComputedSession } from '../types'
 import { Link } from 'react-router-dom'
 import { CATEGORY_SHORT } from '../data/constants'
 import type { Category } from '../types'
@@ -30,9 +32,11 @@ function parseEvidence(evidence: readonly string[]): NameplateStat[] {
 export function ArchetypeNameplate({
   archetype,
   positionLabel,
+  result,
 }: {
   archetype: PlayerArchetype
   positionLabel?: string
+  result?: ComputedSession
 }) {
   const stats = parseEvidence(archetype.evidence)
   const filmModel = filmModelForArchetype(archetype.id)
@@ -67,6 +71,7 @@ export function ArchetypeNameplate({
         </div>
       )}
 
+      <ArchetypeRequirements id={archetype.id} result={result} />
       {filmModel && (
         <div className="mx-auto mt-7 max-w-3xl rounded-2xl border border-fai/25 bg-fai/5 p-4 text-left">
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-fai">Suggested film-study reference</div>

@@ -230,3 +230,15 @@ describe('historicalSeedData', () => {
     expect(merged.sessions).toHaveLength(seed.sessions.length)
   })
 })
+
+it('preserves game stats and scores when the app reloads its historical roster', async () => {
+  const seed = await historicalSeedData()
+  const athleteId = seed.athletes[0].id
+  const current = { ...seed,
+    playerStats: [{ id: 'saved-game', athleteId, date: '2026-09-15', opponent: 'Team', stats: { tackles: 8, missedTackles: 0 } }],
+    gameResults: [{ id: 'score', date: '2026-09-15', opponent: 'Team', teamScore: 21, oppScore: 7 }],
+  }
+  const merged = mergeHistoricalData(seed, current)
+  expect(merged.playerStats).toEqual(current.playerStats)
+  expect(merged.gameResults).toEqual(current.gameResults)
+})
